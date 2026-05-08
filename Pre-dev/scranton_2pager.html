@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-Light.ttf'); font-weight: 300; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-Bold.ttf'); font-weight: 700; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-ExtraLight.ttf'); font-weight: 900; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('/home/claude/fonts/flat/IBMPlexMono-Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('/home/claude/fonts/flat/IBMPlexMono-Bold.ttf'); font-weight: 700; }
+
+  @page { size: 210mm 297mm; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --black:   #0a0a0a;
+    --yellow:  #F5C518;
+    --cyan:    #00D4FF;
+    --white:   #F0EDE8;
+    --grey:    #242424;
+    --midgrey: #aaa;
+    --ltgrey:  #ccc;
+    --red:     #E63946;
+    --green:   #00C853;
+    --purple:  #7B61FF;
+    --orange:  #FF6D00;
+  }
+
+  body {
+    background: var(--black);
+    font-family: 'IBM Plex Sans', Arial, sans-serif;
+    color: var(--white);
+    width: 210mm;
+    margin: 0 auto;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    background: var(--black);
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid-bg {
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 15mm 15mm;
+    pointer-events: none;
+  }
+
+  /* ── PAGE 1 ── */
+
+  .p1-accent {
+    position: absolute; left: 0; top: 0;
+    width: 3mm; height: 100%;
+    background: var(--yellow);
+  }
+
+  .p1-topbar {
+    height: 2.5mm;
+    background: linear-gradient(90deg, var(--yellow), var(--cyan));
+    flex-shrink: 0;
+    margin-left: 3mm;
+  }
+
+  .p1-header {
+    padding: 9mm 12mm 7mm 15mm;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 0.3mm solid #1e1e1e;
+  }
+
+  .p1-title-block {}
+
+  .p1-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7pt;
+    color: var(--yellow);
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    margin-bottom: 3mm;
+  }
+
+  .p1-logo {
+    font-size: 44pt;
+    font-weight: 900;
+    line-height: 0.92;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    gap: 3mm;
+  }
+
+  .p1-logo img {
+    height: 42pt;
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .p1-tagline {
+    margin-top: 4mm;
+    font-size: 10pt;
+    font-weight: 300;
+    line-height: 1.55;
+    opacity: 0.85;
+  }
+
+  .p1-tagline strong {
+    color: var(--cyan);
+    font-weight: 700;
+  }
+
+  .p1-meta {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7pt;
+    color: var(--midgrey);
+    letter-spacing: 0.1em;
+    line-height: 1.8;
+    flex-shrink: 0;
+  }
+
+  /* ── BODY PAGE 1 ── */
+
+  .p1-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 0 0 0 3mm;
+  }
+
+  .p1-col {
+    padding: 7mm 10mm 7mm 12mm;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .p1-col-right {
+    padding: 7mm 12mm 7mm 10mm;
+    border-left: 0.3mm solid #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .col-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7pt;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    border-bottom: 0.3mm solid #252525;
+    padding-bottom: 2mm;
+    margin-bottom: 5mm;
+  }
+
+  .col-label.y { color: var(--yellow); }
+
+  /* Problems */
+  .prob-item {
+    display: flex;
+    gap: 4mm;
+    padding: 4mm 0;
+    border-bottom: 0.2mm solid #1e1e1e;
+  }
+  .prob-item:last-child { border-bottom: none; }
+
+  .prob-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22pt;
+    font-weight: 700;
+    color: #252525;
+    line-height: 1;
+    flex-shrink: 0;
+    width: 12mm;
+    padding-top: 1mm;
+  }
+
+  .prob-text {}
+  .prob-title {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: var(--yellow);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.5mm;
+  }
+  .prob-body {
+    font-size: 8.5pt;
+    font-weight: 300;
+    line-height: 1.6;
+    opacity: 0.8;
+  }
+
+  /* Quote */
+  .p1-quote {
+    margin: 5mm 0 0 3mm;
+    padding: 4mm 5mm;
+    border-left: 1.5mm solid var(--midgrey);
+  }
+  .p1-quote p {
+    font-size: 8.5pt;
+    font-style: italic;
+    color: var(--ltgrey);
+    line-height: 1.65;
+  }
+  .p1-quote cite {
+    display: block;
+    margin-top: 2mm;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5pt;
+    color: var(--midgrey);
+    letter-spacing: 0.2em;
+    font-style: normal;
+  }
+
+  /* Vision right col */
+  .vision-block {
+    background: rgba(245,197,24,0.06);
+    border: 0.3mm solid rgba(245,197,24,0.18);
+    border-radius: 2mm;
+    padding: 5mm;
+    margin-bottom: 5mm;
+  }
+
+  .vision-title {
+    font-size: 18pt;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: var(--yellow);
+    line-height: 1.05;
+    margin-bottom: 3mm;
+  }
+
+  .vision-body {
+    font-size: 8.5pt;
+    font-weight: 300;
+    line-height: 1.65;
+    opacity: 0.85;
+  }
+
+  .vision-body strong { color: var(--white); font-weight: 700; }
+
+  /* Vision cite */
+  .vision-cite {
+    padding: 4mm 5mm;
+    border-left: 1.5mm solid var(--cyan);
+    background: rgba(0,212,255,0.04);
+    border-radius: 0 1mm 1mm 0;
+    margin-bottom: 5mm;
+  }
+  .vision-cite p {
+    font-size: 8.5pt;
+    font-style: italic;
+    color: var(--cyan);
+    line-height: 1.6;
+  }
+
+  /* Stack pills */
+  .stack-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5mm;
+    margin-top: auto;
+    padding-top: 5mm;
+    border-top: 0.2mm solid #252525;
+  }
+
+  .pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5pt;
+    letter-spacing: 0.1em;
+    padding: 1.5mm 3mm;
+    border-radius: 0.8mm;
+    border: 0.3mm solid #333;
+    color: var(--midgrey);
+    white-space: nowrap;
+  }
+
+  .pill.y { border-color: rgba(245,197,24,0.4); color: var(--yellow); background: rgba(245,197,24,0.06); }
+  .pill.c { border-color: rgba(0,212,255,0.35); color: var(--cyan); background: rgba(0,212,255,0.05); }
+  .pill.p { border-color: rgba(123,97,255,0.35); color: var(--purple); background: rgba(123,97,255,0.05); }
+
+  /* ── PAGE 1 FOOTER ── */
+  .p1-footer {
+    padding: 3.5mm 15mm;
+    border-top: 0.3mm solid #1e1e1e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-left: 3mm;
+  }
+  .p1-footer span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5pt;
+    color: var(--midgrey);
+    letter-spacing: 0.2em;
+  }
+  .p1-footer .pgn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5pt;
+    color: var(--midgrey);
+  }
+
+  /* ══════════════════════════════════
+     PAGE 2
+  ══════════════════════════════════ */
+
+  .p2-topbar {
+    height: 2.5mm;
+    background: linear-gradient(90deg, var(--cyan), var(--yellow));
+    flex-shrink: 0;
+  }
+
+  .p2-header {
+    padding: 6mm 12mm 4mm;
+    border-bottom: 0.3mm solid #1e1e1e;
+    flex-shrink: 0;
+  }
+
+  .p2-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7pt;
+    color: var(--cyan);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    margin-bottom: 1.5mm;
+  }
+
+  .p2-heading {
+    font-size: 18pt;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+  }
+
+  /* Features grid */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    flex-shrink: 0;
+  }
+
+  .feat-cell {
+    padding: 4.5mm 5mm;
+    border: 0.3mm solid #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .feat-cell.hl-y { background: rgba(245,197,24,0.05); border-color: rgba(245,197,24,0.2); }
+  .feat-cell.hl-c { background: rgba(0,212,255,0.04); border-color: rgba(0,212,255,0.18); }
+  .feat-cell.hl-p { background: rgba(123,97,255,0.04); border-color: rgba(123,97,255,0.2); }
+
+  .feat-cat {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5pt;
+    color: var(--midgrey);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 2mm;
+  }
+  .feat-cat.c { color: var(--cyan); }
+  .feat-cat.p { color: var(--purple); }
+
+  .feat-identity {
+    display: flex;
+    align-items: center;
+    gap: 2mm;
+    margin-bottom: 2mm;
+  }
+
+  .feat-identity img {
+    width: 9mm;
+    height: 9mm;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .feat-name {
+    font-size: 9.5pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--white);
+    line-height: 1.1;
+  }
+  .feat-name.y { color: var(--yellow); }
+  .feat-name.c { color: var(--cyan); }
+  .feat-name.p { color: var(--purple); }
+
+  .feat-body {
+    font-size: 8pt;
+    font-weight: 300;
+    line-height: 1.55;
+    opacity: 0.75;
+  }
+
+  /* Competitive */
+  .comp-section {
+    padding: 5mm 12mm 4mm;
+    flex-shrink: 0;
+    border-top: 0.3mm solid #1e1e1e;
+  }
+
+  .comp-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7pt;
+    color: var(--midgrey);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    margin-bottom: 3mm;
+  }
+
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3mm;
+  }
+
+  .comp-col {
+    padding: 3.5mm 4mm;
+    border: 0.3mm solid #232323;
+    border-radius: 1.5mm;
+  }
+
+  .comp-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7pt;
+    font-weight: 700;
+    color: var(--ltgrey);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.5mm;
+  }
+
+  .comp-sub {
+    font-size: 7.5pt;
+    font-weight: 300;
+    color: var(--midgrey);
+    margin-bottom: 2mm;
+  }
+
+  .comp-answer {
+    display: flex;
+    gap: 2mm;
+    align-items: flex-start;
+  }
+
+  .comp-bar {
+    width: 1.5mm;
+    background: var(--yellow);
+    flex-shrink: 0;
+    border-radius: 0.5mm;
+    margin-top: 1mm;
+    align-self: stretch;
+  }
+  .comp-bar.c { background: var(--cyan); }
+  .comp-bar.r { background: var(--red); }
+
+  .comp-text {
+    font-size: 7.5pt;
+    font-weight: 300;
+    line-height: 1.55;
+    color: var(--white);
+    opacity: 0.8;
+  }
+
+  /* Footer p2 */
+  .p2-footer {
+    margin-top: auto;
+    padding: 3.5mm 12mm;
+    border-top: 0.3mm solid #1e1e1e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .p2-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5mm;
+  }
+
+  .p2-footer-right {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 6.5pt;
+    color: var(--midgrey);
+    letter-spacing: 0.2em;
+    text-align: right;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     PAGE 1 — OVERVIEW
+══════════════════════════════════════ -->
+<div class="page">
+  <div class="grid-bg"></div>
+  <div class="p1-accent"></div>
+  <div class="p1-topbar"></div>
+
+  <!-- Header -->
+  <div class="p1-header">
+    <div class="p1-title-block">
+      <div class="p1-eyebrow">Management Operating System</div>
+      <div class="p1-logo">
+        <img src="assets/michael-removebg-preview.png" alt="Michael">
+        <span>SCRAN<span style="color:var(--yellow);">TON</span></span>
+      </div>
+      <p class="p1-tagline">
+        Inspired by the worst manager on American TV. Built for the best.<br>
+        <strong>One smart notepad. Zero bureaucracy. 100&nbsp;% team.</strong>
+      </p>
+    </div>
+    <div class="p1-meta">
+      SC&nbsp;/&nbsp;REV.2<br>
+      MANAGEMENT&nbsp;OS<br>
+      CONFIDENTIAL
+    </div>
+  </div>
+
+  <!-- Body: 2 columns -->
+  <div class="p1-body">
+
+    <!-- Left: Problem -->
+    <div class="p1-col">
+      <div class="col-label y">The problem</div>
+
+      <div class="prob-item">
+        <div class="prob-num">01</div>
+        <div class="prob-text">
+          <div class="prob-title">Meeting overload</div>
+          <div class="prob-body">Preparing agendas, writing minutes, tracking actions: managers spend more time documenting than managing. Meetings get longer. Actions get lost.</div>
+        </div>
+      </div>
+
+      <div class="prob-item">
+        <div class="prob-num">02</div>
+        <div class="prob-text">
+          <div class="prob-title">The human blind spot</div>
+          <div class="prob-body">Fatigue, disengagement, latent tension: weak signals are never formally captured. Burnout is discovered when it's already too late to act.</div>
+        </div>
+      </div>
+
+      <div class="prob-item">
+        <div class="prob-num">03</div>
+        <div class="prob-text">
+          <div class="prob-title">Tools built for HR, not managers</div>
+          <div class="prob-body">Workday, HRIS, spreadsheets: built for compliance reporting, not for the manager face to face with their team every day. Zero decision support.</div>
+        </div>
+      </div>
+
+      <div class="p1-quote">
+        <p>"Would I rather be feared or loved? Easy. Both. I want people to be afraid of how much they love me."</p>
+        <cite>MICHAEL SCOTT, REGIONAL MANAGER</cite>
+      </div>
+    </div>
+
+    <!-- Right: Vision + Stack -->
+    <div class="p1-col-right">
+      <div class="col-label">Vision</div>
+
+      <div class="vision-block">
+        <div class="vision-title">AN OS,<br>NOT AN<br>AI COACH</div>
+        <div class="vision-body">
+          Scranton is a <strong>managerial operating system</strong>. Cold data (time, workload, projects) meets warm data (morale, weak signals, equity) in a unified, ethical, sovereign interface.<br><br>
+          AI is never visible as a decision-maker. It structures, summarises, detects — <strong>silently</strong>. The manager remains the sole source of every human decision.
+        </div>
+      </div>
+
+      <div class="vision-cite">
+        <p>"AI should simplify, not decide. The manager remains the human who calls the shots — Scranton gives them the time and data to do it better."</p>
+      </div>
+
+      <div class="col-label" style="margin-top:2mm;">Core principles</div>
+
+      <div style="display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;align-items:center;gap:3mm;padding:3mm 0;border-bottom:0.2mm solid #1e1e1e;">
+          <img src="assets/dwight-removebg-preview.png" style="width:9mm;height:9mm;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <div><div style="font-size:9pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5mm;">Tell Dwight — Universal Input</div><div style="font-size:7.5pt;font-weight:300;opacity:0.7;line-height:1.5;">One field, multiple destinations. Dwight routes, asks, corrects.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:3mm;padding:3mm 0;border-bottom:0.2mm solid #1e1e1e;">
+          <img src="assets/pam-removebg-preview.png" style="width:9mm;height:9mm;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <div><div style="font-size:9pt;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5mm;">Ask Pam — Collective Memory</div><div style="font-size:7.5pt;font-weight:300;opacity:0.7;line-height:1.5;">Everything ever said, filed, or promised — queryable in plain language.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:3mm;padding:3mm 0;border-bottom:0.2mm solid #1e1e1e;">
+          <img src="assets/jim-removebg-preview.png" style="width:9mm;height:9mm;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <div><div style="font-size:9pt;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5mm;">Whisper Jim — Ephemeral Chat</div><div style="font-size:7.5pt;font-weight:300;opacity:0.7;line-height:1.5;">The coffee machine, digitised. No AI, no trace by default.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:3mm;padding:3mm 0;">
+          <div style="width:9mm;height:9mm;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            <div style="width:7mm;height:7mm;border-radius:50%;background:rgba(245,197,24,0.15);border:0.3mm solid rgba(245,197,24,0.3);display:flex;align-items:center;justify-content:center;">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--yellow);">✦</span>
+            </div>
+          </div>
+          <div><div style="font-size:9pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5mm;">Privacy by design</div><div style="font-size:7.5pt;font-weight:300;opacity:0.7;line-height:1.5;">Local-first. E2EE. Mistral / EU&nbsp;AI. Your data, not HR's.</div></div>
+        </div>
+      </div>
+
+      <div class="stack-pills">
+        <span class="pill y">Anti-Workday</span>
+        <span class="pill y">Local-first</span>
+        <span class="pill c">Privacy by design</span>
+        <span class="pill c">Mistral / EU&nbsp;AI</span>
+        <span class="pill p">RAG</span>
+        <span class="pill">Human-centred</span>
+        <span class="pill">Anti-surveillance</span>
+        <span class="pill">Remote / Hybrid / On-site</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="p1-footer">
+    <span>© SCRANTON — MANAGEMENT OS — ALL RIGHTS RESERVED</span>
+    <span class="pgn">1 / 2</span>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     PAGE 2 — FEATURES + COMPETITIVE
+══════════════════════════════════════ -->
+<div class="page">
+  <div class="grid-bg"></div>
+  <div class="p2-topbar"></div>
+
+  <!-- Header -->
+  <div class="p2-header">
+    <div class="p2-eyebrow">What Scranton does — and why it wins</div>
+    <div class="p2-heading">The full feature set</div>
+  </div>
+
+  <!-- Features 4×2 -->
+  <div class="features-grid">
+
+    <!-- Row 1 -->
+    <div class="feat-cell hl-y">
+      <div class="feat-cat">Core / Input</div>
+      <div class="feat-identity">
+        <img src="assets/dwight-removebg-preview.png" alt="Dwight">
+        <div class="feat-name y">Tell Dwight</div>
+      </div>
+      <div class="feat-body">Free-text input, multi-destination routing. Asks follow-up questions if vague. Corrects and reformulates. Dwight never misfiles.</div>
+    </div>
+
+    <div class="feat-cell hl-c">
+      <div class="feat-cat c">Memory / RAG</div>
+      <div class="feat-identity">
+        <img src="assets/pam-removebg-preview.png" alt="Pam">
+        <div class="feat-name c">Ask Pam</div>
+      </div>
+      <div class="feat-body">Collective memory, plain-language queries. Clarifies before answering. Drafts on demand. Written or spoken output. Nothing ever lost.</div>
+    </div>
+
+    <div class="feat-cell">
+      <div class="feat-cat">Daily ritual</div>
+      <div class="feat-identity">
+        <div style="width:9mm;height:9mm;border-radius:50%;background:rgba(245,197,24,0.15);border:0.3mm solid rgba(245,197,24,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-size:14pt;">🥨</span>
+        </div>
+        <div class="feat-name">Pretzel Day</div>
+      </div>
+      <div class="feat-body">30-second daily check-in. Mood on a Flow→Danger scale. Manager sees team trends. Because every day deserves a little Pretzel Day.</div>
+    </div>
+
+    <div class="feat-cell">
+      <div class="feat-cat">People Management</div>
+      <div class="feat-identity">
+        <img src="assets/michael-removebg-preview.png" alt="Michael">
+        <div class="feat-name">Michael's Desk</div>
+      </div>
+      <div class="feat-body">AI-assisted 1:1 management. Auto-extracted actions and commitments. Archived, searchable, natively transition-proof. Every conversation matters here — including the ones that come after you.</div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="feat-cell hl-c">
+      <div class="feat-cat c">Dashboard / Equity</div>
+      <div class="feat-identity">
+        <img src="assets/toby-removebg-preview.png" alt="Toby">
+        <div class="feat-name c">Meet Toby</div>
+      </div>
+      <div class="feat-body">Aggregated team health: weak signals, mood trends, equity flags on pay and task allocation. Manager-only. Nobody loves Toby's alerts — until they need them.</div>
+    </div>
+
+    <div class="feat-cell hl-p">
+      <div class="feat-cat p">Ephemeral chat</div>
+      <div class="feat-identity">
+        <img src="assets/jim-removebg-preview.png" alt="Jim">
+        <div class="feat-name p">Whisper Jim</div>
+      </div>
+      <div class="feat-body">1:1 and group chat, ephemeral by default. No AI, no indexing. "Pam needs to know this?" — unanimous vote triggers Invite Dwight.</div>
+    </div>
+
+    <div class="feat-cell">
+      <div class="feat-cat">Export</div>
+      <div class="feat-identity">
+        <img src="assets/angela-removebg-preview.png" alt="Angela">
+        <div class="feat-name">Send Angela</div>
+      </div>
+      <div class="feat-body">One-click export by project, member, or client. Invoicing, HR reporting, annual review — no retyping. Angela delivers. No questions asked.</div>
+    </div>
+
+    <div class="feat-cell hl-y">
+      <div class="feat-cat">Reward</div>
+      <div class="feat-identity">
+        <div style="width:9mm;height:9mm;border-radius:50%;background:rgba(245,197,24,0.15);border:0.3mm solid rgba(245,197,24,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:7pt;color:var(--yellow);font-weight:700;text-align:center;line-height:1.1;">TWSS</span>
+        </div>
+        <div class="feat-name y" style="font-size:8.5pt;">That's What She Said</div>
+      </div>
+      <div class="feat-body">Visual reward on task completion. Random Michael quote. Customisable. Because finishing deserves celebration.</div>
+    </div>
+
+  </div>
+
+  <!-- Competitive -->
+  <div class="comp-section">
+    <div class="comp-label">Competitive landscape — and how we answer</div>
+    <div class="comp-grid">
+
+      <div class="comp-col">
+        <div class="comp-title">Lattice / 15Five / Leapsome</div>
+        <div class="comp-sub">Already installed, integrated with HRIS.</div>
+        <div class="comp-answer">
+          <div class="comp-bar"></div>
+          <div class="comp-text">Built for HR reporting, not for the manager. Scranton is local-first — data belongs to the team, not the company.</div>
+        </div>
+      </div>
+
+      <div class="comp-col">
+        <div class="comp-title">Notion + AI / Obsidian</div>
+        <div class="comp-sub">Flexible, cheap, some managers already use it.</div>
+        <div class="comp-answer">
+          <div class="comp-bar c"></div>
+          <div class="comp-text">No mood layer, no aggregated team view, no automatic action extraction. A notebook is not an OS.</div>
+        </div>
+      </div>
+
+      <div class="comp-col">
+        <div class="comp-title">Microsoft Viva</div>
+        <div class="comp-sub">Already there if the company runs on M365.</div>
+        <div class="comp-answer">
+          <div class="comp-bar r"></div>
+          <div class="comp-text">Surveillance dressed as wellbeing. Mood and productivity data flows to HR and Microsoft. Scranton is the exact opposite.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="p2-footer">
+    <div class="p2-pills">
+      <span class="pill y">Mistral API (EU AI)</span>
+      <span class="pill c">Local-first / SQLite E2EE</span>
+      <span class="pill p">NER sanitiser</span>
+      <span class="pill">Python / FastAPI</span>
+      <span class="pill">Responsive web app</span>
+    </div>
+    <div class="p2-footer-right">
+      © SCRANTON — MANAGEMENT OS<br>
+      <span style="color:#555;">2 / 2</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

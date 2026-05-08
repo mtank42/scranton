@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-Light.ttf'); font-weight: 300; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-Bold.ttf'); font-weight: 700; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('/home/claude/fonts/flat/IBMPlexSans-ExtraLight.ttf'); font-weight: 900; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('/home/claude/fonts/flat/IBMPlexMono-Regular.ttf'); font-weight: 400; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('/home/claude/fonts/flat/IBMPlexMono-Bold.ttf'); font-weight: 700; }
+
+  @page { size: 297mm 210mm; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --black:   #0a0a0a;
+    --yellow:  #F5C518;
+    --cyan:    #00D4FF;
+    --white:   #F0EDE8;
+    --grey:    #242424;
+    --midgrey: #aaa;
+    --ltgrey:  #ccc;
+    --red:     #E63946;
+    --green:   #00C853;
+    --purple:  #7B61FF;
+    --orange:  #FF6D00;
+  }
+
+  body { background:var(--black); font-family:'IBM Plex Sans',Arial,sans-serif; color:var(--white); width:297mm; }
+
+  .slide { width:297mm; height:210mm; background:var(--black); position:relative; overflow:hidden; page-break-after:always; display:flex; flex-direction:column; }
+
+  .grid-bg { position:absolute; top:0; right:0; bottom:0; left:0;
+    background-image: linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px), linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);
+    background-size:20mm 20mm; }
+
+  /* top bars */
+  .tb-cy  { height:2.5mm; background:linear-gradient(90deg,var(--yellow),var(--cyan)); flex-shrink:0; }
+  .tb-cy2 { height:2.5mm; background:linear-gradient(90deg,var(--cyan),var(--yellow)); flex-shrink:0; }
+  .tb-y   { height:2.5mm; background:var(--yellow); flex-shrink:0; }
+  .tb-c   { height:2.5mm; background:var(--cyan); flex-shrink:0; }
+  .tb-p   { height:2.5mm; background:linear-gradient(90deg,var(--purple),var(--cyan)); flex-shrink:0; }
+  .tb-o   { height:2.5mm; background:linear-gradient(90deg,var(--orange),var(--purple)); flex-shrink:0; }
+
+  /* header */
+  .hdr { padding:5mm 12mm 3mm; flex-shrink:0; }
+  .sid { font-family:'IBM Plex Mono',monospace; font-size:8.5pt; letter-spacing:0.35em; margin-bottom:1.5mm; }
+  .sid.y{color:var(--yellow);} .sid.c{color:var(--cyan);} .sid.p{color:var(--purple);} .sid.o{color:var(--orange);}
+  .hdr h2 { font-size:19pt; font-weight:900; text-transform:uppercase; letter-spacing:0.04em; line-height:1.1; }
+  .hdr .sub { font-size:10.5pt; font-weight:300; color:var(--ltgrey); margin-top:1mm; }
+
+  /* dots */
+  .dot { width:2.2mm; height:2.2mm; border-radius:50%; }
+  .dot.y{background:var(--yellow);} .dot.c{background:var(--cyan);} .dot.g{background:#444;}
+
+  /* panel */
+  .panel { background:#111; border:0.3mm solid #2a2a2a; border-radius:2mm; display:flex; flex-direction:column; overflow:hidden; }
+  .pbar  { background:#1c1c1c; padding:2mm 4mm; display:flex; align-items:center; gap:2mm; border-bottom:0.3mm solid #2a2a2a; flex-shrink:0; }
+  .pbar .pt { font-family:'IBM Plex Mono',monospace; font-size:8pt; color:#aaa; letter-spacing:0.15em; margin-left:2mm; }
+  .pbody { flex:1; padding:3mm 4mm; display:flex; flex-direction:column; gap:2mm; overflow:hidden; }
+
+  /* action buttons */
+  .action-btns { display:flex; gap:2mm; padding:2.5mm 4mm; border-top:0.3mm solid #252525; background:#0d0d0d; flex-shrink:0; }
+  .abtn { font-family:'IBM Plex Mono',monospace; font-size:8pt; letter-spacing:0.12em; padding:2mm 4mm; border-radius:1mm; font-weight:700; }
+  .abtn.dw { background:var(--yellow); color:var(--black); }
+  .abtn.pm { background:rgba(0,212,255,0.15); color:var(--cyan); border:0.3mm solid var(--cyan); }
+  .abtn.wj { background:rgba(123,97,255,0.15); color:var(--purple); border:0.3mm solid var(--purple); }
+
+  /* shared */
+  .msec { font-family:'IBM Plex Mono',monospace; font-size:7.5pt; color:var(--midgrey); letter-spacing:0.2em; text-transform:uppercase; border-bottom:0.2mm solid #252525; padding-bottom:1.5mm; margin-bottom:0.5mm; }
+  .cards-row { display:flex; gap:2mm; }
+  .mcard { flex:1; background:#1a1a1a; border-radius:1mm; padding:2mm 3mm; }
+  .mcard .ml { font-family:'IBM Plex Mono',monospace; font-size:7pt; color:var(--yellow); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:1mm; }
+  .mcard .mv { font-size:13pt; font-weight:700; color:var(--white); line-height:1; }
+  .mcard .ms { font-size:7pt; color:var(--midgrey); margin-top:0.5mm; }
+  .mood-row { display:flex; align-items:center; gap:1.5mm; }
+  .mood-row .mn { font-family:'IBM Plex Mono',monospace; font-size:7.5pt; color:var(--midgrey); width:14mm; flex-shrink:0; }
+  .md { width:4mm; height:4mm; border-radius:50%; flex-shrink:0; }
+  .md.flow{background:var(--green);} .md.ctrl{background:var(--cyan);} .md.pday{background:var(--purple);}
+  .md.press{background:var(--yellow);} .md.stuck{background:var(--orange);} .md.danger{background:var(--red);}
+  .mbar-w { margin-bottom:0.5mm; }
+  .mbar-l { font-family:'IBM Plex Mono',monospace; font-size:7pt; color:var(--midgrey); letter-spacing:0.1em; margin-bottom:0.5mm; }
+  .mbar { height:2.5mm; background:#252525; border-radius:0.5mm; overflow:hidden; }
+  .mbar .fill { height:100%; border-radius:0.5mm; }
+  .fy{background:var(--yellow);} .fc-fill{background:var(--cyan);} .fr{background:var(--red);}
+  .note-line { display:flex; align-items:flex-start; gap:2mm; padding:1.5mm 0; border-bottom:0.2mm solid #1e1e1e; }
+  .note-line .nd { width:2mm; height:2mm; border-radius:50%; margin-top:1mm; flex-shrink:0; }
+  .note-line .nt { font-size:8pt; color:var(--white); opacity:0.7; line-height:1.45; flex:1; }
+  .note-line .ntg { font-family:'IBM Plex Mono',monospace; font-size:7pt; color:var(--midgrey); background:#1e1e1e; padding:0.5mm 1.5mm; border-radius:0.5mm; white-space:nowrap; }
+  .al { display:flex; align-items:center; gap:2mm; padding:1mm 0; }
+  .chk { width:3mm; height:3mm; border:0.3mm solid #444; border-radius:0.3mm; flex-shrink:0; }
+  .chk.done { background:var(--cyan); border-color:var(--cyan); }
+  .al .at { font-size:8pt; color:var(--white); opacity:0.7; flex:1; }
+  .al .ap { font-family:'IBM Plex Mono',monospace; font-size:7pt; color:var(--yellow); }
+  .tag-badge { font-family:'IBM Plex Mono',monospace; font-size:7pt; padding:0.5mm 2mm; border-radius:0.5mm; display:inline-block; margin-top:1mm; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SLIDE 1 — COVER ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div style="position:absolute;left:0;top:0;width:3mm;height:100%;background:var(--yellow);"></div>
+  <div style="position:absolute;top:8mm;right:10mm;font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--midgrey);text-align:right;line-height:1.8;letter-spacing:0.1em;">SC&nbsp;/&nbsp;REV.1<br>MANAGEMENT&nbsp;OS<br>CONFIDENTIAL</div>
+  <div style="position:absolute;left:18mm;top:50%;transform:translateY(-52%);max-width:155mm;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);letter-spacing:0.45em;text-transform:uppercase;margin-bottom:5mm;">Management Operating System</div>
+    <div style="font-size:58pt;font-weight:900;line-height:0.95;letter-spacing:-0.02em;text-transform:uppercase;color:var(--white);display:flex;align-items:center;gap:4mm;"><img src="assets/michael-removebg-preview.png" style="height:55pt;width:auto;flex-shrink:0;"><span>SCRAN<span style="color:var(--yellow);">TON</span></span></div>
+    <p style="margin-top:7mm;font-size:11.5pt;font-weight:300;line-height:1.6;opacity:0.9;">Inspired by the worst manager on American TV.<br>Built for the best.<br><strong style="color:var(--cyan);font-weight:700;">One smart notepad. Zero bureaucracy. 100&nbsp;% team.</strong></p>
+    <div style="margin-top:8mm;border-left:1.5mm solid var(--midgrey);padding-left:5mm;max-width:120mm;">
+      <p style="font-size:9.5pt;font-style:italic;color:var(--ltgrey);line-height:1.65;">"Would I rather be feared or loved? Easy. Both. I want people to be afraid of how much they love me."</p>
+      <div style="margin-top:2mm;font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;">— MICHAEL SCOTT, DUNDER MIFFLIN</div>
+    </div>
+  </div>
+  <div style="position:absolute;bottom:8mm;left:18mm;font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.25em;">© SCRANTON — MANAGEMENT OS — ALL RIGHTS RESERVED</div>
+</div>
+
+<!-- ═══ SLIDE 2 — PROBLEM ═══ -->
+<div class="slide">
+  <div class="tb-cy"></div>
+  <div class="hdr"><div class="sid y">02&nbsp;/&nbsp;PROBLEM</div><h2>Proximity management is exhausting — and underserved</h2></div>
+  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;padding:0 10mm;">
+    <div style="padding:4mm 7mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:30pt;font-weight:700;color:#252525;line-height:1;margin-bottom:3mm;">01</div>
+      <h3 style="font-size:11pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3mm;">Meeting overload</h3>
+      <p style="font-size:10pt;font-weight:300;line-height:1.65;opacity:0.8;">Preparing agendas, running meetings, writing minutes, tracking actions: managers spend more time documenting than actually managing. Meetings get longer. Actions get lost.</p>
+    </div>
+    <div style="padding:4mm 7mm;border-left:0.4mm solid #2e2e2e;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:30pt;font-weight:700;color:#252525;line-height:1;margin-bottom:3mm;">02</div>
+      <h3 style="font-size:11pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3mm;">The human blind spot</h3>
+      <p style="font-size:10pt;font-weight:300;line-height:1.65;opacity:0.8;">Fatigue, disengagement, latent tension: weak signals are never formally captured. Burnout is discovered when it's already too late to act.</p>
+    </div>
+    <div style="padding:4mm 7mm;border-left:0.4mm solid #2e2e2e;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:30pt;font-weight:700;color:#252525;line-height:1;margin-bottom:3mm;">03</div>
+      <h3 style="font-size:11pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:3mm;">Tools built for HR, not managers</h3>
+      <p style="font-size:10pt;font-weight:300;line-height:1.65;opacity:0.8;">Workday, HRIS, spreadsheets: built for compliance reporting, not for the manager face to face with their team every day. Zero decision support.</p>
+    </div>
+  </div>
+  <div style="margin:0 10mm 7mm;padding:4mm 7mm;border-left:2mm solid var(--cyan);background:rgba(0,212,255,0.04);flex-shrink:0;">
+    <p style="font-size:10.5pt;font-style:italic;color:var(--cyan);line-height:1.55;">"AI should simplify, not decide. The manager remains the human who calls the shots — Michael&nbsp;Scott gives them the time and data to do it better."</p>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 3 — VISION ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div style="position:absolute;left:0;top:0;width:44%;height:100%;background:var(--yellow);display:flex;flex-direction:column;justify-content:center;padding:11mm 12mm;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;letter-spacing:0.45em;text-transform:uppercase;color:rgba(0,0,0,0.4);margin-bottom:5mm;">03&nbsp;/&nbsp;Vision</div>
+    <h2 style="font-size:25pt;font-weight:900;text-transform:uppercase;color:var(--black);line-height:1.05;margin-bottom:6mm;">AN OS,<br>NOT AN<br>AI COACH</h2>
+    <p style="font-size:10.5pt;font-weight:400;color:var(--black);line-height:1.65;opacity:0.82;">Scranton is a <strong>managerial operating system</strong>. Cold data (time, workload, projects) meets warm data (morale, weak signals, equity) in a unified, ethical, sovereign interface.<br><br>AI is never visible as a decision-maker. It structures, summarises, detects — <strong>silently</strong>. The manager remains the sole source of every human decision.</p>
+  </div>
+  <div style="position:absolute;right:0;top:0;width:56%;height:100%;display:flex;flex-direction:column;justify-content:center;padding:9mm 11mm 9mm 12mm;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--cyan);letter-spacing:0.4em;text-transform:uppercase;margin-bottom:4mm;">Core principles</div>
+    <div style="display:flex;gap:4mm;padding:3.5mm 0;border-bottom:0.3mm solid #252525;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:9mm;padding-top:1mm;">▸ 01</span>
+      <img src="assets/dwight-removebg-preview.png" style="width:10mm;height:10mm;border-radius:50%;object-fit:cover;flex-shrink:0;">
+      <div><h4 style="font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1.5mm;color:var(--white);">Tell Dwight — Universal Input</h4><p style="font-size:9.5pt;font-weight:300;opacity:0.7;line-height:1.5;">One free-text field. Dwight routes each note where it belongs, feeding multiple files simultaneously. Asks follow-up questions if your note is too vague.</p></div>
+    </div>
+    <div style="display:flex;gap:4mm;padding:3.5mm 0;border-bottom:0.3mm solid #252525;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--cyan);min-width:9mm;padding-top:1mm;">▸ 02</span>
+      <img src="assets/pam-removebg-preview.png" style="width:10mm;height:10mm;border-radius:50%;object-fit:cover;flex-shrink:0;">
+      <div><h4 style="font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1.5mm;color:var(--white);">Ask Pam — Collective Memory</h4><p style="font-size:9.5pt;font-weight:300;opacity:0.7;line-height:1.5;">Pam knows everything ever said, decided, filed, or promised. Ask a question, get a briefing. Ask her to draft — she drafts from memory. Written or spoken answers.</p></div>
+    </div>
+    <div style="display:flex;gap:4mm;padding:3.5mm 0;border-bottom:0.3mm solid #252525;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--purple);min-width:9mm;padding-top:1mm;">▸ 03</span>
+      <img src="assets/jim-removebg-preview.png" style="width:10mm;height:10mm;border-radius:50%;object-fit:cover;flex-shrink:0;">
+      <div><h4 style="font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1.5mm;color:var(--white);">Whisper Jim — Ephemeral Chat</h4><p style="font-size:9.5pt;font-weight:300;opacity:0.7;line-height:1.5;">The coffee machine, digitised. Conversations are ephemeral by default — no AI, no indexing. Unless your team unanimously decides otherwise.</p></div>
+    </div>
+    <div style="display:flex;gap:4mm;padding:3.5mm 0;border-bottom:0.3mm solid #252525;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:9mm;padding-top:1mm;">▸ 04</span>
+      <div><h4 style="font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1.5mm;color:var(--white);">Team moodboard + Fewer meetings</h4><p style="font-size:9.5pt;font-weight:300;opacity:0.7;line-height:1.5;">Daily mood check-in. AI-generated agendas. Automated minutes. Remote, hybrid, on-site.</p></div>
+    </div>
+    <div style="display:flex;gap:4mm;padding:3.5mm 0;">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:9mm;padding-top:1mm;">▸ 05</span>
+      <div><h4 style="font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:1.5mm;color:var(--white);">Privacy by design</h4><p style="font-size:9.5pt;font-weight:300;opacity:0.7;line-height:1.5;">Local-first. Names never leave your machine before anonymisation. Your data, not HR's.</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 4 — TELL DWIGHT ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div class="tb-y"></div>
+  <div class="hdr"><div class="sid y">04&nbsp;/&nbsp;TELL DWIGHT</div><h2>Tell Dwight — write once, structure once, find everywhere</h2><div class="sub">Dwight sorts, files, and corrects. Without a single complaint. And asks when he needs more.</div></div>
+  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5mm;padding:0 10mm 6mm;">
+    <div class="panel">
+      <div class="pbar"><div class="dot y"></div><div class="dot c"></div><div class="dot g"></div><img src="assets/dwight-removebg-preview.png" style="width:7mm;height:7mm;border-radius:50%;object-fit:cover;margin-left:2mm;"><span class="pt">FREE INPUT — TELL DWIGHT</span></div>
+      <div style="flex:1;padding:4mm 5mm;display:flex;flex-direction:column;gap:3mm;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;">Manager's note — natural language</div>
+        <div style="font-size:10.5pt;color:var(--white);line-height:1.65;padding:3mm 4mm;background:#161616;border:0.3mm solid #2e2e2e;border-radius:1.5mm;border-left:1.5mm solid var(--cyan);">Meeting with Ryan Thursday 2&nbsp;pm — he's stuck on the Stripe API. I need to give him Staging access before Wednesday. Also flag to Contentsquare to push the demo back.<span style="display:inline-block;width:0.6mm;height:3.2mm;background:var(--cyan);margin-left:0.5mm;vertical-align:middle;"></span></div>
+        <div style="display:flex;align-items:center;gap:2mm;"><div style="width:2mm;height:2mm;border-radius:50%;background:var(--cyan);"></div><span style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--cyan);letter-spacing:0.15em;font-style:italic;">Mistral analysing in real&nbsp;time…</span></div>
+      </div>
+      <div style="margin:0 4mm 3mm;padding:3mm 4mm;background:rgba(245,197,24,0.06);border:0.3mm solid rgba(245,197,24,0.2);border-radius:1.5mm;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--yellow);letter-spacing:0.15em;margin-bottom:1.5mm;">DWIGHT</div>
+        <div style="font-size:9.5pt;color:var(--white);line-height:1.55;opacity:0.9;">How long is the meeting? Any key points or decisions expected? I need those to file the 1:1&nbsp;CR properly.</div>
+      </div>
+      <div style="padding:2mm 4mm 3mm;font-size:9pt;font-weight:300;color:var(--ltgrey);font-style:italic;border-top:0.3mm solid #252525;">Dwight also fixes spelling and tone — without being asked.</div>
+    </div>
+    <div class="panel">
+      <div class="pbar"><div class="dot y"></div><div class="dot c"></div><div class="dot g"></div><span class="pt">DETECTED ENTITIES — PROPOSED FILING</span></div>
+      <div style="flex:1;padding:4mm 5mm;display:flex;flex-direction:column;gap:2.5mm;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;border-bottom:0.2mm solid #252525;padding-bottom:2mm;margin-bottom:1mm;">Automatic structuring — pending validation</div>
+        <div style="display:flex;align-items:flex-start;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:8pt;letter-spacing:0.12em;padding:1mm 2.5mm;border-radius:0.8mm;background:rgba(255,255,255,0.08);color:var(--ltgrey);white-space:nowrap;margin-top:0.5mm;flex-shrink:0;">MEETING</span>
+          <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:0.8mm;">Ryan — Thursday 2&nbsp;pm</div><div style="font-size:8pt;color:var(--midgrey);font-family:'IBM Plex Mono',monospace;">→ <span style="color:var(--ltgrey);">Ryan's file / 1:1&nbsp;agenda</span></div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:8pt;letter-spacing:0.12em;padding:1mm 2.5mm;border-radius:0.8mm;background:rgba(0,200,83,0.15);color:var(--green);white-space:nowrap;margin-top:0.5mm;flex-shrink:0;">ACTION</span>
+          <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:0.8mm;">Staging access — before Wednesday</div><div style="font-size:8pt;color:var(--midgrey);font-family:'IBM Plex Mono',monospace;">→ <span style="color:var(--ltgrey);">Ryan's file / Urgent actions</span></div><div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);background:rgba(245,197,24,0.1);padding:0.5mm 2mm;border-radius:0.5mm;display:inline-block;margin-top:1mm;">× 2 destinations</div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:8pt;letter-spacing:0.12em;padding:1mm 2.5mm;border-radius:0.8mm;background:rgba(245,197,24,0.15);color:var(--yellow);white-space:nowrap;margin-top:0.5mm;flex-shrink:0;">PROJECT</span>
+          <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:0.8mm;">Stripe API sandbox blocker</div><div style="font-size:8pt;color:var(--midgrey);font-family:'IBM Plex Mono',monospace;">→ <span style="color:var(--ltgrey);">Redesign project / Progress update</span></div></div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:3mm;padding:2.5mm 0;">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:8pt;letter-spacing:0.12em;padding:1mm 2.5mm;border-radius:0.8mm;background:rgba(230,57,70,0.18);color:#ff6b75;white-space:nowrap;margin-top:0.5mm;flex-shrink:0;">CLIENT</span>
+          <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:0.8mm;">Push back Contentsquare demo</div><div style="font-size:8pt;color:var(--midgrey);font-family:'IBM Plex Mono',monospace;">→ <span style="color:var(--ltgrey);">Client file / Urgent actions / Call agenda</span></div><div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);background:rgba(245,197,24,0.1);padding:0.5mm 2mm;border-radius:0.5mm;display:inline-block;margin-top:1mm;">× 3 destinations</div></div>
+        </div>
+      </div>
+      <div style="padding:3mm 5mm;border-top:0.3mm solid #252525;display:flex;align-items:center;justify-content:space-between;background:#0e0e0e;">
+        <span style="font-size:8.5pt;font-weight:300;color:var(--midgrey);font-style:italic;">Adjust if needed before confirming</span>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;letter-spacing:0.15em;color:var(--black);background:var(--yellow);padding:2mm 5mm;border-radius:1mm;font-weight:700;">CONFIRM FILING →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 5 — ASK PAM ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div class="tb-cy2"></div>
+  <div class="hdr"><div class="sid c">05&nbsp;/&nbsp;ASK PAM</div><h2>Ask&nbsp;Pam — the team's collective memory, always on</h2><div class="sub">Ask a question, get a briefing. Ask her to draft — she drafts from memory. Written or spoken answers. And she asks before she answers.</div></div>
+  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5mm;padding:0 10mm 6mm;">
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--cyan);letter-spacing:0.3em;text-transform:uppercase;border-bottom:0.3mm solid #252525;padding-bottom:1.5mm;margin-bottom:0;">Use cases</div>
+      <div style="display:flex;gap:3mm;padding:3mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:6mm;padding-top:0.5mm;">01</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">No handover? No&nbsp;problem.</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">"Where's Stanley's tagging plan for Leroy&#8209;Merlin?" Stanley left 6&nbsp;months ago. Pam finds the file, the meeting CR, the open action — instantly.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:3mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:6mm;padding-top:0.5mm;">02</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">Catch up on a missed meeting</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">"I missed Thursday's standup." What was decided, what you need to do. No email chain. Critical for remote teams.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:3mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:6mm;padding-top:0.5mm;">03</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">Prep your annual review</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">"Summarise my year and mood evolution." Your whole year compiled in 10&nbsp;seconds.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:3mm 0;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--yellow);min-width:6mm;padding-top:0.5mm;">04</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">Take over a client mid-stream</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">"Catch me up on Contentsquare — draft me a briefing for tomorrow's call." Pam delivers. Walk in confident.</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="pbar"><div class="dot y"></div><div class="dot c"></div><div class="dot g"></div><img src="assets/pam-removebg-preview.png" style="width:7mm;height:7mm;border-radius:50%;object-fit:cover;margin-left:2mm;"><span class="pt">ASK PAM — COLLECTIVE MEMORY</span></div>
+      <div style="flex:1;padding:4mm 5mm;display:flex;flex-direction:column;gap:2.5mm;">
+        <div style="background:#161616;border-radius:1.5mm;padding:3mm 4mm;border-left:1.5mm solid var(--yellow);">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--yellow);letter-spacing:0.15em;margin-bottom:1.5mm;">KELLY</div>
+          <div style="font-size:9.5pt;color:var(--white);line-height:1.5;">On en est où sur Contentsquare&nbsp;?</div>
+        </div>
+        <div style="background:#0e0e0e;border-radius:1.5mm;padding:3mm 4mm;border-left:1.5mm solid var(--cyan);">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--cyan);letter-spacing:0.15em;margin-bottom:1.5mm;">PAM</div>
+          <div style="font-size:9.5pt;color:var(--white);line-height:1.6;opacity:0.85;">I found three active threads on Contentsquare. Which one?</div>
+          <div style="display:flex;gap:2mm;margin-top:2mm;flex-wrap:wrap;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--cyan);background:rgba(0,212,255,0.1);padding:1mm 2.5mm;border-radius:0.5mm;">Partnership status</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);background:#1e1e1e;padding:1mm 2.5mm;border-radius:0.5mm;">Invoicing</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);background:#1e1e1e;padding:1mm 2.5mm;border-radius:0.5mm;">Leroy&#8209;Merlin deployment</span>
+          </div>
+        </div>
+        <div style="background:#161616;border-radius:1.5mm;padding:3mm 4mm;border-left:1.5mm solid var(--yellow);">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--yellow);letter-spacing:0.15em;margin-bottom:1.5mm;">KELLY</div>
+          <div style="font-size:9.5pt;color:var(--white);line-height:1.5;">Leroy&#8209;Merlin. And draft me a short briefing for tomorrow's call.</div>
+        </div>
+        <div style="background:#0e0e0e;border-radius:1.5mm;padding:3mm 4mm;border-left:1.5mm solid var(--cyan);">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--cyan);letter-spacing:0.15em;margin-bottom:1.5mm;">PAM</div>
+          <div style="font-size:9.5pt;color:var(--white);line-height:1.6;opacity:0.85;">Phase 2 kicked off 3&nbsp;Mar. 2&nbsp;open actions: Ryan on Staging (due Wed), you to confirm go-live. Briefing drafted — ready to review.</div>
+          <div style="margin-top:2mm;display:flex;gap:2mm;">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--cyan);background:rgba(0,212,255,0.1);padding:0.5mm 2mm;border-radius:0.5mm;">→ REVIEW BRIEFING</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);background:#1e1e1e;padding:0.5mm 2mm;border-radius:0.5mm;">→ FULL PROJECT FILE</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding:2.5mm 5mm;border-top:0.3mm solid #252525;display:flex;align-items:center;gap:2mm;background:#0e0e0e;">
+        <div style="width:0.7mm;height:3.5mm;background:var(--cyan);flex-shrink:0;"></div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);font-style:italic;">Ask Pam anything — she answers in text or voice.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 6 — SMART SUMMARIES ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div class="tb-p"></div>
+  <div class="hdr" style="padding:4mm 12mm 2mm;"><div class="sid p">06&nbsp;/&nbsp;SMART SUMMARIES</div><h2>Dwight feeds. Pam maintains. Always up to date.</h2><div class="sub">Six living templates — enriched automatically by Tell Dwight, queried instantly by Ask Pam. On demand or warm in the background.</div></div>
+  <div style="flex:1;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);padding:0 10mm 5mm;gap:0;">
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(245,197,24,0.04);border-color:rgba(245,197,24,0.25);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Template 01</div>
+      <h4 style="font-size:10pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Team Member File</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Current mood history, projects, skills, 1:1 history, annual review progress, upcoming leave. The full picture of a person in one view.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Template 02</div>
+      <h4 style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Project File</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Client, brief, budget, team roles, milestones, open actions, blockers, deliverables. Pick up any project mid-stream in 30&nbsp;seconds.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Template 03</div>
+      <h4 style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Client File</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Legal info, contacts, active projects, meeting history, open actions, commitments made. Walk into any client call fully briefed.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(0,212,255,0.04);border-color:rgba(0,212,255,0.2);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--cyan);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Template 04</div>
+      <h4 style="font-size:10pt;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Team Radar</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Aggregated view: moodboard trends, workload balance, skill SWOT, weak signals, equity flags. The manager's 360° — updated in real time by Pam.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Template 05</div>
+      <h4 style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Meeting Agenda + CR</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Pam drafts the agenda from the team's notes. After the meeting, Dwight files new actions, decisions, and follow-ups. Never from scratch.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Template 06</div>
+      <h4 style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Annual Review</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Pam compiles the full year: accomplishments, mood arc, 1:1 history, objectives hit or missed. No blank page, no surprises.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 7 — FEATURES ═══ -->
+<div class="slide">
+  <div class="tb-c"></div>
+  <div class="hdr" style="padding:4mm 12mm 2mm;"><div class="sid c">07&nbsp;/&nbsp;FEATURES</div><h2>What Scranton does — the full feature set</h2></div>
+  <div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);padding:0 10mm 5mm;gap:0;">
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(245,197,24,0.06);border-color:rgba(245,197,24,0.3);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Core&nbsp;/&nbsp;Input</div>
+      <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2mm;"><img src="assets/dwight-removebg-preview.png" style="width:8mm;height:8mm;border-radius:50%;object-fit:cover;flex-shrink:0;"><h4 style="font-size:10.5pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.05em;">Tell Dwight</h4></div>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Free-text input, multi-destination routing. Asks follow-up questions if vague. Corrects and reformulates.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(0,212,255,0.04);border-color:rgba(0,212,255,0.2);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Memory&nbsp;/&nbsp;RAG</div>
+      <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2mm;"><img src="assets/pam-removebg-preview.png" style="width:8mm;height:8mm;border-radius:50%;object-fit:cover;flex-shrink:0;"><h4 style="font-size:10.5pt;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;">Ask Pam</h4></div>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Collective memory, plain-language queries. Clarifies before answering. Drafts on demand. Written or spoken output.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Daily ritual</div>
+      <h4 style="font-size:10.5pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">Pretzel Day</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">30-second daily check-in. Mood on a Flow→Danger scale. Trend view for managers. Because every day deserves to feel as good as Pretzel Day.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">People Management</div>
+      <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2mm;"><img src="assets/michael-removebg-preview.png" style="width:8mm;height:8mm;border-radius:50%;object-fit:cover;flex-shrink:0;"><h4 style="font-size:10.5pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;">Michael's Desk</h4></div>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">1:1 management, auto-extracted actions, commitment tracking. Archived and searchable. Natively transition-proof — <span style="color:var(--white);font-weight:400;">Transfer to Philly</span> turns every departure into a structured, GDPR-compliant handover: cold facts and warm observations, employee-validated, sent to the next manager's Scranton. No knowledge lost. No privacy violated.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(0,212,255,0.04);border-color:rgba(0,212,255,0.2);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Dashboard&nbsp;/&nbsp;Equity</div>
+      <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2mm;"><img src="assets/toby-removebg-preview.png" style="width:8mm;height:8mm;border-radius:50%;object-fit:cover;flex-shrink:0;"><h4 style="font-size:10.5pt;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:0.05em;">Meet Toby</h4></div>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Aggregated team health: weak signals, mood trends, equity flags across pay and task allocation. Manager-only. When the level rises, Scranton tells you first.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(123,97,255,0.05);border-color:rgba(123,97,255,0.25);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--purple);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Ephemeral chat</div>
+      <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2mm;"><img src="assets/jim-removebg-preview.png" style="width:8mm;height:8mm;border-radius:50%;object-fit:cover;flex-shrink:0;"><h4 style="font-size:10.5pt;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:0.05em;">Whisper Jim</h4></div>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">1:1 and group chat, ephemeral by default. No AI, no indexing. "Pam needs to know this?" — unanimous vote activates Invite Dwight.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Export</div>
+      <div style="display:flex;align-items:center;gap:2mm;margin-bottom:2mm;"><img src="assets/angela-removebg-preview.png" style="width:8mm;height:8mm;border-radius:50%;object-fit:cover;flex-shrink:0;"><h4 style="font-size:10.5pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;">Send Angela</h4></div>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">One-click export by project, team member, or client. Invoicing, HR reporting, team review — no retyping. Angela delivers, no questions asked.</p>
+    </div>
+    <div style="border:0.3mm solid #232323;padding:4mm 5mm;display:flex;flex-direction:column;background:rgba(245,197,24,0.06);border-color:rgba(245,197,24,0.3);">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:1.5mm;">Reward</div>
+      <h4 style="font-size:10.5pt;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2mm;">That's What She Said</h4>
+      <p style="font-size:9pt;font-weight:300;opacity:0.7;line-height:1.55;">Visual reward + random quote on task completion. Customisable per user. Because finishing deserves celebration.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 8 — MOCKUP ═══ -->
+<div class="slide">
+  <div class="tb-cy2"></div>
+  <div class="hdr" style="padding:4mm 12mm 3mm;"><div class="sid c">08&nbsp;/&nbsp;INTERFACE</div><h2>What the manager and the team members see</h2></div>
+  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5mm;padding:0 10mm 5mm;">
+    <div class="panel">
+      <div class="pbar"><div class="dot y"></div><div class="dot c"></div><div class="dot g"></div><span class="pt">SCRANTON — MANAGER VIEW</span></div>
+      <div class="pbody">
+        <div class="cards-row">
+          <div class="mcard"><div class="ml">Team</div><div class="mv">6</div><div class="ms">active members</div></div>
+          <div class="mcard"><div class="ml">Projects</div><div class="mv">4</div><div class="ms">in progress</div></div>
+          <div class="mcard" style="border-left:1mm solid var(--red);"><div class="ml" style="color:var(--red);">Threat Level</div><div class="mv" style="color:var(--red);font-size:10pt;">MIDNIGHT</div><div class="ms">2 weak signals</div></div>
+        </div>
+        <div class="msec">Pretzel Day — moodboard this week</div>
+        <div class="mood-row"><span class="mn">KELLY</span><div class="md flow"></div><div class="md flow"></div><div class="md ctrl"></div><div class="md flow"></div><div class="md flow"></div></div>
+        <div class="mood-row"><span class="mn">RYAN</span><div class="md ctrl"></div><div class="md press"></div><div class="md press"></div><div class="md stuck"></div><div class="md stuck"></div></div>
+        <div class="mood-row"><span class="mn">PHYLLIS</span><div class="md flow"></div><div class="md pday"></div><div class="md flow"></div><div class="md ctrl"></div><div class="md flow"></div></div>
+        <div class="msec" style="margin-top:1.5mm;">Projects — progress</div>
+        <div class="mbar-w"><div class="mbar-l">PLATFORM REDESIGN</div><div class="mbar"><div class="fill fy" style="width:72%"></div></div></div>
+        <div class="mbar-w"><div class="mbar-l">DATA MIGRATION</div><div class="mbar"><div class="fill fc-fill" style="width:45%"></div></div></div>
+        <div class="mbar-w"><div class="mbar-l">CLIENT A — RFP</div><div class="mbar"><div class="fill fr" style="width:20%"></div></div></div>
+      </div>
+      <div class="action-btns">
+        <div class="abtn dw">+ Tell&nbsp;Dwight</div>
+        <div class="abtn pm">? Ask&nbsp;Pam</div>
+        <div class="abtn wj">~ Whisper&nbsp;Jim</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="pbar"><div class="dot y"></div><div class="dot c"></div><div class="dot g"></div><span class="pt">SCRANTON — TEAM MEMBER VIEW</span></div>
+      <div class="pbody">
+        <div class="cards-row">
+          <div class="mcard" style="border-left:1mm solid var(--cyan);"><div class="ml" style="color:var(--cyan);">Pretzel Day</div><div class="mv" style="color:var(--green);font-size:10.5pt;">● FLOW</div><div class="ms">today</div></div>
+          <div class="mcard"><div class="ml">Next Michael's Desk</div><div class="mv" style="font-size:10.5pt;">Thu 3&nbsp;pm</div><div class="ms">1:1 with Jan</div></div>
+        </div>
+        <div class="msec">My recent notes</div>
+        <div class="note-line"><div class="nd" style="background:var(--cyan);"></div><span class="nt">Stuck on Stripe API sandbox, need help from Ryan</span><span class="ntg">PROJECT</span></div>
+        <div class="note-line"><div class="nd" style="background:var(--yellow);"></div><span class="nt">Client A asking for early delivery on 12/03 — needs manager sign-off</span><span class="ntg">CLIENT</span></div>
+        <div class="note-line"><div class="nd" style="background:var(--midgrey);"></div><span class="nt">Idea: 5-min async daily on Slack instead of a 30-min standup</span><span class="ntg">IDEA ✉</span></div>
+        <div class="msec" style="margin-top:1mm;">My actions — this week</div>
+        <div class="al"><div class="chk done"></div><span class="at">Deliver mockups v2 — Redesign</span><span class="ap">DONE</span></div>
+        <div class="al"><div class="chk"></div><span class="at">Prep Michael's Desk agenda with Jan</span><span class="ap">▲ D+1</span></div>
+        <div class="al"><div class="chk"></div><span class="at">Complete migration technical doc</span><span class="ap">W+1</span></div>
+      </div>
+      <div class="action-btns">
+        <div class="abtn dw">+ Tell&nbsp;Dwight</div>
+        <div class="abtn pm">? Ask&nbsp;Pam</div>
+        <div class="abtn wj">~ Whisper&nbsp;Jim</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 9 — WHISPER JIM ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div class="tb-o"></div>
+  <div class="hdr" style="padding:4mm 12mm 2mm;"><div class="sid o">09&nbsp;/&nbsp;WHISPER JIM</div><h2>Whisper Jim — the coffee machine, digitised</h2><div class="sub">Ephemeral by design. Indexed only when your team unanimously decides. The anti-noise RAG.</div></div>
+  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5mm;padding:0 10mm 6mm;">
+
+    <!-- Left: principles -->
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--purple);letter-spacing:0.3em;text-transform:uppercase;border-bottom:0.3mm solid #252525;padding-bottom:1.5mm;margin-bottom:0;">Core principles</div>
+
+      <div style="display:flex;gap:3mm;padding:3.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--purple);min-width:6mm;padding-top:0.5mm;">01</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">Ephemeral by default</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">Conversations are not processed by AI and don't feed Ask Pam. What's said at the coffee machine stays at the coffee machine. Text and voice.</div></div>
+      </div>
+
+      <div style="display:flex;gap:3mm;padding:3.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--purple);min-width:6mm;padding-top:0.5mm;">02</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">Emotional safety</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">The space for raw warm data — doubts, jokes, frustration — without fear that an AI draws premature conclusions from it. Gen&nbsp;Z and beyond: voice-first, no trace by default.</div></div>
+      </div>
+
+      <div style="display:flex;gap:3mm;padding:3.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:var(--purple);min-width:6mm;padding-top:0.5mm;">03</div>
+        <div><div style="font-size:10pt;font-weight:700;color:var(--white);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:1.5mm;">"Pam needs to know this?"</div><div style="font-size:9.5pt;font-weight:300;line-height:1.6;opacity:0.8;">If a conversation produces a decision worth keeping, any participant triggers a vote. <strong style="color:var(--white);">Unanimous consent only.</strong> If everyone agrees → Invite Dwight → he reads, cleans, routes to the right files. One participant validates before filing.</div></div>
+      </div>
+
+      <div style="padding:3.5mm 0;">
+        <div style="padding:3.5mm 5mm;border-left:1.5mm solid var(--purple);background:rgba(123,97,255,0.05);">
+          <div style="font-size:9.5pt;font-weight:300;line-height:1.6;color:var(--white);opacity:0.85;"><strong style="color:var(--purple);">The RAG advantage.</strong> Slack indexes everything — including noise. Whisper Jim keeps Ask Pam's memory pure, dense, and qualified: fed only by what the team consciously chose to remember.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: mockup -->
+    <div class="panel">
+      <div class="pbar"><div class="dot y"></div><div class="dot c"></div><div class="dot g"></div><img src="assets/jim-removebg-preview.png" style="width:7mm;height:7mm;border-radius:50%;object-fit:cover;margin-left:2mm;"><span class="pt">WHISPER JIM — EPHEMERAL CHAT</span></div>
+      <div style="flex:1;padding:4mm 5mm;display:flex;flex-direction:column;gap:2.5mm;">
+
+        <!-- chat messages -->
+        <div style="display:flex;flex-direction:column;gap:2mm;">
+          <div style="display:flex;align-items:flex-end;gap:2mm;">
+            <div style="width:5mm;height:5mm;border-radius:50%;background:#2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;"><span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);">O</span></div>
+            <div style="background:#1e1e1e;border-radius:1.5mm 1.5mm 1.5mm 0;padding:2.5mm 4mm;max-width:80%;">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);margin-bottom:1mm;">OSCAR</div>
+              <div style="font-size:9pt;color:var(--white);opacity:0.85;line-height:1.5;">The client call went sideways — they want to renegotiate the whole contract 😬</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:2mm;flex-direction:row-reverse;">
+            <div style="width:5mm;height:5mm;border-radius:50%;background:rgba(245,197,24,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);">R</span></div>
+            <div style="background:rgba(245,197,24,0.08);border:0.3mm solid rgba(245,197,24,0.15);border-radius:1.5mm 1.5mm 0 1.5mm;padding:2.5mm 4mm;max-width:80%;">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);margin-bottom:1mm;">RYAN (you)</div>
+              <div style="font-size:9pt;color:var(--white);opacity:0.85;line-height:1.5;">Ok we need to loop in Jan before EOD. Can you set up a quick call?</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:2mm;">
+            <div style="width:5mm;height:5mm;border-radius:50%;background:#2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;"><span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);">O</span></div>
+            <div style="background:#1e1e1e;border-radius:1.5mm 1.5mm 1.5mm 0;padding:2.5mm 4mm;max-width:80%;">
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);margin-bottom:1mm;">OSCAR</div>
+              <div style="font-size:9pt;color:var(--white);opacity:0.85;line-height:1.5;">Done. 5pm. Also decided: we won't budge on the SLA clause.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- vote trigger -->
+        <div style="border:0.3mm solid rgba(123,97,255,0.4);border-radius:1.5mm;padding:3mm 4mm;background:rgba(123,97,255,0.06);">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--purple);letter-spacing:0.15em;margin-bottom:2mm;">PAM NEEDS TO KNOW THIS?</div>
+          <div style="font-size:8.5pt;color:var(--white);opacity:0.75;margin-bottom:2mm;line-height:1.4;">Decision: hold firm on SLA clause + Jan call 5pm</div>
+          <div style="display:flex;gap:2mm;">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--green);background:rgba(0,200,83,0.12);padding:1.5mm 4mm;border-radius:0.8mm;font-weight:700;">OSCAR ✓</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--green);background:rgba(0,200,83,0.12);padding:1.5mm 4mm;border-radius:0.8mm;font-weight:700;">RYAN ✓</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--purple);background:rgba(123,97,255,0.1);padding:1.5mm 4mm;border-radius:0.8mm;border:0.3mm solid var(--purple);">INVITE DWIGHT →</div>
+          </div>
+        </div>
+
+        <div style="padding:2mm 4mm;background:#0e0e0e;border-radius:1mm;border:0.3mm solid #252525;">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:8pt;color:var(--yellow);letter-spacing:0.15em;margin-bottom:1mm;">DWIGHT</div>
+          <div style="font-size:8.5pt;color:var(--white);opacity:0.75;line-height:1.4;">Filing: "SLA clause — hold firm" → Client file / Contentsquare / Key decisions. "Call with Sarah 5pm" → Calendar + Sarah's 1:1. Validate?</div>
+        </div>
+
+      </div>
+      <div style="padding:2.5mm 5mm;border-top:0.3mm solid #252525;display:flex;align-items:center;gap:2mm;background:#0d0d0d;">
+        <div style="width:0.7mm;height:3.5mm;background:var(--purple);flex-shrink:0;"></div>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--midgrey);font-style:italic;">No AI listening. No trace. Unless you say so.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ SLIDE 10 — BACKLOG & ROADMAP ═══ -->
+<div class="slide">
+  <div class="grid-bg"></div>
+  <div style="height:2.5mm;background:linear-gradient(90deg,#333,#555);flex-shrink:0;"></div>
+  <div class="hdr" style="padding:4mm 12mm 2mm;">
+    <div class="sid" style="color:var(--ltgrey);">10&nbsp;/&nbsp;WHAT'S NEXT</div>
+    <h2>Backlog — v2 &amp; v3</h2>
+    <div class="sub">Core loop ships first. Everything else is earned through beta feedback.</div>
+  </div>
+  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:5mm;padding:0 10mm 6mm;">
+
+    <!-- V2 -->
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);letter-spacing:0.35em;text-transform:uppercase;border-bottom:0.3mm solid #252525;padding-bottom:2mm;margin-bottom:0;">V2 — Post-beta priorities</div>
+
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);min-width:18mm;padding-top:0.5mm;">P0</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Import existing knowledge bases</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Notion, Google Drive, Slack history. Pam ingests and learns from existing team memory. Critical for SME adoption.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--yellow);min-width:18mm;padding-top:0.5mm;">P1</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Whisper Jim — full feature</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Ephemeral messaging with unanimous RAG consent + Invite Dwight flow. Text and voice.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">P2</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Billing connector</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">First integration with the most common SME invoicing tool (to be determined in research). Send Angela auto-populates from project data.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">P2</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Sovereignty architecture</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">E2EE sync via EU server (Hetzner/OVH). CRDTs for offline-first conflict resolution. Keys held by manager, never by Scranton.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">P3</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Attendance &amp; presence calendar</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Shared team view of absences, remote days, on-site days. Feeds agenda generation and moodboard context.</div></div>
+      </div>
+    </div>
+
+    <!-- V3 -->
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--cyan);letter-spacing:0.35em;text-transform:uppercase;border-bottom:0.3mm solid #252525;padding-bottom:2mm;margin-bottom:0;">V3 — Future vision</div>
+
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--cyan);min-width:18mm;padding-top:0.5mm;">Voice</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Full voice integration</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Tell Dwight, Ask Pam, Whisper Jim — all accessible by voice. Gen Z first, everyone else follows.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">Call Jan</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Upper management view</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Aggregated read-only view for directors and founders. Useful as teams grow. Jan sees the big picture, not the details.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">Video</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Integrated video calls</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Native video for 1:1 and team meetings. Dwight files the CR automatically after the call ends.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">Shortcuts</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Custom shortcuts bloc</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">User-configurable panel of direct links to daily tools. No connectors — just fast access to what your team actually uses.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;border-bottom:0.2mm solid #1e1e1e;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">Daily life</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Animation of the day + birthdays</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Team announcements, birthdays, work anniversaries, new clients — with special backgrounds. Initiated by anyone, validated by manager if needed.</div></div>
+      </div>
+      <div style="display:flex;gap:3mm;padding:2.5mm 0;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:var(--ltgrey);min-width:18mm;padding-top:0.5mm;">Pam+</div>
+        <div><div style="font-size:9.5pt;font-weight:700;color:var(--white);margin-bottom:1mm;">Industry watch + RSE resources</div><div style="font-size:9pt;font-weight:300;line-height:1.55;color:var(--ltgrey);">Pam delivers a daily/weekly sector digest. RSE resources (harassment definitions, legal rights) accessible from Meet Toby. Team-sourced and AI-curated.</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
