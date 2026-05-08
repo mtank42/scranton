@@ -37,11 +37,13 @@ C'est un rituel annuel, prédictible, positif. Zéro bureaucratie. Pam gère.
 
 ### Impact sur le data model
 
-**`birthday`** : champ date à ajouter sur `team_members`. Simple, non bloquant, à inclure dans le schéma initial avant de scaffolder les tables.
+**`birthday`** : champ date à ajouter sur `team_members`. Intégré au schéma initial (décision W1).
 
 **`personal_profile`** : texte libre sur `team_members`, ou table séparée `team_member_profile` si on veut structurer par catégories (musique, culture, food, etc.). À décider en session.
 
-**Sensibilité** : données personnelles au sens RGPD. Warm data, sensitivity_level élevé. Le membre doit pouvoir consulter et corriger son propre profil (V2). Le manager ne peut pas partager ce profil sans consentement.
+**Propriété des données — décision W1** : le profil humain appartient au team member, pas au manager. Chacun ne dévoile que ce qu'il veut bien. Le manager ne peut ni modifier ni supprimer ces données. En POC (pas d'auth) : le manager saisit pour compte du membre. En V2 : le membre édite directement son propre profil.
+
+C'est le split de propriété fondamental de Scranton : données professionnelles = manager. Données personnelles = membre de l'équipe.
 
 ### Questions à résoudre
 

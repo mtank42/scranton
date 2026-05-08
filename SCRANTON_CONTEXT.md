@@ -128,6 +128,10 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 
 ### Key fields
 
+**`team_members`**
+- `birthday` — date, used by Pam for the Maire de Scranton ritual and manager reminders
+- `personal_profile` — free text or structured table (TBD in session): interests, passions, favorites. Owned and controlled by the team member. The manager cannot modify it. In POC (no auth): manager enters it on behalf. In V2: team member owns it directly.
+
 **`entries`**
 - `raw_content` — original text, never touched after creation
 - `source_type` — note / meeting_cr / deliverable / quote / purchase_order / chat / transcript / voice_note
@@ -184,6 +188,7 @@ Pam queries by semantic similarity + metadata filters.
 - `sensitivity_level` is native for Transfer to Philly selective disclosure (V1).
 - Validation is by the emitter. In POC (single manager, no auth): manager validates all. In V2: team members validate their own submissions.
 - `submitted_by_id` nullable anticipates V2 multi-user without changing the schema.
+- **Data ownership split**: professional data (notes, 1:1s, project work) belongs to the manager. Personal profile data (`personal_profile`, `birthday`) belongs to the team member. They disclose only what they choose. In V2, team members edit their own profile directly.
 
 ---
 
