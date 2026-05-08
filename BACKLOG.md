@@ -5,6 +5,60 @@
 
 ---
 
+## Profil humain + Maire de Scranton
+
+**Catégorie** : Team member profile / Culture / Lien social
+**Priorité** : V1 (profil humain) — V1 (maire de Scranton, événement anniversaire)
+**Origine** : session data model — observation sur les clans Helio (fondateurs vs nouveaux)
+
+### Problème
+
+Scranton capte la couche professionnelle. Mais le lien entre équipiers se crée par la connaissance mutuelle des personnes, pas des rôles. Dans une équipe qui scale vite (comme Helio), les "nouveaux" restent des inconnus. Scranton peut contribuer à briser ça.
+
+### Profil humain — "ce qu'ils aiment"
+
+Chaque team member a un profil personnel en plus de son profil professionnel. Données déclarées par le manager (observées en 1:1, en conversation) ou saisies par le membre lui-même en V2.
+
+Exemples : né le 11 février, fan de New Order, obsédé par la période Madchester, Moebius, les oursons en guimauve.
+
+Ce n'est pas un formulaire RH. C'est ce que tu saurais d'un collègue après 3 mois si tu l'écoutais vraiment.
+
+**Mécanisme** : Tell Dwight peut extraire ces informations depuis une note de 1:1. Si le manager écrit "Maxime m'a dit qu'il est né le 11 février et qu'il est fan de New Order", Dwight propose de l'ajouter au profil humain de Maxime.
+
+### Maire de Scranton — l'anniversaire comme rituel
+
+Le jour de l'anniversaire d'un membre de l'équipe, il devient **Maire de Scranton** pour 24h :
+- L'interface Scranton adopte ses couleurs préférées (si renseignées) ou une palette générée depuis ses centres d'intérêt
+- Un badge "Maire de Scranton" apparaît sur son profil toute la journée
+- Pam envoie un rappel au manager **une semaine avant** : "L'anniversaire de Maxime est dans 7 jours. Tu veux préparer quelque chose avec l'équipe ?" — avec un rappel de ses centres d'intérêt pour inspirer
+- That's What She Said se déclenche automatiquement le jour J
+
+C'est un rituel annuel, prédictible, positif. Zéro bureaucratie. Pam gère.
+
+### Impact sur le data model
+
+**`birthday`** : champ date à ajouter sur `team_members`. Simple, non bloquant, à inclure dans le schéma initial avant de scaffolder les tables.
+
+**`personal_profile`** : texte libre sur `team_members`, ou table séparée `team_member_profile` si on veut structurer par catégories (musique, culture, food, etc.). À décider en session.
+
+**Sensibilité** : données personnelles au sens RGPD. Warm data, sensitivity_level élevé. Le membre doit pouvoir consulter et corriger son propre profil (V2). Le manager ne peut pas partager ce profil sans consentement.
+
+### Questions à résoudre
+
+1. **`personal_profile` : texte libre ou table structurée ?** Texte libre est plus naturel pour la saisie ("fan de New Order, obsédé par Madchester") mais moins queryable. Table structurée avec catégories permet à Pam de faire des corrélations ("deux membres de l'équipe aiment le jazz, tu le savais ?").
+
+2. **Extraction automatique par Dwight** : quand Dwight repère une information personnelle dans une note, propose-t-il systématiquement de l'ajouter au profil humain, ou seulement si le manager le demande ?
+
+3. **Visibilité entre équipiers** : en V2, les membres voient-ils le profil humain des autres ? C'est la dimension "lien social" — mais c'est aussi une question de consentement.
+
+### Notes complémentaires
+
+- Le "Maire de Scranton" est nommé dans l'univers The Office (Scranton, PA). À confirmer comme nom final.
+- Ce mécanisme répond directement au cas Helio : les "nouveaux" ne resteraient pas des inconnus si Scranton rendait les personnes visibles en tant que personnes, pas seulement en tant que rôles.
+- Potentiel fort pour le storytelling produit et le marketing — c'est la feature qui montre que Scranton n'est pas un outil RH.
+
+---
+
 ## Tell Dwight — Capture vocale asynchrone ("dans le camion")
 
 **Catégorie** : Tell Dwight / Capture
