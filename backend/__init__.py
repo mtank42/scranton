@@ -1,0 +1,1 @@
+"""Scranton backend package."""

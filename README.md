@@ -30,18 +30,34 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 | Layer | Choice |
 |---|---|
-| Language | Python 3.11+ |
+| Language | Python 3.12 |
 | API | FastAPI |
-| LLM | Mistral API |
-| Vector store | ChromaDB |
-| Database | SQLite |
+| LLM | Provider-agnostic via `LLMProvider` (Mistral default, Gemini fallback) |
+| Vector store | ChromaDB (behind a `VectorStore` interface) |
+| Database | SQLite (SQLAlchemy ORM) |
 | Frontend | HTML / CSS / JS |
 
 ---
 
 ## Status
 
-Pre-alpha. Data model validated. FastAPI skeleton in progress.
+Pre-alpha. Data model validated. **M0 done**: FastAPI skeleton, swappable interfaces (LLM provider, ingestion source, vector store, transcriber, character map), ORM of the 8 validated tables, offline test suite.
+
+Next: M1 — Tell Dwight capture pipeline.
+
+---
+
+## Getting started
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env        # then add your API keys
+
+uvicorn backend.app.main:app --reload    # http://127.0.0.1:8000/docs
+pytest                                   # offline test suite, no API key needed
+```
 
 ---
 

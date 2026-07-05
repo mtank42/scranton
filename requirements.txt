@@ -1,0 +1,13 @@
+# Scranton - locked dependencies for the POC (Python 3.12).
+# Direct dependencies only: pip resolves the transitive ones.
+
+fastapi==0.139.0
+uvicorn[standard]==0.50.0
+sqlalchemy==2.0.51
+chromadb==1.5.9
+mistralai==2.5.2
+python-dotenv==1.2.2
+
+# Test-only
+pytest==9.1.1
+httpx==0.28.1
