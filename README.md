@@ -48,11 +48,13 @@ Pre-alpha. Data model validated. FastAPI skeleton in progress.
 ## Structure
 
 ```
-backend/    FastAPI app, routes, Mistral integration
-frontend/   HTML/CSS/JS interface
-data/       SQLite database, ChromaDB store
-tests/      Test suite
-docs/       Feature documentation
+backend/            FastAPI app, routes, provider-agnostic LLM integration
+frontend/           HTML/CSS/JS interface
+data/               SQLite database, ChromaDB store
+tests/              Test suite
+docs/               Feature documentation
+Pre-dev/product/    Product source of truth: context, roadmap, backlog
+Pre-dev/pitch/      Slides, 2-pager, storytelling, design assets
 ```
 
 ---

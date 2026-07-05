@@ -1,6 +1,8 @@
 # SCRANTON — PROJECT CONTEXT
 > Feed this file to Claude Code at the start of every session.
-> Last updated: May 2026 — W1, data model validated
+> Location: `Pre-dev/product/SCRANTON_CONTEXT.md` (moved from repo root, July 2026 — repo cleanup).
+> Product tiering (MVP / MLP / V1 / V2), prioritized backlog and dependencies live in `Pre-dev/product/PRODUCT_ROADMAP.md` — the single source of truth for what gets built and in what order.
+> Last updated: July 2026 — product roadmap session (MVP/MLP defined, provider abstraction decided)
 
 ---
 
@@ -33,9 +35,9 @@ The manager remains the sole source of every human decision.
 
 ### Architecture decisions settled (May 2026 session)
 - **Auth**: no auth for dev (localhost, single manager). A demo-ready deployment is required for portfolio — see Section 4 (Hosting).
-- **Mistral model**: start with `mistral-small-latest`, escalate to `mistral-medium-latest` if routing/extraction quality is insufficient.
+- **LLM provider (revised July 2026)**: provider-agnostic. All model calls go through one `LLMProvider` interface — swappable by config (Mistral, Gemini Flash, others). Start with whatever gives the best routing/extraction quality for the demo; testability wins over provider purity for the POC. Sovereign/local models (Mistral, Albert) become the *product* target in V2, not a POC constraint. "Bring-your-own-LLM" is a product argument, not just a dev convenience.
 - **Repo structure**: `backend/` / `frontend/` / `data/` / `tests/` / `docs/`
-- **POC scope** (strict): Tell Dwight + Ask Pam + Pretzel Day only. Other features announced but not built.
+- **Build tiering (revised July 2026 — see PRODUCT_ROADMAP.md)**: MVP = Tell Dwight + Ask Pam (memory engine, internal milestone, not shown). MLP = MVP + Pretzel Day + Meet Toby v0 + That's What She Said (the demo threshold — nothing is shown to anyone before this). Nothing outside the MLP is built during the POC.
 - **Data model**: validated May 2026 — see Section 5. Do not modify without explicit session.
 - **Cold/warm data distinction**: native in the schema at segment level — see Section 5.
 
@@ -78,9 +80,9 @@ Ryan, Oscar, Kelly, Phyllis, Jan, Stanley, Kevin, Meredith, Creed, Darryl, Andy
 |---|---|---|
 | Language | Python 3.11+ | 42 curriculum, ecosystem for AI/data |
 | API framework | FastAPI | Async, auto-docs, lightweight |
-| LLM | Mistral API (mistral-small or mistral-medium) | EU AI, not American, good French/English |
-| Embeddings | Mistral embeddings API | Consistency with LLM choice |
-| Vector store | ChromaDB (local) | Simple, no infra, runs on Mac Mini |
+| LLM | Provider-agnostic via `LLMProvider` interface (Mistral, Gemini Flash, ...) | Testability first for POC; swap by config; sovereign target in V2 |
+| Embeddings | Provider-agnostic via same abstraction | Follows the LLM provider choice |
+| Vector store | ChromaDB (local) for POC; pluggable ingestion source (e.g. Google Drive) so testers do not need to wire their SME server | Simple to run + easy for testers to feed real data |
 | Database | SQLite | Local-first, zero config, sufficient for POC |
 | Frontend | HTML/CSS/JS (no framework) | Ship fast, no build tooling overhead |
 | Fonts | IBM Plex Sans + IBM Plex Mono | Already in use across all design assets |
@@ -309,7 +311,8 @@ Located in `assets/` directory:
 - Change the colour system or typography
 - Add external JS frameworks without explicit go
 - Skip docstrings
-- Use OpenAI — Mistral only
+- Hardcode a single LLM provider or storage backend — all model/RAG calls go through swappable interfaces (revised July 2026). Sovereignty is the V2 product target, not a POC constraint.
+- Hardcode character names or avatars in routes/UI — they live behind one swappable `character` config map (IP-safe rebrand hedge, see PRODUCT_ROADMAP.md)
 - Generate placeholder UI that doesn't match the design system
 - Make architecture decisions without surfacing them first
 - Modify the data model without a dedicated session and explicit go
