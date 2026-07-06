@@ -9,6 +9,7 @@ from fastapi import Request
 
 from backend.app.adapters.ingestion.factory import build_ingestion_source
 from backend.app.config import get_settings
+from backend.app.services.angela_service import AngelaService
 from backend.app.services.dwight_service import DwightService
 from backend.app.services.ingestion_service import IngestionService
 from backend.app.services.mood_service import MoodService
@@ -65,3 +66,8 @@ def get_summary_service(request: Request) -> SummaryService:
     """Build a SummaryService wired to the app-level adapters."""
     state = request.app.state
     return SummaryService(llm=state.llm, session_factory=state.session_factory)
+
+
+def get_angela_service(request: Request) -> AngelaService:
+    """Build an AngelaService on top of the summary engine."""
+    return AngelaService(summary_service=get_summary_service(request))

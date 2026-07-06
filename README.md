@@ -31,6 +31,7 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 | **Human profile** | Member-owned personal profile ("what they love"). Dwight suggests additions from your notes; you decide. |
 | **Maire de Scranton** | On their birthday, a member runs the town for 24 hours. The manager gets a week's notice, interests included. |
 | **Smart Summaries** | Six living templates (member, project, client, agenda, radar, annual review) assembled from the memory on demand. |
+| **Send Angela** | One-click export of any summary (.md, printable .html). No retyping. No questions asked. |
 
 ---
 
@@ -51,7 +52,7 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 Pre-alpha. **MLP code-complete (M3)**: the full demo loop runs in the browser — capture and validate with Tell Dwight, query the memory with Ask Pam, daily Pretzel Day check-ins, team trends and weak signals in Meet Toby, a That's What She Said reward on every completion. Seeded Dunder Mifflin dataset with golden anti-regression queries (5/5 against the real provider). Google Drive ingestion is wired and tested on mocks; its end-to-end run needs the one-time OAuth setup ([docs/google_drive_ingestion.md](docs/google_drive_ingestion.md)).
 
-V1 in progress: **human profile**, **Maire de Scranton** and **Smart Summaries** shipped. Next: Send Angela (one-click export), plus the tuning pass (agent relevance, tone, reward pacing).
+V1 nearly complete: **human profile**, **Maire de Scranton**, **Smart Summaries** and **Send Angela** shipped. Remaining: Transfer to Philly case 1 (needs a data model session) and the tuning pass (agent relevance, tone, reward pacing).
 
 ---
 

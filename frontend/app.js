@@ -765,12 +765,22 @@ async function generateSummary() {
       ? `<p class="sources-title">Sources (${result.sources.length})</p>` +
         result.sources.map(sourceRow).join("")
       : "";
+    // Send Angela: plain download links, name from the character map.
+    const angela = state.characters.angela || {};
+    const exportBase = `${API}/angela/export/${templateId}${query}${query ? "&" : "?"}format=`;
+    const exportRow = `
+      <div class="export-row">
+        <img class="bubble-avatar" src="assets/${esc(angela.avatar_asset || "")}" alt="" />
+        <a class="btn btn-validate" href="${exportBase}md" download>${esc(angela.display_name || "Export")} - .md</a>
+        <a class="btn btn-ghost" href="${exportBase}html" download>printable .html</a>
+      </div>`;
     show(
       "summaries-result",
       `<div class="answer-card summary-card">
          <p class="summary-subtitle">${esc(subtitle)}</p>
          ${sections}
        </div>
+       ${exportRow}
        ${sources}`
     );
   } catch (error) {

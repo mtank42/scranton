@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.adapters.llm.factory import build_llm
 from backend.app.adapters.vectorstore.chroma import ChromaStore
 from backend.app.api.v1 import (
+    angela,
     config,
     dwight,
     health,
@@ -57,7 +58,7 @@ def create_app() -> FastAPI:
             "A managerial OS for proximity managers: "
             "one smart notepad, zero bureaucracy, 100% team."
         ),
-        version="0.6.0",
+        version="0.7.0",
         lifespan=lifespan,
     )
     app.include_router(health.router, prefix="/api/v1")
@@ -67,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(toby.router, prefix="/api/v1")
     app.include_router(team.router, prefix="/api/v1")
     app.include_router(summaries.router, prefix="/api/v1")
+    app.include_router(angela.router, prefix="/api/v1")
     app.include_router(config.router, prefix="/api/v1")
     app.include_router(ingest.router, prefix="/api/v1")
     # The UI, served by the same process (no build tooling, no second
