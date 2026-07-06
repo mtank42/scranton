@@ -41,9 +41,9 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 ## Status
 
-Pre-alpha. Data model validated. **M0 done**: FastAPI skeleton, swappable interfaces (LLM provider, ingestion source, vector store, transcriber, character map), ORM of the 8 validated tables, offline test suite.
+Pre-alpha. Data model validated. **M1 done**: the Tell Dwight capture pipeline is live — raw note in, segmented / reformulated / classified (cold-warm, sensitivity) / routed segments out, manager validation as the gate to the vector memory. Verified end to end on the real Mistral API.
 
-Next: M1 — Tell Dwight capture pipeline.
+Next: M2 — Ask Pam (RAG over validated segments = MVP complete).
 
 ---
 

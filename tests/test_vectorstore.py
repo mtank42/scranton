@@ -1,4 +1,4 @@
-"""ChromaStore stub: import compatibility and explicit not-implemented state."""
+"""ChromaStore: import compatibility, laziness, and the M2 boundary."""
 
 import pytest
 
@@ -10,9 +10,16 @@ def test_chromadb_imports_on_this_python():
     import chromadb  # noqa: F401
 
 
-def test_store_holds_config_but_defers_indexing(tmp_path):
-    """The seam exists now; the real index lands in M2 (Ask Pam)."""
+def test_construction_and_empty_upsert_touch_no_disk(tmp_path):
+    """The client is lazy: no Chroma directory until a real upsert happens."""
+    store = ChromaStore(persist_dir=str(tmp_path / "chroma"))
+    store.upsert([])
+    assert store._collection is None
+    assert not (tmp_path / "chroma").exists()
+
+
+def test_query_is_deferred_to_m2(tmp_path):
+    """Retrieval lands with Ask Pam: until then it must fail loudly."""
     store = ChromaStore(persist_dir=str(tmp_path))
-    assert store.persist_dir == str(tmp_path)
     with pytest.raises(NotImplementedError):
-        store.upsert([])
+        store.query([0.1, 0.2], k=3)

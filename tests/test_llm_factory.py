@@ -35,8 +35,14 @@ def test_unknown_provider_fails_loudly():
         build_llm(make_settings("chatgpt"))
 
 
-def test_stubs_are_explicit_about_their_milestone():
-    """Until M1, providers must fail with a clear message, never silently."""
-    provider = build_llm(make_settings("mistral"))
+def test_gemini_fallback_stays_an_explicit_stub():
+    """The unimplemented fallback must fail loudly, never silently."""
+    provider = build_llm(make_settings("gemini"))
     with pytest.raises(NotImplementedError):
         provider.complete([{"role": "user", "content": "hello"}])
+
+
+def test_mistral_client_is_lazy():
+    """Building the provider must not require a valid key or the network."""
+    provider = build_llm(make_settings("mistral"))
+    assert provider._client is None
