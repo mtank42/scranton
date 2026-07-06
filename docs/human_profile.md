@@ -37,10 +37,13 @@ Order"), Dwight adds a **profile suggestion** to the capture response.
   overwrite) or dismisses them - same consent gate as segment
   validation.
 - **Closed world**: suggestions about unknown members are discarded.
-- **No invented years**: small models fabricate a birth year from a
-  partial date. If the suggested year is not literally present in the
-  raw note, the server drops the birthday and keeps the fact in text
-  (guard verified live: "né le 11 février" -> birthday null).
+- **A birthday is a day, never an age** (owner rule, 2026-07-06): many
+  people prefer not to disclose their birth year. The year component is
+  erased everywhere - normalized to 2000 (leap year, so February 29
+  works) on every write path (PUT profile, Dwight suggestions), never
+  displayed, never asked by the UI (day + month selectors only). This
+  also neutralizes the year-invention habit of small models: whatever
+  year they emit, it is discarded.
 - Suggestions never hold a report open (they do not block the end-of-
   report reward or the inline Pretzel Day panel).
 

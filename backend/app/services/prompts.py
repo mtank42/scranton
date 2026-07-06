@@ -57,10 +57,10 @@ Your tasks:
    birthday - add a profile suggestion. This is about who they are as a
    person, never about work or performance. Only for members present in
    the team_members list. When there is nothing personal: empty array.
-   Set the birthday field ONLY when the note states the full date
-   including the year. NEVER invent a year: for a partial date, keep it
-   in the text (e.g. "Born on February 11") and leave birthday null.
-   Write the suggestion text in the language of the note.
+   Birthdays are a DAY and MONTH, never an age: the year is irrelevant
+   and never stored. When the note gives a birth day, set birthday as
+   2000-MM-DD (always the year 2000). Write the suggestion text in the
+   language of the note.
 
 If the note is too vague to extract anything at all (no identifiable
 fact, person, project or feeling), ask ONE short clarifying question in
@@ -86,7 +86,7 @@ Respond with ONLY valid JSON, no markdown fences, no commentary:
  "profile_suggestions": [
    {{"team_member_id": <int from the team_members list>,
      "text": "<the personal-life fact, short>",
-     "birthday": "<YYYY-MM-DD when the note gives a birth date, else null>"}}
+     "birthday": "<2000-MM-DD when the note gives a birth day (the year is never stored), else null>"}}
  ]}}
 When clarifying instead: {{"clarification": "<your question>", "segments": [], "profile_suggestions": []}}"""
 

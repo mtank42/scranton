@@ -42,7 +42,8 @@ def test_profile_update_roundtrip(session_factory):
     )
 
     assert updated.personal_profile == "Loves romantic comedies."
-    assert updated.birthday == date(1990, 2, 14)
+    # A birthday is a day, not an age: the year is erased on write.
+    assert updated.birthday == date(2000, 2, 14)
     # PUT semantics: null clears.
     cleared = service.update_profile(ids["kelly"], ProfileUpdate())
     assert cleared.personal_profile is None
@@ -72,7 +73,8 @@ def test_team_endpoints(app, client):
         json={"personal_profile": "Collects lip gloss.", "birthday": "1990-02-14"},
     )
     assert updated.status_code == 200
-    assert updated.json()["birthday"] == "1990-02-14"
+    # Year erased on the wire too: the API never echoes an age back.
+    assert updated.json()["birthday"] == "2000-02-14"
 
     assert (
         client.put("/api/v1/team/members/999/profile", json={}).status_code == 404

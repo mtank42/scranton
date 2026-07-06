@@ -449,7 +449,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
   text-transform: uppercase;
 }
 
-.member-profile input[type="date"] {
+.birthday-row { display: flex; gap: 8px; }
+
+.birthday-row select {
   width: auto;
   background: var(--black);
   border: 1px solid var(--grey);
@@ -458,7 +460,6 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
   font-family: var(--mono);
   font-size: 13px;
   padding: 8px 12px;
-  color-scheme: dark;
 }
 
 .member-profile textarea { background: var(--black); }

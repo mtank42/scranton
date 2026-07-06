@@ -10,7 +10,7 @@ own profile directly. Nothing here is ever used to score anyone.
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.app.domain.models import TeamMember
+from backend.app.domain.models import BIRTHDAY_YEAR, TeamMember
 from backend.app.domain.schemas import MemberOut, ProfileUpdate
 from backend.app.services.mood_service import MemberNotFoundError
 
@@ -44,6 +44,10 @@ class TeamService:
             if member is None:
                 raise MemberNotFoundError(f"No team member with id {member_id}.")
             member.personal_profile = payload.personal_profile
-            member.birthday = payload.birthday
+            # A birthday is a day, not an age: whatever year arrives, it is
+            # erased (normalized to BIRTHDAY_YEAR) and never shown again.
+            member.birthday = (
+                payload.birthday.replace(year=BIRTHDAY_YEAR) if payload.birthday else None
+            )
             session.commit()
             return MemberOut.model_validate(member)

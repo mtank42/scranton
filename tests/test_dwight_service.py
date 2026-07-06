@@ -197,25 +197,22 @@ def test_profile_suggestions_are_resolved_and_filtered(session_factory):
             ],
         }
     )
-    service, llm, store = make_service(session_factory, [proposal, proposal])
+    service, llm, store = make_service(session_factory, [proposal])
 
-    # The note states the full year: the birthday is trusted.
-    result = capture_note(service, "kevin est ne le 11 fevrier 1985, fan de new order")
+    result = capture_note(service, "kevin est ne le 11 fevrier, fan de new order")
 
     assert len(result.profile_suggestions) == 1
     suggestion = result.profile_suggestions[0]
     assert suggestion.member_name == "Kevin"
     assert suggestion.text == "Fan of New Order."
-    assert str(suggestion.birthday) == "1985-02-11"
+    # A birthday is a day, not an age: whatever year the model emitted
+    # (1985 here - real or invented, it cannot tell) is erased.
+    assert str(suggestion.birthday) == "2000-02-11"
     # The suggestion is NOT persisted anywhere: profile untouched.
     from backend.app.domain.models import TeamMember
 
     with session_factory() as session:
         assert session.get(TeamMember, member_id).personal_profile is None
-
-    # No year in the note: the model invented it, the guard drops it.
-    result = capture_note(service, "kevin est ne le 11 fevrier, fan de new order")
-    assert result.profile_suggestions[0].birthday is None
 
 
 def test_routing_context_lists_known_entities(session_factory):

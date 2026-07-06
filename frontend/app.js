@@ -166,9 +166,22 @@ function renderSegments(segments) {
 
 /* --- profile suggestions (V1 human profile) --- */
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/* A birthday is a day + month, never an age: the stored year (always
+ * 2000, see backend) is dropped at display time. */
+function formatBirthday(iso) {
+  if (!iso) return "";
+  const [, month, day] = iso.split("-");
+  return `${MONTHS[Number(month) - 1]} ${Number(day)}`;
+}
+
 function suggestionCard(suggestion, index) {
   const birthday = suggestion.birthday
-    ? `<span class="chip profile">birthday: ${esc(suggestion.birthday)}</span>`
+    ? `<span class="chip profile">birthday: ${esc(formatBirthday(suggestion.birthday))}</span>`
     : "";
   return `
     <article class="card profile-suggestion" id="suggestion-${index}">
@@ -617,15 +630,26 @@ async function loadToby() {
 /* --- Team (roster + human profile) --- */
 
 function memberProfileCard(member) {
-  const birthday = member.birthday || "";
+  const [, month, day] = (member.birthday || "--").split("-");
+  const dayOptions = ['<option value="">-</option>']
+    .concat(Array.from({ length: 31 }, (_, i) =>
+      `<option value="${i + 1}" ${Number(day) === i + 1 ? "selected" : ""}>${i + 1}</option>`))
+    .join("");
+  const monthOptions = ['<option value="">-</option>']
+    .concat(MONTHS.map((name, i) =>
+      `<option value="${i + 1}" ${Number(month) === i + 1 ? "selected" : ""}>${name}</option>`))
+    .join("");
   return `
     <div class="card member-profile" data-member="${member.id}">
       <div class="member-head">
         <strong>${esc(member.full_name)}</strong>
         <span class="member-role">${esc(member.role || "")}</span>
       </div>
-      <label class="field-label">Birthday</label>
-      <input type="date" data-birthday value="${birthday}" />
+      <label class="field-label">Birthday - day and month only, never the year</label>
+      <div class="birthday-row">
+        <select data-bd-day>${dayOptions}</select>
+        <select data-bd-month>${monthOptions}</select>
+      </div>
       <label class="field-label">What they love</label>
       <textarea rows="3" data-profile
         placeholder="Interests, passions, favorites - what you would know after three months of truly listening."
@@ -649,11 +673,18 @@ async function loadTeam() {
     const card = button.closest(".member-profile");
     button.disabled = true;
     try {
+      const day = card.querySelector("[data-bd-day]").value;
+      const month = card.querySelector("[data-bd-month]").value;
+      // The year is a placeholder (2000), erased server-side anyway.
+      const birthday =
+        day && month
+          ? `2000-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+          : null;
       await api(`/team/members/${button.dataset.profileSave}/profile`, {
         method: "PUT",
         body: JSON.stringify({
           personal_profile: card.querySelector("[data-profile]").value.trim() || null,
-          birthday: card.querySelector("[data-birthday]").value || null,
+          birthday,
         }),
       });
       card.querySelector("[data-feedback]").textContent = "Saved.";

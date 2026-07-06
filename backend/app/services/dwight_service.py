@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.app.adapters.llm.base import LLMProvider
 from backend.app.adapters.vectorstore.base import SegmentVector, VectorStore
 from backend.app.domain.models import (
+    BIRTHDAY_YEAR,
     Client,
     Entry,
     EntrySegment,
@@ -212,18 +213,18 @@ class DwightService:
         Two guards apply:
         - Closed world: a suggestion about a member the roster does not
           know is silently discarded.
-        - No invented years: small models fabricate a birth year when
-          the note only gives a day and month. If the suggested year is
-          not literally present in the raw note, the birthday is
-          dropped (the fact itself survives in the suggestion text).
+        - Year erasure: a birthday is an event (day + month), never an
+          age. Whatever year the model emits - real or invented, it
+          cannot tell the difference - is normalized to BIRTHDAY_YEAR
+          and never shown (owner decision, 2026-07-06).
         """
         resolved = []
         for suggestion in proposal.profile_suggestions:
             member = session.get(TeamMember, suggestion.team_member_id)
             if member is None or not member.is_active:
                 continue
-            if suggestion.birthday and str(suggestion.birthday.year) not in raw_content:
-                suggestion.birthday = None
+            if suggestion.birthday:
+                suggestion.birthday = suggestion.birthday.replace(year=BIRTHDAY_YEAR)
             suggestion.member_name = member.full_name
             resolved.append(suggestion)
         return resolved

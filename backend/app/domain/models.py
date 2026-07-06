@@ -24,6 +24,14 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# A birthday is an EVENT (day + month), never an age: many people prefer
+# not to disclose their birth year (owner decision, 2026-07-06). The
+# column stays a date (validated data model untouched); the year
+# component is normalized to this constant everywhere and never shown.
+# 2000 is a leap year, so February 29 birthdays store fine.
+BIRTHDAY_YEAR = 2000
+
+
 def as_db_enum(enum_class: type[enum.Enum]) -> SAEnum:
     """Map a Python enum to a string column storing the enum values.
 
@@ -167,8 +175,9 @@ class TeamMember(Base):
     full_name: Mapped[str] = mapped_column(String(120))
     role: Mapped[str | None] = mapped_column(String(120))
     is_active: Mapped[bool] = mapped_column(default=True)
-    # Owned by the team member (data ownership split). Used by Ask Pam for
-    # the Maire de Scranton ritual and manager reminders (V1).
+    # Owned by the team member (data ownership split). Used for the Maire
+    # de Scranton ritual and manager reminders (V1). Day + month only:
+    # the year component is always BIRTHDAY_YEAR (see above).
     birthday: Mapped[date | None]
     # Free text for now (a structured table is an open V1 question). Owned
     # by the team member: the manager only enters it on their behalf in the

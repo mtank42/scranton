@@ -67,14 +67,15 @@ TEAM = [
 ]
 
 # Member-owned data (human profile). Sparse on purpose: profiles grow
-# from real conversations, they are not an HR form to fill.
+# from real conversations, they are not an HR form to fill. Birthdays
+# are day + month only (year fixed to 2000, never shown - owner rule).
 PROFILES: dict[str, dict] = {
     "Kelly": {
-        "birthday": "1990-02-14",
+        "birthday": "2000-02-14",
         "personal_profile": "Loves romantic comedies and celebrity news. Collects lip gloss.",
     },
     "Darryl": {
-        "birthday": "1978-10-01",
+        "birthday": "2000-10-01",
         "personal_profile": "Plays keyboard in a band. Chess player. Dreams of running his own business.",
     },
 }
