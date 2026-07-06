@@ -1,0 +1,27 @@
+#!/bin/bash
+# Scranton launcher: start the local server if needed, open the app.
+#
+# The bundle resolves every path relative to itself, so it must stay at
+# the repository root (Contents/MacOS -> Contents -> Scranton.app -> repo).
+# Drag Scranton.app to the Dock; do not copy it to /Applications.
+set -u
+
+REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
+PORT="${SCRANTON_PORT:-8001}"
+URL="http://127.0.0.1:${PORT}"
+
+# Reuse a running server: two instances on one SQLite file would be rude.
+if ! curl -s --max-time 1 "${URL}/api/v1/health" > /dev/null; then
+  cd "$REPO"
+  nohup "$REPO/.venv/bin/uvicorn" backend.app.main:app --port "$PORT" \
+    >> "$REPO/data/scranton_server.log" 2>&1 &
+  # Give the server up to 15 seconds to answer the liveness probe.
+  for _ in $(seq 1 30); do
+    sleep 0.5
+    if curl -s --max-time 1 "${URL}/api/v1/health" > /dev/null; then
+      break
+    fi
+  done
+fi
+
+open "$URL"

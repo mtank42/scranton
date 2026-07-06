@@ -54,6 +54,11 @@ Next: demo polish, then V1 (human profile, handover, smart summaries).
 
 ## Getting started
 
+**macOS shortcut**: double-click `Scranton.app` at the repo root (or drag it
+to the Dock). It starts the local server if needed, reuses it otherwise, and
+opens the app at `http://127.0.0.1:8001`. The bundle resolves paths relative
+to itself: keep it inside the repository, do not copy it to /Applications.
+
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
