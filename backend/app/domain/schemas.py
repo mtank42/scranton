@@ -8,6 +8,7 @@ Three families live here:
   answer fails loudly at the edge instead of corrupting the database.
 """
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -137,3 +138,39 @@ class SegmentValidation(BaseModel):
     """
 
     status: Literal[ValidationStatus.VALIDATED, ValidationStatus.REJECTED]
+
+
+# --- Pam API surface ---
+
+
+class PamQuery(BaseModel):
+    """Request body for POST /api/v1/pam/query."""
+
+    question: str = Field(min_length=1)
+
+
+class PamSource(BaseModel):
+    """One memory excerpt an answer is grounded in.
+
+    content is re-read from SQLite (the source of truth), score comes
+    from the vector index (similarity, 1.0 is best).
+    """
+
+    segment_id: int
+    entry_id: int
+    content: str
+    data_type: DataType
+    sensitivity_level: int
+    score: float
+    created_at: datetime
+
+
+class PamAnswer(BaseModel):
+    """Response for POST /api/v1/pam/query: grounded answer + its sources.
+
+    An empty sources list means the memory had nothing relevant and the
+    answer says so - Pam never answers from outside the sources.
+    """
+
+    answer: str
+    sources: list[PamSource] = []

@@ -54,11 +54,18 @@ class ScriptedLLMProvider(LLMProvider):
 
 
 class FakeVectorStore(VectorStore):
-    """In-memory vector store recording upserts, for pipeline assertions."""
+    """In-memory vector store: records upserts, returns scripted hits.
 
-    def __init__(self) -> None:
-        """Start with an empty record of upserted segments."""
+    Tests script what retrieval 'finds' (hits) the same way they script
+    what the model 'answers' (ScriptedLLMProvider): the pipeline around
+    the seams is what gets asserted.
+    """
+
+    def __init__(self, hits: list[Hit] | None = None) -> None:
+        """Optionally queue the hits every query will return."""
         self.upserted: list[SegmentVector] = []
+        self.hits = hits or []
+        self.query_calls: list[dict] = []
 
     def upsert(self, segments: list[SegmentVector]) -> None:
         """Record what the pipeline tried to index."""
@@ -67,8 +74,9 @@ class FakeVectorStore(VectorStore):
     def query(
         self, embedding: list[float], *, filters: dict | None = None, k: int = 8
     ) -> list[Hit]:
-        """No retrieval in unit tests before M2."""
-        return []
+        """Return the scripted hits (capped at k), recording the call."""
+        self.query_calls.append({"embedding": embedding, "filters": filters, "k": k})
+        return self.hits[:k]
 
 
 @pytest.fixture

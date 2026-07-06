@@ -43,9 +43,9 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 ## Status
 
-Pre-alpha. Data model validated. **M1 done**: the Tell Dwight capture pipeline is live — raw note in, segmented / reformulated / classified (cold-warm, sensitivity) / routed segments out, manager validation as the gate to the vector memory. Verified end to end on the real Mistral API.
+Pre-alpha. **MVP complete (M2)**: the memory loop is closed. Tell Dwight captures and routes (segments classified cold/warm with sensitivity levels, manager validation as the gate), Ask Pam answers plain-language questions grounded in the validated memory, with cited sources. Verified end to end on the real Mistral API — including honest "I have nothing on that" answers instead of invention.
 
-Next: M2 — Ask Pam (RAG over validated segments = MVP complete).
+Next: M3 — the MLP demo threshold (Pretzel Day, Meet Toby v0, That's What She Said, modern UI shell, Google Drive ingestion, seeded demo dataset).
 
 ---
 
