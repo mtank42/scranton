@@ -13,6 +13,7 @@ from backend.app.services.dwight_service import DwightService
 from backend.app.services.ingestion_service import IngestionService
 from backend.app.services.mood_service import MoodService
 from backend.app.services.pam_service import PamService
+from backend.app.services.summary_service import SummaryService
 from backend.app.services.team_service import TeamService
 from backend.app.services.toby_service import TobyService
 
@@ -58,3 +59,9 @@ def get_toby_service(request: Request) -> TobyService:
 def get_team_service(request: Request) -> TeamService:
     """Build a TeamService wired to the app-level session factory."""
     return TeamService(session_factory=request.app.state.session_factory)
+
+
+def get_summary_service(request: Request) -> SummaryService:
+    """Build a SummaryService wired to the app-level adapters."""
+    state = request.app.state
+    return SummaryService(llm=state.llm, session_factory=state.session_factory)

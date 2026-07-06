@@ -16,9 +16,6 @@ Design decisions (documented in docs/tell_dwight.md):
   plain reject through the validate endpoint).
 """
 
-import json
-
-from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -44,11 +41,12 @@ from backend.app.domain.schemas import (
     ProposedSegment,
     SegmentOut,
 )
-from backend.app.services.prompts import (
-    RETRY_REMINDER,
-    build_dwight_messages,
-    build_rework_messages,
+from backend.app.services.llm_json import (
+    LLMContractError,
+    complete_validated,
+    extract_json,  # noqa: F401  (re-exported: tests and callers import it here)
 )
+from backend.app.services.prompts import build_dwight_messages, build_rework_messages
 
 
 class DwightProcessingError(Exception):
@@ -91,21 +89,6 @@ def flatten_segment_metadata(segment: EntrySegment) -> dict:
         elif tag.entity_id is not None:
             metadata[f"{tag.entity_type.value}_{tag.entity_id}"] = True
     return metadata
-
-
-def extract_json(text: str) -> dict:
-    """Parse a JSON object out of an LLM answer, tolerating markdown fences.
-
-    Small models sometimes wrap JSON in ```json fences despite explicit
-    instructions. Stripping them here is cheaper and more reliable than
-    prompt-engineering the habit away.
-    """
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        # Drop the opening fence line (``` or ```json) and the closing fence.
-        cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned
-        cleaned = cleaned.rsplit("```", 1)[0].strip()
-    return json.loads(cleaned)
 
 
 class DwightService:
@@ -298,25 +281,14 @@ class DwightService:
         return segment
 
     def _complete_proposal(self, messages: list[dict]) -> DwightProposal:
-        """Call the LLM and parse its answer, with one formatting retry."""
-        answer = self.llm.complete(messages)
+        """Call the LLM through the shared JSON contract (one retry inside)."""
         try:
-            return DwightProposal.model_validate(extract_json(answer))
-        except (json.JSONDecodeError, ValidationError):
-            # One retry with the failed answer in context: cheap, and it
-            # recovers most formatting slips from small models.
-            retry_messages = messages + [
-                {"role": "assistant", "content": answer},
-                {"role": "user", "content": RETRY_REMINDER},
-            ]
-            answer = self.llm.complete(retry_messages)
-            try:
-                return DwightProposal.model_validate(extract_json(answer))
-            except (json.JSONDecodeError, ValidationError) as exc:
-                raise DwightProcessingError(
-                    "Dwight could not produce a valid proposal for this note. "
-                    "The raw entry is saved (status pending); try again later."
-                ) from exc
+            return complete_validated(self.llm, messages, DwightProposal)
+        except LLMContractError as exc:
+            raise DwightProcessingError(
+                "Dwight could not produce a valid proposal for this note. "
+                "The raw entry is saved (status pending); try again later."
+            ) from exc
 
     def _build_routing_context(self, session: Session) -> str:
         """Format the known entities for the prompt, one line per entity.

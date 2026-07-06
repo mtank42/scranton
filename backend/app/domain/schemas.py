@@ -195,8 +195,10 @@ class PamQuery(BaseModel):
 class PamSource(BaseModel):
     """One memory excerpt an answer is grounded in.
 
-    content is re-read from SQLite (the source of truth), score comes
-    from the vector index (similarity, 1.0 is best).
+    content is re-read from SQLite (the source of truth). score comes
+    from the vector index (similarity, 1.0 is best); it is None when the
+    excerpt was gathered exhaustively (Smart Summaries) rather than by
+    semantic search.
     """
 
     segment_id: int
@@ -204,7 +206,7 @@ class PamSource(BaseModel):
     content: str
     data_type: DataType
     sensitivity_level: int
-    score: float
+    score: float | None = None
     created_at: datetime
 
 
@@ -350,6 +352,69 @@ class MayorOverview(BaseModel):
 
     mayor: MemberOut | None = None
     upcoming: list[UpcomingBirthday] = []
+
+
+# --- Smart Summaries API surface ---
+
+
+class SummarySection(BaseModel):
+    """One filled section of a living template."""
+
+    heading: str
+    content: str
+
+
+class LLMSummary(BaseModel):
+    """The contract the model must honor for a summary: sections only.
+
+    Headings are dictated by the template; the model fills content and
+    never invents new sections.
+    """
+
+    sections: list[SummarySection]
+
+
+class SummaryTemplateInfo(BaseModel):
+    """One template as advertised by the catalog."""
+
+    id: str
+    title: str
+    description: str
+    # What the template is about: team_member | project | client, or
+    # null for team-wide templates (radar, agenda).
+    target: str | None
+    window_days: int | None
+
+
+class TargetOption(BaseModel):
+    """One pickable target (member, project or client) for the UI."""
+
+    id: int
+    name: str
+
+
+class SummaryCatalog(BaseModel):
+    """Response for GET /api/v1/summaries: templates + pickable targets."""
+
+    templates: list[SummaryTemplateInfo]
+    targets: dict[str, list[TargetOption]]
+
+
+class SummaryResponse(BaseModel):
+    """Response for GET /api/v1/summaries/{template_id}.
+
+    A living document: computed from the validated memory at request
+    time, never stored. sources carries the exhaustive excerpt list the
+    sections cite as [n].
+    """
+
+    template_id: str
+    title: str
+    target_label: str | None
+    generated_at: datetime
+    window_days: int | None
+    sections: list[SummarySection]
+    sources: list[PamSource]
 
 
 # --- Ingestion API surface ---

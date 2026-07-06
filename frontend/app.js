@@ -46,6 +46,7 @@ function show(container, html) {
 const NAV = [
   { view: "dwight", character: "dwight" },
   { view: "pam", character: "pam" },
+  { view: "summaries", character: null, label: "Smart Summaries", dot: "summaries" },
   { view: "mood", character: null, label: "Pretzel Day", dot: "" },
   { view: "toby", character: "toby" },
   { view: "team", character: null, label: "Team", dot: "team" },
@@ -78,6 +79,7 @@ function switchView(view) {
   if (view === "mood") loadMood();
   if (view === "toby") loadToby();
   if (view === "team") loadTeam();
+  if (view === "summaries") loadSummaries();
 }
 
 function applyCharacterHeaders() {
@@ -89,6 +91,9 @@ function applyCharacterHeaders() {
     if (title) title.textContent = character.display_name;
     if (avatar) avatar.src = `assets/${character.avatar_asset}`;
   }
+  // Smart Summaries is Dwight + Pam together: both faces on the header.
+  document.getElementById("duo-dwight").src = `assets/${state.characters.dwight?.avatar_asset || ""}`;
+  document.getElementById("duo-pam").src = `assets/${state.characters.pam?.avatar_asset || ""}`;
 }
 
 /* --- Tell Dwight: capture, clarification thread, rework loop --- */
@@ -689,6 +694,90 @@ async function loadToby() {
      <p class="sources-title">Members</p>
      ${overview.members.map(memberRow).join("")}`
   );
+}
+
+/* --- Smart Summaries (the six living templates) --- */
+
+async function loadSummaries() {
+  if (!state.summaryCatalog) {
+    state.summaryCatalog = await api("/summaries");
+  }
+  const { templates } = state.summaryCatalog;
+  document.getElementById("summaries-controls").innerHTML = `
+    <div class="form-row">
+      <select id="summary-template">
+        ${templates
+          .map((t) => `<option value="${t.id}" title="${esc(t.description)}">${esc(t.title)}</option>`)
+          .join("")}
+      </select>
+      <select id="summary-target" hidden></select>
+      <button class="btn btn-primary" id="summary-generate">Assemble</button>
+    </div>
+    <p class="view-sub" id="summary-description"></p>`;
+
+  const templateSelect = document.getElementById("summary-template");
+  templateSelect.addEventListener("change", syncSummaryControls);
+  document.getElementById("summary-generate").addEventListener("click", generateSummary);
+  syncSummaryControls();
+}
+
+function syncSummaryControls() {
+  const { templates, targets } = state.summaryCatalog;
+  const template = templates.find(
+    (t) => t.id === document.getElementById("summary-template").value
+  );
+  document.getElementById("summary-description").textContent = template.description;
+  const targetSelect = document.getElementById("summary-target");
+  if (template.target) {
+    targetSelect.innerHTML = (targets[template.target] || [])
+      .map((option) => `<option value="${option.id}">${esc(option.name)}</option>`)
+      .join("");
+    targetSelect.hidden = false;
+  } else {
+    targetSelect.hidden = true;
+  }
+}
+
+async function generateSummary() {
+  const templateId = document.getElementById("summary-template").value;
+  const targetSelect = document.getElementById("summary-target");
+  const button = document.getElementById("summary-generate");
+  button.disabled = true;
+  show("summaries-result", `<p class="thinking">Dwight and Pam are assembling</p>`);
+  try {
+    const query = targetSelect.hidden ? "" : `?target_id=${targetSelect.value}`;
+    const result = await api(`/summaries/${templateId}${query}`);
+    const subtitle = [
+      result.target_label,
+      result.window_days ? `last ${result.window_days} days` : "full history",
+      new Date(result.generated_at).toLocaleString(),
+    ]
+      .filter(Boolean)
+      .join(" - ");
+    const sections = result.sections
+      .map(
+        (section) =>
+          `<p class="summary-heading">${esc(section.heading)}</p>
+           <p class="summary-text">${esc(section.content).replace(/\n/g, "<br />")}</p>`
+      )
+      .join("");
+    const sources = result.sources.length
+      ? `<p class="sources-title">Sources (${result.sources.length})</p>` +
+        result.sources.map(sourceRow).join("")
+      : "";
+    show(
+      "summaries-result",
+      `<div class="answer-card summary-card">
+         <p class="summary-subtitle">${esc(subtitle)}</p>
+         ${sections}
+       </div>
+       ${sources}`
+    );
+  } catch (error) {
+    show("summaries-result", `<div class="error-banner">${esc(error.message)}</div>`);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 /* --- Team (roster + human profile) --- */

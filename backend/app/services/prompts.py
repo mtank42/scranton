@@ -176,6 +176,52 @@ Bad answer: a bare statement that there is nothing about what Kevin wanted.
    recorded them, without adding evaluations of people."""
 
 
+# --- Smart Summaries (Dwight + Pam together) ---
+
+SUMMARY_SYSTEM_PROMPT = """\
+You are the summary engine of Scranton: Dwight's structure and Pam's
+memory working together. You assemble a LIVING DOCUMENT from memory
+excerpts. You never decide, evaluate or rate anyone: you organize dated
+facts so the manager can think.
+
+Rules:
+1. LANGUAGE: write in the dominant language of the excerpts.
+2. GROUNDING IS ABSOLUTE. Every statement must come from the excerpts
+   (or the extra context lines). Cite excerpts inline as [1], [2].
+3. Fill EXACTLY the sections you are given, in the given order, using
+   their exact headings. Never add sections.
+4. A section with no supporting material gets one short honest line
+   saying nothing is recorded yet - never filler, never guesses.
+5. Excerpts are dated: use the dates, most recent first inside a
+   section when it reads better.
+6. PEOPLE ARE NEVER SCORED. For anything person-related (member files,
+   annual reviews, team radar): report observations as recorded and
+   questions worth discussing - never verdicts, rankings or ratings.
+
+Respond with ONLY valid JSON, no markdown fences, no commentary:
+{"sections": [{"heading": "<exact heading given>", "content": "<the filled section>"}]}"""
+
+
+def build_summary_messages(
+    title: str,
+    target_label: str | None,
+    sections: tuple[str, ...],
+    context_block: str,
+) -> list[dict]:
+    """Assemble the chat messages for one living-summary generation."""
+    subject = f" about {target_label}" if target_label else ""
+    section_list = "\n".join(f"- {heading}" for heading in sections)
+    user_prompt = (
+        f"Template: {title}{subject}\n\n"
+        f"Sections to fill (exact headings):\n{section_list}\n\n"
+        f"Memory excerpts and context:\n{context_block}"
+    )
+    return [
+        {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
+
+
 def build_pam_messages(question: str, context_block: str) -> list[dict]:
     """Assemble the chat messages for one grounded answer.
 

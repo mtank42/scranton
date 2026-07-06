@@ -464,6 +464,37 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 
 .member-profile textarea { background: var(--black); }
 
+/* --- Smart Summaries --- */
+
+.nav-item .nav-dot.summaries { background: var(--black); border: 2px solid var(--yellow); }
+
+.avatar-duo { display: flex; flex-shrink: 0; }
+.avatar-small { width: 48px; height: 48px; }
+.avatar-duo .avatar-small:last-child { margin-left: -16px; }
+
+#summaries-controls select { width: auto; font-family: var(--mono); font-size: 13px; }
+
+.summary-card { border-left-color: var(--cyan); }
+
+.summary-subtitle {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--midgrey);
+  margin-bottom: 14px;
+}
+
+.summary-heading {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 16px 0 6px;
+}
+
+.summary-text { font-size: 15px; font-weight: 400; line-height: 1.6; }
+
 /* --- Maire de Scranton --- */
 
 .mayor-banner {
