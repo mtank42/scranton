@@ -50,6 +50,28 @@ class SegmentNotFoundError(Exception):
     """The requested segment id does not exist."""
 
 
+def flatten_segment_metadata(segment: EntrySegment) -> dict:
+    """Build the Chroma metadata for one segment.
+
+    Chroma metadata values must be scalars (no lists), so tags are
+    flattened into boolean keys: 'team_member_3': True means 'tagged on
+    team member 3'. Ask Pam filters on those keys. Shared by the live
+    pipeline and the demo seeder so both index the exact same shape.
+    """
+    metadata: dict = {
+        "segment_id": segment.id,
+        "entry_id": segment.entry_id,
+        "data_type": segment.data_type.value,
+        "sensitivity_level": segment.sensitivity_level,
+    }
+    for tag in segment.tags:
+        if tag.view_type is not None:
+            metadata[f"view_{tag.view_type.value}"] = True
+        elif tag.entity_id is not None:
+            metadata[f"{tag.entity_type.value}_{tag.entity_id}"] = True
+    return metadata
+
+
 def extract_json(text: str) -> dict:
     """Parse a JSON object out of an LLM answer, tolerating markdown fences.
 
@@ -219,30 +241,9 @@ class DwightService:
                         SegmentVector(
                             segment_id=segment.id,
                             embedding=embedding,
-                            metadata=self._flatten_metadata(segment),
+                            metadata=flatten_segment_metadata(segment),
                         )
                     ]
                 )
             session.commit()
             return SegmentOut.model_validate(segment)
-
-    @staticmethod
-    def _flatten_metadata(segment: EntrySegment) -> dict:
-        """Build the Chroma metadata for one segment.
-
-        Chroma metadata values must be scalars (no lists), so tags are
-        flattened into boolean keys: 'team_member_3': True means 'tagged
-        on team member 3'. Ask Pam (M2) filters on those keys.
-        """
-        metadata: dict = {
-            "segment_id": segment.id,
-            "entry_id": segment.entry_id,
-            "data_type": segment.data_type.value,
-            "sensitivity_level": segment.sensitivity_level,
-        }
-        for tag in segment.tags:
-            if tag.view_type is not None:
-                metadata[f"view_{tag.view_type.value}"] = True
-            elif tag.entity_id is not None:
-                metadata[f"{tag.entity_type.value}_{tag.entity_id}"] = True
-        return metadata

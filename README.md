@@ -59,6 +59,12 @@ cp .env.example .env        # then add your API keys
 
 uvicorn backend.app.main:app --reload    # http://127.0.0.1:8000/docs
 pytest                                   # offline test suite, no API key needed
+
+# Optional: load the Dunder Mifflin demo dataset (3 months of history,
+# real embeddings at seed time - needs MISTRAL_API_KEY in .env).
+python -m backend.app.db.seed --reset    # --reset wipes db + vector index first
+
+pytest -m integration                    # real-API smoke tests + golden Ask Pam queries
 ```
 
 ---
