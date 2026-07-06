@@ -316,10 +316,12 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 .mood-btn.selected { border-color: var(--mood); color: var(--white); }
 
 .mood-swatch {
-  width: 14px; height: 14px; border-radius: 50%;
+  width: 6px; height: 26px; border-radius: 3px;
   background: var(--mood);
   flex-shrink: 0;
 }
+
+.mood-emoji { font-size: 19px; line-height: 1; }
 
 .chip.mood-flow, .chip.mood-ctrl, .chip.mood-pretzel_day,
 .chip.mood-press, .chip.mood-stuck, .chip.mood-danger { color: var(--mood); }

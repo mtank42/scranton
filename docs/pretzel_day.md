@@ -11,14 +11,20 @@ product: the raw material of the feel-better loop.
 
 ## The palette
 
-| Level | Index | Colour (design system) |
-|---|---|---|
-| flow | 5 | `--green` #00C853 |
-| ctrl | 4 | `--cyan` #00D4FF |
-| pretzel_day | 3 | `--purple` #7B61FF |
-| press | 2 | `--yellow` #F5C518 |
-| stuck | 1 | `--orange` #FF6D00 |
-| danger | 0 | `--red` #E63946 |
+| Level | Index | Colour (design system) | UI label (first-degree) |
+|---|---|---|---|
+| flow | 5 | `--green` #00C853 | In the zone |
+| ctrl | 4 | `--cyan` #00D4FF | Under control |
+| pretzel_day | 3 | `--purple` #7B61FF | So-so |
+| press | 2 | `--yellow` #F5C518 | Under pressure |
+| stuck | 1 | `--orange` #FF6D00 | Stuck |
+| danger | 0 | `--red` #E63946 | Not okay |
+
+The palette values are the data model vocabulary and never change; the
+UI labels + emoji are display-only (owner feedback 2026-07-06: the raw
+names were obscure at first read). The mood emoji are the explicit
+exception to the no-emoji rule. A dedicated Pretzel Day icon is
+pending: the owner provides the asset.
 
 The index (`MOOD_INDEX` in `domain/models.py`) is ordinal and belongs
 to the MOOD, never to the person: it exists so trends can be drawn.

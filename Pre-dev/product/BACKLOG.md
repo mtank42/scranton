@@ -1,7 +1,25 @@
 # Scranton — Backlog
 > Features identifiées avant le go, hors roadmap POC initiale.
 > Chaque entrée inclut : description, scope suggéré, et questions à résoudre pour le data model.
-> Last updated: May 2026 — session data model
+> Last updated: July 2026 — ajout "Pam's Front Page" (feedback démo MLP)
+
+---
+
+## Pam's Front Page — les dernières nouvelles importantes
+
+**Catégorie** : Ask Pam / UI / Proactivité
+**Priorité** : V1 (candidate)
+**Origine** : feedback démo MLP (juillet 2026) — "tant qu'il n'y a pas de question, le panel sources est inutile, voire incongru"
+
+### Description
+
+Aujourd'hui, l'écran Ask Pam est vide tant qu'aucune question n'est posée. L'idée : cet état de repos devient un **tableau des dernières nouvelles importantes** — Pam met en avant ce qui mérite l'attention du manager sans qu'il ait à demander. Premier pas vers la Pam proactive (qui culmine en V1 avec les rappels Maire de Scranton).
+
+### Questions à résoudre avant de coder
+
+1. **Comment mesurer l'importance ?** Candidats disponibles sans changement de schéma : récence, `sensitivity_level` élevé, `data_type` warm, tags `view_type = commitment` (engagements = importants par nature), signaux Meet Toby actifs. Ou un score d'importance proposé par Dwight à la segmentation (nouveau champ → session data model dédiée).
+2. **Importance ≠ surveillance** : le tableau met en avant des faits datés, jamais un classement de personnes. Les règles Toby s'appliquent.
+3. **Chevauchement avec Meet Toby** : Toby = santé d'équipe, Front Page = actualité de la mémoire (engagements qui arrivent à échéance, décisions récentes, clients en attente). Trancher la frontière pour éviter deux dashboards concurrents.
 
 ---
 

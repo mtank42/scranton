@@ -9,10 +9,12 @@ A visual reward on completion moments: a full-screen overlay with a
 random Michael-Scott-flavoured line, auto-dismissed after ~3 seconds
 (or on click). The cheap delight of the MLP - the "L" garnish.
 
-## Triggers (validated with the owner, M3 plan)
+## Triggers (validated with the owner, M3 plan; tuned on demo feedback)
 
-1. A segment is **validated** in Tell Dwight (something just entered the
-   collective memory).
+1. The **final validate of a Dwight report** - the reward fires once
+   per report when the last remaining segment is validated, not on
+   every click (owner feedback 2026-07-06: per-segment firing was way
+   too much). If the batch ends on a reject, no reward.
 2. A Pretzel Day **check-in is recorded**.
 
 ## Design decisions

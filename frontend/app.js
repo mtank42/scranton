@@ -165,8 +165,10 @@ async function decideSegment(segmentId, decision) {
     body: JSON.stringify({ status: decision }),
   });
   document.getElementById(`segment-${segmentId}`).outerHTML = segmentCard(segment);
-  // Completion moment: a validated segment just entered the memory.
-  if (decision === "validated") twss();
+  // Completion moment: the reward fires once per report, on the final
+  // validate - not on every click (owner feedback, 2026-07-06).
+  const undecided = document.querySelectorAll("#dwight-result .card:not(.decided)").length;
+  if (decision === "validated" && undecided === 0) twss();
 }
 
 /* --- That's What She Said (completion reward) --- */
@@ -207,14 +209,24 @@ function twss() {
 
 /* --- Pretzel Day (mood check-in) --- */
 
+/* First-degree labels + emoji (owner feedback, 2026-07-06): the palette
+ * values stay the data model vocabulary; only the display changes.
+ * Emoji here is the explicit exception granted for the mood palette. */
 const MOODS = [
-  { level: "flow", label: "Flow" },
-  { level: "ctrl", label: "Ctrl" },
-  { level: "pretzel_day", label: "Pretzel Day" },
-  { level: "press", label: "Press" },
-  { level: "stuck", label: "Stuck" },
-  { level: "danger", label: "Danger" },
+  { level: "flow", label: "In the zone", emoji: "\u{1F680}" },
+  { level: "ctrl", label: "Under control", emoji: "\u{1F642}" },
+  { level: "pretzel_day", label: "So-so", emoji: "\u{1F968}" },
+  { level: "press", label: "Under pressure", emoji: "\u{1F605}" },
+  { level: "stuck", label: "Stuck", emoji: "\u{1F616}" },
+  { level: "danger", label: "Not okay", emoji: "\u{1F198}" },
 ];
+
+const MOOD_META = Object.fromEntries(MOODS.map((mood) => [mood.level, mood]));
+
+function moodDisplay(level) {
+  const meta = MOOD_META[level];
+  return meta ? `${meta.emoji} ${meta.label}` : level;
+}
 
 const moodState = { memberId: null, level: null };
 
@@ -238,7 +250,8 @@ async function loadMood() {
          ${MOODS.map(
            (mood) =>
              `<button type="button" class="mood-btn mood-${mood.level}" data-level="${mood.level}">
-                <span class="mood-swatch"></span>${mood.label}
+                <span class="mood-swatch"></span>
+                <span class="mood-emoji">${mood.emoji}</span>${mood.label}
               </button>`
          ).join("")}
        </div>
@@ -291,7 +304,7 @@ async function submitMood() {
 
 function moodChip(level) {
   return level
-    ? `<span class="chip mood-${level}">${level}</span>`
+    ? `<span class="chip mood-${level}">${moodDisplay(level)}</span>`
     : `<span class="chip">no check-in</span>`;
 }
 
@@ -325,7 +338,7 @@ function memberRow(member) {
   const dots = member.checkins
     .map(
       (point) =>
-        `<span class="dot mood-${point.mood_level}" title="${point.at.slice(0, 10)}: ${point.mood_level}"></span>`
+        `<span class="dot mood-${point.mood_level}" title="${point.at.slice(0, 10)}: ${MOOD_META[point.mood_level]?.label || point.mood_level}"></span>`
     )
     .join("");
   return `
