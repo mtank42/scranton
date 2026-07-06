@@ -9,13 +9,27 @@ A visual reward on completion moments: a full-screen overlay with a
 random Michael-Scott-flavoured line, auto-dismissed after ~3 seconds
 (or on click). The cheap delight of the MLP - the "L" garnish.
 
-## Triggers (validated with the owner, M3 plan; tuned on demo feedback)
+## Triggers (owner rules, 2026-07-06, second iteration)
 
-1. The **final validate of a Dwight report** - the reward fires once
-   per report when the last remaining segment is validated, not on
-   every click (owner feedback 2026-07-06: per-segment firing was way
-   too much). If the batch ends on a reject, no reward.
-2. A Pretzel Day **check-in is recorded**.
+1. **End of a Dwight report** = every segment decided, whatever the mix
+   of validates and rejects. Then:
+   - **First report of the day** (no check-in recorded today): the
+     inline Pretzel Day panel appears instead; the reward fires ONLY if
+     a mood is actually given. 'Rather not say' = no reward.
+   - **Later reports**: the reward fires directly.
+2. A Pretzel Day **check-in is recorded** (inline panel or standalone
+   screen).
+
+Rationale (owner): reporting is tedious but mandatory; talking about
+how you feel is delicate and optional. Pretzel Day rides on the report
+so it is never neglected, and the reward nudges the mood answer.
+
+## Backlog
+
+Mood-adaptive rewards (owner idea, in BACKLOG.md): the reward content
+should match the declared mood - no cheap joke for someone Not okay
+(a cute cat instead), a legendary football goal for someone In the
+zone.
 
 ## Design decisions
 

@@ -4,13 +4,16 @@ The pipeline in one sentence: a raw note is persisted untouched, the LLM
 proposes segments and routing, the manager validates, and only validated
 segments are embedded into the vector store for Ask Pam.
 
-Two deliberate design choices (both documented in docs/tell_dwight.md):
-- Embedding happens at VALIDATION time, not capture time. The sketch
-  suggested capture time, but indexing unvalidated proposals would let
-  rejected content leak into Ask Pam's memory. Validation is the gate.
-- A clarification does not open a dialogue. The vague entry stays as an
-  immutable audit trail with status pending, and the manager submits a
-  richer note as a new entry. Stateless, no conversation to persist.
+Design decisions (documented in docs/tell_dwight.md):
+- Embedding happens at VALIDATION time, not capture time: validation is
+  the gate to Ask Pam's memory.
+- The dialogue (clarification answers, rework comments) is NOT persisted
+  as a thread (owner decision, 2026-07-06): only the raw note and the
+  resulting segments count. Dialogue text feeds the model transiently.
+- A rejected segment stays in SQLite as audit trail. A rework rejects
+  the old proposal and adds a corrected one at the same position; the
+  loop runs until the manager validates or bails out ('Forget it' is a
+  plain reject through the validate endpoint).
 """
 
 import json
@@ -37,9 +40,14 @@ from backend.app.domain.schemas import (
     CaptureResponse,
     DwightProposal,
     EntryCreate,
+    ProposedSegment,
     SegmentOut,
 )
-from backend.app.services.prompts import RETRY_REMINDER, build_dwight_messages
+from backend.app.services.prompts import (
+    RETRY_REMINDER,
+    build_dwight_messages,
+    build_rework_messages,
+)
 
 
 class DwightProcessingError(Exception):
@@ -48,6 +56,18 @@ class DwightProcessingError(Exception):
 
 class SegmentNotFoundError(Exception):
     """The requested segment id does not exist."""
+
+
+class EntryNotFoundError(Exception):
+    """The requested entry id does not exist."""
+
+
+class EntryNotPendingError(Exception):
+    """The entry is not awaiting clarification: nothing to reply to."""
+
+
+class SegmentNotProposedError(Exception):
+    """The segment was already decided: only proposals can be reworked."""
 
 
 def flatten_segment_metadata(segment: EntrySegment) -> dict:
@@ -101,7 +121,7 @@ class DwightService:
         self.session_factory = session_factory
         self.vector_store = vector_store
 
-    # --- capture ---
+    # --- capture and clarification dialogue ---
 
     def capture(self, payload: EntryCreate) -> CaptureResponse:
         """Run one raw note through the full pipeline.
@@ -121,39 +141,54 @@ class DwightService:
             entry_id = entry.id
             routing_context = self._build_routing_context(session)
 
-        proposal = self._propose(payload, routing_context)
+        proposal = self._complete_proposal(
+            build_dwight_messages(payload.raw_content, payload.source_type, routing_context)
+        )
+        return self._finalize(entry_id, proposal)
 
+    def reply(self, entry_id: int, message: str) -> CaptureResponse:
+        """Continue the clarification dialogue on a pending entry.
+
+        The manager's answer is folded into the reprocessing context
+        transiently; if Dwight is still unsure, another clarification
+        comes back and the thread continues.
+        """
+        with self.session_factory() as session:
+            entry = session.get(Entry, entry_id)
+            if entry is None:
+                raise EntryNotFoundError(f"No entry with id {entry_id}.")
+            if entry.processing_status != ProcessingStatus.PENDING:
+                raise EntryNotPendingError(
+                    f"Entry {entry_id} is not awaiting clarification."
+                )
+            raw_content = entry.raw_content
+            source_type = entry.source_type
+            routing_context = self._build_routing_context(session)
+
+        augmented = (
+            f"{raw_content}\n\n"
+            "[Additional context from the manager, answering your clarifying question]\n"
+            f"{message}"
+        )
+        proposal = self._complete_proposal(
+            build_dwight_messages(augmented, source_type, routing_context)
+        )
+        return self._finalize(entry_id, proposal)
+
+    def _finalize(self, entry_id: int, proposal: DwightProposal) -> CaptureResponse:
+        """Persist a proposal (or return the clarifying question)."""
         with self.session_factory() as session:
             entry = session.get(Entry, entry_id)
             if proposal.clarification:
                 # Too vague: the entry stays pending as an audit trail and
-                # the manager answers by submitting a richer note.
+                # the dialogue continues through the reply endpoint.
                 return CaptureResponse(
                     entry_id=entry_id,
                     processing_status=entry.processing_status,
                     clarification=proposal.clarification,
                 )
             for order, proposed in enumerate(proposal.segments):
-                segment = EntrySegment(
-                    entry_id=entry_id,
-                    content=proposed.content,
-                    segment_order=order,
-                    data_type=proposed.data_type,
-                    sensitivity_level=proposed.sensitivity_level,
-                )
-                session.add(segment)
-                session.flush()
-                for tag in proposed.tags:
-                    session.add(
-                        SegmentTag(
-                            segment_id=segment.id,
-                            entity_type=tag.entity_type,
-                            entity_id=tag.entity_id,
-                            view_type=tag.view_type,
-                            proposed_by=ProposedBy.DWIGHT,
-                            confidence=tag.confidence,
-                        )
-                    )
+                self._add_segment(session, entry_id, proposed, order)
             entry.processing_status = ProcessingStatus.COMPLETE
             session.commit()
             segments = [SegmentOut.model_validate(s) for s in entry.segments]
@@ -163,11 +198,76 @@ class DwightService:
                 segments=segments,
             )
 
-    def _propose(self, payload: EntryCreate, routing_context: str) -> DwightProposal:
-        """Call the LLM and parse its answer, with one formatting retry."""
-        messages = build_dwight_messages(
-            payload.raw_content, payload.source_type, routing_context
+    # --- rework loop ---
+
+    def rework(self, segment_id: int, comment: str) -> SegmentOut:
+        """Reject a proposed segment and get a corrected replacement.
+
+        The rejected row stays as audit trail; the replacement arrives
+        as a new proposal at the same position. The manager can rework
+        again, validate, or bail out with a plain reject.
+        """
+        with self.session_factory() as session:
+            segment = session.get(EntrySegment, segment_id)
+            if segment is None:
+                raise SegmentNotFoundError(f"No segment with id {segment_id}.")
+            if segment.validation_status != ValidationStatus.PROPOSED:
+                raise SegmentNotProposedError(
+                    f"Segment {segment_id} was already decided: rework applies to proposals."
+                )
+            raw_content = segment.entry.raw_content
+            rejected_content = segment.content
+            entry_id = segment.entry_id
+            order = segment.segment_order
+            routing_context = self._build_routing_context(session)
+            segment.validation_status = ValidationStatus.REJECTED
+            for tag in segment.tags:
+                tag.validated = False
+            session.commit()
+
+        proposal = self._complete_proposal(
+            build_rework_messages(raw_content, rejected_content, comment, routing_context)
         )
+        if not proposal.segments:
+            raise DwightProcessingError(
+                "Dwight could not produce a corrected segment; the rejection is recorded."
+            )
+        with self.session_factory() as session:
+            replacement = self._add_segment(session, entry_id, proposal.segments[0], order)
+            session.commit()
+            return SegmentOut.model_validate(replacement)
+
+    # --- shared building blocks ---
+
+    @staticmethod
+    def _add_segment(
+        session: Session, entry_id: int, proposed: ProposedSegment, order: int
+    ) -> EntrySegment:
+        """Persist one proposed segment and its tags (status: proposed)."""
+        segment = EntrySegment(
+            entry_id=entry_id,
+            content=proposed.content,
+            segment_order=order,
+            data_type=proposed.data_type,
+            sensitivity_level=proposed.sensitivity_level,
+        )
+        session.add(segment)
+        session.flush()
+        for tag in proposed.tags:
+            session.add(
+                SegmentTag(
+                    segment_id=segment.id,
+                    entity_type=tag.entity_type,
+                    entity_id=tag.entity_id,
+                    view_type=tag.view_type,
+                    proposed_by=ProposedBy.DWIGHT,
+                    confidence=tag.confidence,
+                )
+            )
+        return segment
+
+    def _complete_proposal(self, messages: list[dict]) -> DwightProposal:
+        """Call the LLM and parse its answer, with one formatting retry."""
         answer = self.llm.complete(messages)
         try:
             return DwightProposal.model_validate(extract_json(answer))

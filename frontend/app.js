@@ -9,6 +9,7 @@ const API = "/api/v1";
 
 const state = {
   characters: {},
+  entryId: null, // the entry currently discussed in the Dwight view
 };
 
 /* --- helpers --- */
@@ -84,7 +85,7 @@ function applyCharacterHeaders() {
   }
 }
 
-/* --- Tell Dwight --- */
+/* --- Tell Dwight: capture, clarification thread, rework loop --- */
 
 function sensitivityDots(level) {
   const dots = [1, 2, 3, 4, 5]
@@ -108,8 +109,13 @@ function segmentCard(segment) {
   const actions = decided
     ? ""
     : `<div class="card-actions">
-         <button class="btn btn-validate" data-segment="${segment.id}" data-decision="validated">Validate</button>
-         <button class="btn btn-reject" data-segment="${segment.id}" data-decision="rejected">Reject</button>
+         <button class="btn btn-validate" data-decision="validated" data-segment="${segment.id}">Validate</button>
+         <button class="btn btn-reject" data-reject-open data-segment="${segment.id}">Reject</button>
+       </div>
+       <div class="rework-box" hidden>
+         <input type="text" placeholder="What is wrong or missing?" data-rework-input />
+         <button class="btn btn-primary" data-rework-send data-segment="${segment.id}">Send to Dwight</button>
+         <button class="btn btn-ghost" data-decision="rejected" data-segment="${segment.id}">Forget it</button>
        </div>`;
   return `
     <article class="card ${segment.data_type} ${decided ? "decided" : ""}" id="segment-${segment.id}">
@@ -122,6 +128,34 @@ function segmentCard(segment) {
       </div>
       ${actions}
     </article>`;
+}
+
+function dwightBubble(text) {
+  const character = state.characters.dwight || {};
+  return `
+    <div class="bubble-row">
+      <img class="bubble-avatar" src="assets/${esc(character.avatar_asset || "")}" alt="" />
+      <div class="bubble dwight">${esc(text)}</div>
+    </div>`;
+}
+
+function managerBubble(text) {
+  return `<div class="bubble-row manager"><div class="bubble manager">${esc(text)}</div></div>`;
+}
+
+function replyForm() {
+  return `
+    <form id="reply-form" class="reply-form">
+      <input id="reply-input" type="text" placeholder="Your answer to Dwight..." required />
+      <button type="submit" class="btn btn-primary">Answer</button>
+    </form>`;
+}
+
+function renderSegments(segments) {
+  return (
+    `<p class="sources-title">Proposed segments - you decide</p>` +
+    segments.map(segmentCard).join("")
+  );
 }
 
 async function submitDwight(event) {
@@ -138,18 +172,20 @@ async function submitDwight(event) {
         source_type: document.getElementById("dwight-source").value,
       }),
     });
+    state.entryId = result.entry_id;
     if (result.clarification) {
+      // The dialogue starts: the note and the question become a thread.
       show(
         "dwight-result",
-        `<div class="callout"><span class="chip">clarification</span>
-           <p>${esc(result.clarification)}</p></div>`
+        `<div class="thread" id="dwight-thread">
+           ${managerBubble(input.value)}
+           ${dwightBubble(result.clarification)}
+         </div>
+         ${replyForm()}`
       );
+      bindReplyForm();
     } else {
-      show(
-        "dwight-result",
-        `<p class="sources-title">Proposed segments - you decide</p>` +
-          result.segments.map(segmentCard).join("")
-      );
+      show("dwight-result", renderSegments(result.segments));
       input.value = "";
     }
   } catch (error) {
@@ -159,16 +195,125 @@ async function submitDwight(event) {
   }
 }
 
+function bindReplyForm() {
+  document.getElementById("reply-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("reply-input");
+    const answer = input.value;
+    const thread = document.getElementById("dwight-thread");
+    thread.insertAdjacentHTML("beforeend", managerBubble(answer));
+    input.value = "";
+    input.disabled = true;
+    try {
+      const result = await api(`/dwight/entries/${state.entryId}/reply`, {
+        method: "POST",
+        body: JSON.stringify({ message: answer }),
+      });
+      if (result.clarification) {
+        // Dwight is still unsure: the thread simply continues.
+        thread.insertAdjacentHTML("beforeend", dwightBubble(result.clarification));
+      } else {
+        document.getElementById("reply-form").remove();
+        thread.insertAdjacentHTML("afterend", renderSegments(result.segments));
+      }
+    } catch (error) {
+      thread.insertAdjacentHTML("beforeend", `<div class="error-banner">${esc(error.message)}</div>`);
+    } finally {
+      input.disabled = false;
+    }
+  });
+}
+
 async function decideSegment(segmentId, decision) {
   const segment = await api(`/dwight/segments/${segmentId}/validate`, {
     method: "POST",
     body: JSON.stringify({ status: decision }),
   });
   document.getElementById(`segment-${segmentId}`).outerHTML = segmentCard(segment);
-  // Completion moment: the reward fires once per report, on the final
-  // validate - not on every click (owner feedback, 2026-07-06).
-  const undecided = document.querySelectorAll("#dwight-result .card:not(.decided)").length;
-  if (decision === "validated" && undecided === 0) twss();
+  checkReportComplete();
+}
+
+async function reworkSegment(segmentId, comment, button) {
+  const card = document.getElementById(`segment-${segmentId}`);
+  button.disabled = true;
+  button.textContent = "Dwight is rewriting...";
+  try {
+    const replacement = await api(`/dwight/segments/${segmentId}/rework`, {
+      method: "POST",
+      body: JSON.stringify({ comment }),
+    });
+    // The rejected proposal gives way to the corrected one, same spot.
+    card.outerHTML = segmentCard(replacement);
+  } catch (error) {
+    card.insertAdjacentHTML("afterend", `<div class="error-banner">${esc(error.message)}</div>`);
+  }
+}
+
+/* End of a report: the reward rules (owner decisions, 2026-07-06).
+ * - Every segment decided = the report is filed, whatever the mix of
+ *   validates and rejects.
+ * - First report of the day: Pretzel Day appears inline; the reward
+ *   comes only if a mood is actually given ('Rather not say' = none).
+ * - Later reports: the reward fires directly. */
+function checkReportComplete() {
+  const undecided = document.querySelectorAll("#dwight-result .card:not(.decided):not(.pretzel-inline)").length;
+  if (undecided > 0) return;
+  maybePretzelThenReward();
+}
+
+async function maybePretzelThenReward() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const recent = await api("/mood/checkins?days=1");
+    const doneToday = recent.some((checkin) => checkin.created_at.slice(0, 10) === today);
+    if (doneToday) {
+      twss();
+      return;
+    }
+    renderInlinePretzel();
+  } catch {
+    // The mood layer must never block the capture flow.
+    twss();
+  }
+}
+
+async function renderInlinePretzel() {
+  if (document.getElementById("pd-inline")) return;
+  const overview = await api("/toby/overview?days=1");
+  const options = overview.members
+    .map((member) => `<option value="${member.team_member_id}">${esc(member.full_name)}</option>`)
+    .join("");
+  document.getElementById("dwight-result").insertAdjacentHTML(
+    "beforeend",
+    `<div class="card pretzel-inline" id="pd-inline">
+       <p class="card-content">Report filed. One last thing - how is the day going?</p>
+       <div class="checkin-inline">
+         <select data-pd-member>${options}</select>
+         <div class="palette compact">
+           ${MOODS.map(
+             (mood) =>
+               `<button type="button" class="mood-btn mood-${mood.level}" data-pd-level="${mood.level}" title="${mood.label}">
+                  <span class="mood-emoji">${mood.emoji}</span>${mood.label}
+                </button>`
+           ).join("")}
+         </div>
+         <button class="btn btn-ghost" data-pd-skip>Rather not say</button>
+       </div>
+     </div>`
+  );
+}
+
+async function inlineCheckin(level) {
+  const panel = document.getElementById("pd-inline");
+  const memberId = Number(panel.querySelector("[data-pd-member]").value);
+  await api("/mood/checkins", {
+    method: "POST",
+    body: JSON.stringify({ team_member_id: memberId, mood_level: level, note: null }),
+  });
+  panel.querySelector(".checkin-inline").outerHTML =
+    `<p class="thinking-none">Recorded. Thanks for saying it.</p>`;
+  panel.classList.add("decided");
+  twss();
 }
 
 /* --- That's What She Said (completion reward) --- */
@@ -207,7 +352,42 @@ function twss() {
   twssTimer = setTimeout(() => { overlay.hidden = true; }, 3200);
 }
 
-/* --- Pretzel Day (mood check-in) --- */
+/* --- Ask Pam --- */
+
+function sourceRow(source, index) {
+  const date = source.created_at ? source.created_at.slice(0, 10) : "";
+  return `
+    <div class="source-row">
+      <span class="source-num">[${index + 1}]</span>
+      <span class="source-text">${esc(source.content)}</span>
+      <span class="chip ${source.data_type}">${source.data_type}</span>
+      <span class="source-date">${date}</span>
+    </div>`;
+}
+
+async function submitPam(event) {
+  event.preventDefault();
+  const input = document.getElementById("pam-input");
+  const button = document.getElementById("pam-submit");
+  button.disabled = true;
+  show("pam-result", `<p class="thinking">Pam is remembering</p>`);
+  try {
+    const result = await api("/pam/query", {
+      method: "POST",
+      body: JSON.stringify({ question: input.value }),
+    });
+    const sources = result.sources.length
+      ? `<p class="sources-title">Sources</p>` + result.sources.map(sourceRow).join("")
+      : "";
+    show("pam-result", `<div class="answer-card">${esc(result.answer)}</div>${sources}`);
+  } catch (error) {
+    show("pam-result", `<div class="error-banner">${esc(error.message)}</div>`);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/* --- Pretzel Day (standalone mood view) --- */
 
 /* First-degree labels + emoji (owner feedback, 2026-07-06): the palette
  * values stay the data model vocabulary; only the display changes.
@@ -270,7 +450,7 @@ async function loadMood() {
     if (!button) return;
     moodState.level = button.dataset.level;
     document
-      .querySelectorAll(".mood-btn")
+      .querySelectorAll("#mood-palette .mood-btn")
       .forEach((b) => b.classList.toggle("selected", b === button));
     document.getElementById("mood-submit").disabled = false;
   });
@@ -368,41 +548,6 @@ async function loadToby() {
   );
 }
 
-/* --- Ask Pam --- */
-
-function sourceRow(source, index) {
-  const date = source.created_at ? source.created_at.slice(0, 10) : "";
-  return `
-    <div class="source-row">
-      <span class="source-num">[${index + 1}]</span>
-      <span class="source-text">${esc(source.content)}</span>
-      <span class="chip ${source.data_type}">${source.data_type}</span>
-      <span class="source-date">${date}</span>
-    </div>`;
-}
-
-async function submitPam(event) {
-  event.preventDefault();
-  const input = document.getElementById("pam-input");
-  const button = document.getElementById("pam-submit");
-  button.disabled = true;
-  show("pam-result", `<p class="thinking">Pam is remembering</p>`);
-  try {
-    const result = await api("/pam/query", {
-      method: "POST",
-      body: JSON.stringify({ question: input.value }),
-    });
-    const sources = result.sources.length
-      ? `<p class="sources-title">Sources</p>` + result.sources.map(sourceRow).join("")
-      : "";
-    show("pam-result", `<div class="answer-card">${esc(result.answer)}</div>${sources}`);
-  } catch (error) {
-    show("pam-result", `<div class="error-banner">${esc(error.message)}</div>`);
-  } finally {
-    button.disabled = false;
-  }
-}
-
 /* --- boot --- */
 
 async function init() {
@@ -417,15 +562,48 @@ async function init() {
   document.getElementById("twss").addEventListener("click", (event) => {
     event.currentTarget.hidden = true;
   });
+
+  // One delegated handler for everything inside the Dwight result area:
+  // segment decisions, the rework loop, and the inline Pretzel panel.
   document.getElementById("dwight-result").addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-segment]");
-    if (!button) return;
-    button.disabled = true;
-    try {
-      await decideSegment(button.dataset.segment, button.dataset.decision);
-    } catch (error) {
-      button.disabled = false;
-      alert(error.message);
+    const target = event.target;
+
+    if (target.matches("[data-reject-open]")) {
+      // Rejecting opens the dialogue, it does not decide anything yet.
+      const card = target.closest(".card");
+      card.querySelector(".card-actions").hidden = true;
+      card.querySelector(".rework-box").hidden = false;
+      card.querySelector("[data-rework-input]").focus();
+      return;
+    }
+    if (target.matches("[data-rework-send]")) {
+      const card = target.closest(".card");
+      const comment = card.querySelector("[data-rework-input]").value.trim();
+      if (!comment) return;
+      await reworkSegment(target.dataset.segment, comment, target);
+      return;
+    }
+    if (target.matches("[data-decision]")) {
+      target.disabled = true;
+      try {
+        await decideSegment(target.dataset.segment, target.dataset.decision);
+      } catch (error) {
+        target.disabled = false;
+        alert(error.message);
+      }
+      return;
+    }
+    if (target.matches("[data-pd-level]")) {
+      try {
+        await inlineCheckin(target.dataset.pdLevel);
+      } catch (error) {
+        alert(error.message);
+      }
+      return;
+    }
+    if (target.matches("[data-pd-skip]")) {
+      // Rather not say: nothing stored, no reward - and that is fine.
+      document.getElementById("pd-inline").remove();
     }
   });
 }

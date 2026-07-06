@@ -141,6 +141,28 @@ class SegmentValidation(BaseModel):
     status: Literal[ValidationStatus.VALIDATED, ValidationStatus.REJECTED]
 
 
+class EntryReply(BaseModel):
+    """Request body for POST /api/v1/dwight/entries/{id}/reply.
+
+    The manager's answer to Dwight's clarifying question. Not persisted
+    as such (owner decision, 2026-07-06: only the raw note and the
+    resulting segments count); it feeds the reprocessing context.
+    """
+
+    message: str = Field(min_length=1)
+
+
+class SegmentRework(BaseModel):
+    """Request body for POST /api/v1/dwight/segments/{id}/rework.
+
+    The manager's rejection comment: what Dwight got wrong or missed.
+    The loop runs until validation, unless the manager bails out with
+    a plain reject ('Forget it').
+    """
+
+    comment: str = Field(min_length=1)
+
+
 # --- Pam API surface ---
 
 

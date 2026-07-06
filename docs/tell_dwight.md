@@ -23,10 +23,31 @@ without an explicit validation.
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/v1/dwight/entries` | Submit `{raw_content, source_type?, submitted_by_id?}`. Returns the persisted entry with proposed segments, or a clarifying question. `201`. |
-| POST | `/api/v1/dwight/segments/{id}/validate` | Submit `{status: "validated" \| "rejected"}`. Returns the updated segment. `200`, `404` if unknown. |
+| POST | `/api/v1/dwight/entries/{id}/reply` | Answer Dwight's clarifying question (`{message}`). Reprocesses with the answer as context; may return another question (the thread continues). `200`, `404`, `409` if the entry is not pending. |
+| POST | `/api/v1/dwight/segments/{id}/validate` | Submit `{status: "validated" \| "rejected"}`. Returns the updated segment. A plain reject is also the 'Forget it' exit of the rework loop. `200`, `404`. |
+| POST | `/api/v1/dwight/segments/{id}/rework` | Reject with a comment (`{comment}`); Dwight proposes a corrected segment at the same position. Loops until validation or 'Forget it'. `200`, `404`, `409` if already decided. |
 
 Error contract: a model failure returns `502` and the raw entry is already
 saved with `processing_status = pending` — the note is never lost.
+
+## The dialogue (M3.6, owner feedback on the first demo)
+
+Clarification and rejection are conversations, not dead ends:
+
+- **Vague note** → Dwight asks one question, displayed as a message
+  thread in the UI; the manager answers inline and the segmentation
+  resumes with that context. Dwight may ask again.
+- **Rejected proposal** → the manager says what is wrong; Dwight comes
+  back with a corrected segment (the rejected row stays as audit trail,
+  the replacement takes its position). The loop runs until validation,
+  with a 'Forget it' escape (plain reject, definitive).
+- **No thread persistence** (owner decision 2026-07-06): only the raw
+  note and the resulting segments count. Dialogue text feeds the model
+  transiently and is not stored.
+- Prompt rules added: the note is written by the manager in the first
+  person; a clarifying question targets the missing INFORMATION, never
+  who "I" is (the "Qui a réussi ?" bug, fixed and verified live:
+  "J'ai réussi" now gets "Qu'avez-vous réussi ?").
 
 ## Design decisions (deliberate, revisit only with a reason)
 

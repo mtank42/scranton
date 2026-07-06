@@ -5,6 +5,23 @@
 
 ---
 
+## TWSS adaptatif à l'humeur
+
+**Catégorie** : That's What She Said / Reward
+**Priorité** : V1 (candidate, petit)
+**Origine** : feedback démo MLP (juillet 2026)
+
+### Description
+
+La récompense s'adapte à l'humeur déclarée du jour : pas de blague vaseuse à quelqu'un qui va mal (plutôt un gif de chat mignon), un but de foot légendaire pour quelqu'un en super forme. Les citations Michael Scott restent le mode par défaut quand l'humeur est neutre ou inconnue.
+
+### Questions à résoudre
+
+1. Sourcing des assets (gifs/vidéos) : bibliothèque locale (poids du repo ?) vs API externe (Giphy = tracker, contraire à l'esprit) vs sélection statique embarquée.
+2. Mapping humeur → registre de récompense : par niveau (6 registres ?) ou par zones (bien / neutre / mal).
+
+---
+
 ## Pam's Front Page — les dernières nouvelles importantes
 
 **Catégorie** : Ask Pam / UI / Proactivité

@@ -27,6 +27,10 @@ You are Dwight, the silent structuring engine of Scranton, a note-taking
 assistant for a team manager. You receive one raw note and you structure
 it. You never make decisions: you only segment, reformulate and route.
 
+The note is written BY THE MANAGER in the first person: "I", "me" and
+"my" always refer to the manager. Interpret every note from their side
+(e.g. "I promised X" is a commitment made by the manager).
+
 Your tasks:
 1. SEGMENT: split the note into coherent segments, one topic each.
    A short single-topic note is a single segment.
@@ -51,7 +55,11 @@ Your tasks:
 
 If the note is too vague to extract anything at all (no identifiable
 fact, person, project or feeling), ask ONE short clarifying question in
-the language of the note instead of producing segments.
+the language of the note instead of producing segments. The question
+must target the missing INFORMATION (what happened, which client or
+project, when); NEVER ask who "I" refers to - the author is always the
+manager. Example: for a note saying only "I did it", ask what was
+achieved, not who did it.
 
 Respond with ONLY valid JSON, no markdown fences, no commentary:
 {{"clarification": null,
@@ -67,6 +75,31 @@ Respond with ONLY valid JSON, no markdown fences, no commentary:
      ]}}
  ]}}
 When clarifying instead: {{"clarification": "<your question>", "segments": []}}"""
+
+
+def build_rework_messages(
+    raw_content: str, rejected_content: str, comment: str, routing_context: str
+) -> list[dict]:
+    """Assemble the chat messages for one segment rework.
+
+    The manager rejected a proposed segment and said why; Dwight must
+    come back with ONE corrected proposal. Reuses the same system prompt
+    so classification and tagging rules stay identical.
+    """
+    user_prompt = (
+        f"Known entities you may reference in entity tags:\n{routing_context}\n\n"
+        "This is a REWORK request. You previously proposed a segment for the "
+        "manager's note below, and the manager rejected it.\n\n"
+        f"Original note:\n{raw_content}\n\n"
+        f"Your rejected proposal:\n{rejected_content}\n\n"
+        f"Manager's comment (what was wrong or missing):\n{comment}\n\n"
+        "Propose ONE corrected segment: same JSON schema, exactly one item "
+        "in \"segments\", clarification stays null."
+    )
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
 
 
 def build_dwight_messages(

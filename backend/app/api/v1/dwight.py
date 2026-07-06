@@ -7,11 +7,21 @@ name: display names live in the character config map only.
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.api.deps import get_dwight_service
-from backend.app.domain.schemas import CaptureResponse, EntryCreate, SegmentOut, SegmentValidation
+from backend.app.domain.schemas import (
+    CaptureResponse,
+    EntryCreate,
+    EntryReply,
+    SegmentOut,
+    SegmentRework,
+    SegmentValidation,
+)
 from backend.app.services.dwight_service import (
     DwightProcessingError,
     DwightService,
+    EntryNotFoundError,
+    EntryNotPendingError,
     SegmentNotFoundError,
+    SegmentNotProposedError,
 )
 
 router = APIRouter(prefix="/dwight", tags=["dwight"])
@@ -34,6 +44,28 @@ def capture_entry(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
 
+@router.post("/entries/{entry_id}/reply", response_model=CaptureResponse)
+def reply_to_clarification(
+    entry_id: int,
+    payload: EntryReply,
+    service: DwightService = Depends(get_dwight_service),
+) -> CaptureResponse:
+    """Answer Dwight's clarifying question on a pending entry.
+
+    The dialogue continues until Dwight can propose segments (another
+    clarification may come back). The answer itself is not persisted:
+    only the raw note and the resulting segments count.
+    """
+    try:
+        return service.reply(entry_id, payload.message)
+    except EntryNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except EntryNotPendingError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except DwightProcessingError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
 @router.post("/segments/{segment_id}/validate", response_model=SegmentOut)
 def validate_segment(
     segment_id: int,
@@ -43,9 +75,31 @@ def validate_segment(
     """Record the manager's decision on one proposed segment.
 
     Validating embeds the segment into Ask Pam's memory; rejecting keeps
-    it out (the row stays in SQLite as an audit trail).
+    it out (the row stays in SQLite as an audit trail). A plain reject
+    is also the 'Forget it' exit of the rework loop.
     """
     try:
         return service.validate_segment(segment_id, payload.status)
     except SegmentNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.post("/segments/{segment_id}/rework", response_model=SegmentOut)
+def rework_segment(
+    segment_id: int,
+    payload: SegmentRework,
+    service: DwightService = Depends(get_dwight_service),
+) -> SegmentOut:
+    """Reject a proposal with a comment and get a corrected replacement.
+
+    The loop runs until the manager validates - or bails out through a
+    plain reject on the validate endpoint ('Forget it').
+    """
+    try:
+        return service.rework(segment_id, payload.comment)
+    except SegmentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except SegmentNotProposedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except DwightProcessingError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))

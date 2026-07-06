@@ -37,6 +37,21 @@ No score of a human being is computed anywhere.
 | POST | `/api/v1/mood/checkins` | `{team_member_id, mood_level, note?}` -> `201`; `404` unknown member; `422` invalid level. |
 | GET | `/api/v1/mood/checkins?member_id=&days=30` | History, oldest first. |
 
+## Integrated into the report flow (M3.6)
+
+The founding idea (owner, 2026-07-06): reporting is tedious but
+mandatory, mood is delicate and optional - a fully separate Pretzel Day
+would be neglected. So at the end of the **first report of the day**
+(all segments decided, no check-in recorded today), a compact check-in
+panel appears inline in the Tell Dwight view, with a **'Rather not
+say'** escape that stores nothing (the prolonged silence is already a
+Meet Toby signal - that is answer enough). The standalone screen
+remains for checking in outside any report.
+
+In the POC (no auth) the inline panel keeps a member selector - the
+manager records on behalf, consistent with the validation stance. With
+V2 auth, each user declares their own mood and the selector disappears.
+
 ## Design decisions
 
 1. **Attributed, not anonymous** (data model decision, May 2026): the
