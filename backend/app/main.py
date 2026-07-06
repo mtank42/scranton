@@ -7,11 +7,12 @@ Interactive docs: http://127.0.0.1:8000/docs
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.app.adapters.llm.factory import build_llm
 from backend.app.adapters.vectorstore.chroma import ChromaStore
-from backend.app.api.v1 import dwight, health, mood, pam, toby
-from backend.app.config import get_settings
+from backend.app.api.v1 import config, dwight, health, mood, pam, toby
+from backend.app.config import REPO_ROOT, get_settings
 from backend.app.db.init_db import init_db
 from backend.app.db.session import build_engine, build_session_factory
 
@@ -54,6 +55,14 @@ def create_app() -> FastAPI:
     app.include_router(pam.router, prefix="/api/v1")
     app.include_router(mood.router, prefix="/api/v1")
     app.include_router(toby.router, prefix="/api/v1")
+    app.include_router(config.router, prefix="/api/v1")
+    # The UI, served by the same process (no build tooling, no second
+    # server). Mounted last: API routes always win over static files.
+    app.mount(
+        "/",
+        StaticFiles(directory=str(REPO_ROOT / "frontend"), html=True),
+        name="frontend",
+    )
     return app
 
 

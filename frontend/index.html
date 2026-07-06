@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scranton</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;700;900&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">SCRANTON<span class="logo-dot">_</span></div>
+    <nav id="nav" class="nav"></nav>
+    <p class="tagline">One smart notepad.<br />Zero bureaucracy.<br />100% team.</p>
+  </aside>
+
+  <main class="main">
+    <!-- Tell Dwight: capture -->
+    <section id="view-dwight" class="view">
+      <header class="view-header">
+        <img id="dwight-avatar" class="avatar" alt="" />
+        <div>
+          <h1 id="dwight-title"></h1>
+          <p class="view-sub">Type anything. Dwight structures it silently; you decide what enters the memory.</p>
+        </div>
+      </header>
+      <form id="dwight-form" class="capture-form">
+        <textarea
+          id="dwight-input"
+          rows="5"
+          placeholder="Messy note, meeting scraps, a promise made in a hallway..."
+          required
+        ></textarea>
+        <div class="form-row">
+          <select id="dwight-source">
+            <option value="note" selected>note</option>
+            <option value="meeting_cr">meeting_cr</option>
+            <option value="chat">chat</option>
+            <option value="transcript">transcript</option>
+          </select>
+          <button type="submit" class="btn btn-primary" id="dwight-submit">Tell Dwight</button>
+        </div>
+      </form>
+      <div id="dwight-result"></div>
+    </section>
+
+    <!-- Ask Pam: memory -->
+    <section id="view-pam" class="view" hidden>
+      <header class="view-header">
+        <img id="pam-avatar" class="avatar" alt="" />
+        <div>
+          <h1 id="pam-title"></h1>
+          <p class="view-sub">Plain-language questions over everything you validated. Grounded answers, sources included.</p>
+        </div>
+      </header>
+      <form id="pam-form" class="capture-form">
+        <div class="form-row">
+          <input
+            id="pam-input"
+            type="text"
+            placeholder="What did we promise to Stone &amp; Son?"
+            required
+          />
+          <button type="submit" class="btn btn-primary" id="pam-submit">Ask Pam</button>
+        </div>
+      </form>
+      <div id="pam-result"></div>
+    </section>
+
+    <!-- Pretzel Day: mood check-in (M3.4) -->
+    <section id="view-mood" class="view" hidden>
+      <header class="view-header">
+        <div class="avatar avatar-palette" aria-hidden="true"></div>
+        <div>
+          <h1>Pretzel Day</h1>
+          <p class="view-sub">The 30-second check-in. Six levels, one optional note.</p>
+        </div>
+      </header>
+      <div id="mood-body" class="placeholder">Coming with M3.4.</div>
+    </section>
+
+    <!-- Meet Toby: team health (M3.4) -->
+    <section id="view-toby" class="view" hidden>
+      <header class="view-header">
+        <img id="toby-avatar" class="avatar" alt="" />
+        <div>
+          <h1 id="toby-title"></h1>
+          <p class="view-sub">Mood trends and weak signals. Facts, never scores.</p>
+        </div>
+      </header>
+      <div id="toby-body" class="placeholder">Coming with M3.4.</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
