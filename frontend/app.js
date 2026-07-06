@@ -34,7 +34,11 @@ function esc(text) {
 }
 
 function show(container, html) {
-  document.getElementById(container).innerHTML = html;
+  const element = document.getElementById(container);
+  // Data containers start life with the centered 'placeholder' style;
+  // real content must not inherit it.
+  element.classList.remove("placeholder");
+  element.innerHTML = html;
 }
 
 /* --- navigation --- */
@@ -42,8 +46,9 @@ function show(container, html) {
 const NAV = [
   { view: "dwight", character: "dwight" },
   { view: "pam", character: "pam" },
-  { view: "mood", character: null, label: "Pretzel Day" },
+  { view: "mood", character: null, label: "Pretzel Day", dot: "" },
   { view: "toby", character: "toby" },
+  { view: "team", character: null, label: "Team", dot: "team" },
 ];
 
 function renderNav() {
@@ -53,7 +58,7 @@ function renderNav() {
     const label = character ? character.display_name : item.label;
     const icon = character
       ? `<img src="assets/${esc(character.avatar_asset)}" alt="" />`
-      : `<span class="nav-dot"></span>`;
+      : `<span class="nav-dot ${item.dot || ""}"></span>`;
     return `<button class="nav-item" data-view="${item.view}">${icon}${esc(label)}</button>`;
   }).join("");
   nav.addEventListener("click", (event) => {
@@ -72,6 +77,7 @@ function switchView(view) {
   // Data views refresh on entry so the picture is never stale.
   if (view === "mood") loadMood();
   if (view === "toby") loadToby();
+  if (view === "team") loadTeam();
 }
 
 function applyCharacterHeaders() {
@@ -158,6 +164,57 @@ function renderSegments(segments) {
   );
 }
 
+/* --- profile suggestions (V1 human profile) --- */
+
+function suggestionCard(suggestion, index) {
+  const birthday = suggestion.birthday
+    ? `<span class="chip profile">birthday: ${esc(suggestion.birthday)}</span>`
+    : "";
+  return `
+    <article class="card profile-suggestion" id="suggestion-${index}">
+      <p class="card-content">For <strong>${esc(suggestion.member_name)}</strong>: ${esc(suggestion.text)}</p>
+      <div class="card-meta">
+        <span class="chip profile">personal - member-owned</span>
+        ${birthday}
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-validate" data-profile-add="${index}">Add to profile</button>
+        <button class="btn btn-ghost" data-profile-dismiss="${index}">Dismiss</button>
+      </div>
+    </article>`;
+}
+
+function renderSuggestions(suggestions) {
+  state.suggestions = suggestions || [];
+  if (!state.suggestions.length) return "";
+  return (
+    `<p class="sources-title">Profile suggestions - their data, your call</p>` +
+    state.suggestions.map(suggestionCard).join("")
+  );
+}
+
+async function addSuggestionToProfile(index) {
+  const suggestion = state.suggestions[index];
+  const members = await api("/team/members");
+  const member = members.find((m) => m.id === suggestion.team_member_id);
+  if (!member) throw new Error("Member not found.");
+  // Append, never overwrite: the profile grows one observed fact at a time.
+  const merged = member.personal_profile
+    ? `${member.personal_profile}\n${suggestion.text}`
+    : suggestion.text;
+  await api(`/team/members/${member.id}/profile`, {
+    method: "PUT",
+    body: JSON.stringify({
+      personal_profile: merged,
+      birthday: suggestion.birthday || member.birthday,
+    }),
+  });
+  const card = document.getElementById(`suggestion-${index}`);
+  card.classList.add("decided");
+  card.querySelector(".card-actions").outerHTML =
+    `<p class="thinking-none">Added to ${esc(suggestion.member_name)}'s profile.</p>`;
+}
+
 async function submitDwight(event) {
   event.preventDefault();
   const input = document.getElementById("dwight-input");
@@ -185,7 +242,10 @@ async function submitDwight(event) {
       );
       bindReplyForm();
     } else {
-      show("dwight-result", renderSegments(result.segments));
+      show(
+        "dwight-result",
+        renderSegments(result.segments) + renderSuggestions(result.profile_suggestions)
+      );
       input.value = "";
     }
   } catch (error) {
@@ -214,7 +274,10 @@ function bindReplyForm() {
         thread.insertAdjacentHTML("beforeend", dwightBubble(result.clarification));
       } else {
         document.getElementById("reply-form").remove();
-        thread.insertAdjacentHTML("afterend", renderSegments(result.segments));
+        thread.insertAdjacentHTML(
+          "afterend",
+          renderSegments(result.segments) + renderSuggestions(result.profile_suggestions)
+        );
       }
     } catch (error) {
       thread.insertAdjacentHTML("beforeend", `<div class="error-banner">${esc(error.message)}</div>`);
@@ -256,7 +319,10 @@ async function reworkSegment(segmentId, comment, button) {
  *   comes only if a mood is actually given ('Rather not say' = none).
  * - Later reports: the reward fires directly. */
 function checkReportComplete() {
-  const undecided = document.querySelectorAll("#dwight-result .card:not(.decided):not(.pretzel-inline)").length;
+  // Profile suggestions are optional extras: they never hold the report open.
+  const undecided = document.querySelectorAll(
+    "#dwight-result .card:not(.decided):not(.pretzel-inline):not(.profile-suggestion)"
+  ).length;
   if (undecided > 0) return;
   maybePretzelThenReward();
 }
@@ -548,6 +614,57 @@ async function loadToby() {
   );
 }
 
+/* --- Team (roster + human profile) --- */
+
+function memberProfileCard(member) {
+  const birthday = member.birthday || "";
+  return `
+    <div class="card member-profile" data-member="${member.id}">
+      <div class="member-head">
+        <strong>${esc(member.full_name)}</strong>
+        <span class="member-role">${esc(member.role || "")}</span>
+      </div>
+      <label class="field-label">Birthday</label>
+      <input type="date" data-birthday value="${birthday}" />
+      <label class="field-label">What they love</label>
+      <textarea rows="3" data-profile
+        placeholder="Interests, passions, favorites - what you would know after three months of truly listening."
+      >${esc(member.personal_profile || "")}</textarea>
+      <div class="card-actions">
+        <button class="btn btn-primary" data-profile-save="${member.id}">Save</button>
+        <span class="thinking-none" data-feedback></span>
+      </div>
+    </div>`;
+}
+
+async function loadTeam() {
+  show("team-body", `<p class="thinking">Loading the roster</p>`);
+  const members = await api("/team/members");
+  show("team-body", members.map(memberProfileCard).join(""));
+  // onclick (not addEventListener): the container survives view switches,
+  // so a cumulative listener would fire once per past visit.
+  document.getElementById("team-body").onclick = async (event) => {
+    const button = event.target.closest("[data-profile-save]");
+    if (!button) return;
+    const card = button.closest(".member-profile");
+    button.disabled = true;
+    try {
+      await api(`/team/members/${button.dataset.profileSave}/profile`, {
+        method: "PUT",
+        body: JSON.stringify({
+          personal_profile: card.querySelector("[data-profile]").value.trim() || null,
+          birthday: card.querySelector("[data-birthday]").value || null,
+        }),
+      });
+      card.querySelector("[data-feedback]").textContent = "Saved.";
+    } catch (error) {
+      card.querySelector("[data-feedback]").textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+}
+
 /* --- boot --- */
 
 async function init() {
@@ -604,6 +721,21 @@ async function init() {
     if (target.matches("[data-pd-skip]")) {
       // Rather not say: nothing stored, no reward - and that is fine.
       document.getElementById("pd-inline").remove();
+      return;
+    }
+    if (target.matches("[data-profile-add]")) {
+      target.disabled = true;
+      try {
+        await addSuggestionToProfile(Number(target.dataset.profileAdd));
+      } catch (error) {
+        target.disabled = false;
+        alert(error.message);
+      }
+      return;
+    }
+    if (target.matches("[data-profile-dismiss]")) {
+      // Dismissed: the suggestion evaporates - it was never stored.
+      document.getElementById(`suggestion-${target.dataset.profileDismiss}`).remove();
     }
   });
 }

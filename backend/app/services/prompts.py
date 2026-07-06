@@ -52,6 +52,15 @@ Your tasks:
 {VIEW_CATALOG}
    - Each tag carries a confidence between 0.0 and 1.0: how sure you are
      that this routing is right.
+5. PROFILE (optional): if the note reveals PERSONAL-LIFE information
+   about a known team member - interests, passions, favorites, tastes,
+   birthday - add a profile suggestion. This is about who they are as a
+   person, never about work or performance. Only for members present in
+   the team_members list. When there is nothing personal: empty array.
+   Set the birthday field ONLY when the note states the full date
+   including the year. NEVER invent a year: for a partial date, keep it
+   in the text (e.g. "Born on February 11") and leave birthday null.
+   Write the suggestion text in the language of the note.
 
 If the note is too vague to extract anything at all (no identifiable
 fact, person, project or feeling), ask ONE short clarifying question in
@@ -73,8 +82,13 @@ Respond with ONLY valid JSON, no markdown fences, no commentary:
          "view_type": "<view name, only when entity_type is view, else null>",
          "confidence": 0.0-1.0}}
      ]}}
+ ],
+ "profile_suggestions": [
+   {{"team_member_id": <int from the team_members list>,
+     "text": "<the personal-life fact, short>",
+     "birthday": "<YYYY-MM-DD when the note gives a birth date, else null>"}}
  ]}}
-When clarifying instead: {{"clarification": "<your question>", "segments": []}}"""
+When clarifying instead: {{"clarification": "<your question>", "segments": [], "profile_suggestions": []}}"""
 
 
 def build_rework_messages(

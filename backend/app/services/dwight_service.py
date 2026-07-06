@@ -196,7 +196,37 @@ class DwightService:
                 entry_id=entry_id,
                 processing_status=entry.processing_status,
                 segments=segments,
+                profile_suggestions=self._resolve_suggestions(
+                    session, proposal, entry.raw_content
+                ),
             )
+
+    @staticmethod
+    def _resolve_suggestions(
+        session: Session, proposal: DwightProposal, raw_content: str
+    ) -> list:
+        """Attach member names to profile suggestions, drop unknown ids.
+
+        Suggestions are transient (never persisted): adding one to a
+        profile is an explicit manager action on the team endpoints.
+        Two guards apply:
+        - Closed world: a suggestion about a member the roster does not
+          know is silently discarded.
+        - No invented years: small models fabricate a birth year when
+          the note only gives a day and month. If the suggested year is
+          not literally present in the raw note, the birthday is
+          dropped (the fact itself survives in the suggestion text).
+        """
+        resolved = []
+        for suggestion in proposal.profile_suggestions:
+            member = session.get(TeamMember, suggestion.team_member_id)
+            if member is None or not member.is_active:
+                continue
+            if suggestion.birthday and str(suggestion.birthday.year) not in raw_content:
+                suggestion.birthday = None
+            suggestion.member_name = member.full_name
+            resolved.append(suggestion)
+        return resolved
 
     # --- rework loop ---
 

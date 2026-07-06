@@ -66,6 +66,19 @@ TEAM = [
     ("Darryl", "Warehouse foreman"),
 ]
 
+# Member-owned data (human profile). Sparse on purpose: profiles grow
+# from real conversations, they are not an HR form to fill.
+PROFILES: dict[str, dict] = {
+    "Kelly": {
+        "birthday": "1990-02-14",
+        "personal_profile": "Loves romantic comedies and celebrity news. Collects lip gloss.",
+    },
+    "Darryl": {
+        "birthday": "1978-10-01",
+        "personal_profile": "Plays keyboard in a band. Chess player. Dreams of running his own business.",
+    },
+}
+
 CLIENTS = ["Lackawanna County Schools", "Stone & Son Suit Warehouse", "Prince Family Paper"]
 
 PROJECTS = [
@@ -170,7 +183,19 @@ def seed(
         if session.query(TeamMember).count() > 0:
             return "Database already has team members: skipping (use --reset to start over)."
 
-        members = {name: TeamMember(full_name=name, role=role) for name, role in TEAM}
+        members = {}
+        for name, role in TEAM:
+            profile = PROFILES.get(name, {})
+            members[name] = TeamMember(
+                full_name=name,
+                role=role,
+                birthday=(
+                    datetime.strptime(profile["birthday"], "%Y-%m-%d").date()
+                    if "birthday" in profile
+                    else None
+                ),
+                personal_profile=profile.get("personal_profile"),
+            )
         clients = {name: Client(name=name) for name in CLIENTS}
         session.add_all([*members.values(), *clients.values()])
         session.flush()

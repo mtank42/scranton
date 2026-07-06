@@ -13,6 +13,7 @@ from backend.app.services.dwight_service import DwightService
 from backend.app.services.ingestion_service import IngestionService
 from backend.app.services.mood_service import MoodService
 from backend.app.services.pam_service import PamService
+from backend.app.services.team_service import TeamService
 from backend.app.services.toby_service import TobyService
 
 
@@ -52,3 +53,8 @@ def get_gdrive_ingestion_service(request: Request) -> IngestionService:
 def get_toby_service(request: Request) -> TobyService:
     """Build a TobyService wired to the app-level session factory."""
     return TobyService(session_factory=request.app.state.session_factory)
+
+
+def get_team_service(request: Request) -> TeamService:
+    """Build a TeamService wired to the app-level session factory."""
+    return TeamService(session_factory=request.app.state.session_factory)

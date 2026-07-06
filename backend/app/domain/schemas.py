@@ -67,15 +67,32 @@ class ProposedSegment(BaseModel):
     tags: list[ProposedTag] = []
 
 
+class ProfileSuggestion(BaseModel):
+    """A personal-life fact Dwight spotted, proposed for a member's profile.
+
+    Consent-preserving by design: suggestions are transient (never
+    persisted as such); the manager explicitly adds them to the profile
+    or dismisses them, exactly like segment validation.
+    """
+
+    team_member_id: int
+    text: str = Field(min_length=1)
+    birthday: date | None = None
+    # Resolved server-side from the roster; the LLM never provides it.
+    member_name: str | None = None
+
+
 class DwightProposal(BaseModel):
     """The full LLM answer: either segments, or one clarifying question.
 
     Exactly one of the two branches is meaningful: a non-null clarification
     means the note was too vague and no segment was produced.
+    profile_suggestions may accompany segments (V1 human profile).
     """
 
     clarification: str | None = None
     segments: list[ProposedSegment] = []
+    profile_suggestions: list[ProfileSuggestion] = []
 
 
 # --- Dwight API surface ---
@@ -123,12 +140,15 @@ class CaptureResponse(BaseModel):
 
     Either clarification is set (vague note, nothing persisted beyond the
     raw entry) or segments carries Dwight's proposal awaiting validation.
+    profile_suggestions are transient: adding one to a profile is an
+    explicit manager action through the team endpoints.
     """
 
     entry_id: int
     processing_status: ProcessingStatus
     clarification: str | None = None
     segments: list[SegmentOut] = []
+    profile_suggestions: list[ProfileSuggestion] = []
 
 
 class SegmentValidation(BaseModel):
@@ -281,6 +301,35 @@ class TobyOverview(BaseModel):
     team_trend: list[TeamTrendPoint]
     members: list[TobyMemberOverview]
     signals: list[TobySignal]
+
+
+# --- Team / human profile API surface ---
+
+
+class MemberOut(BaseModel):
+    """One team member, personal profile included (manager-only POC view)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    role: str | None
+    is_active: bool
+    birthday: date | None
+    personal_profile: str | None
+
+
+class ProfileUpdate(BaseModel):
+    """Request body for PUT /api/v1/team/members/{id}/profile.
+
+    PUT semantics: both fields replace the stored values as given (null
+    clears). The profile belongs to the team member (data ownership
+    split); in the POC the manager records on their behalf, in V2 the
+    member edits it directly.
+    """
+
+    personal_profile: str | None = None
+    birthday: date | None = None
 
 
 # --- Ingestion API surface ---

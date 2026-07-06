@@ -173,6 +173,51 @@ def test_validating_a_missing_segment_fails_cleanly(session_factory):
         service.validate_segment(999, ValidationStatus.VALIDATED)
 
 
+def test_profile_suggestions_are_resolved_and_filtered(session_factory):
+    """Known member: name attached. Unknown member: silently dropped.
+
+    Suggestions are transient (consent-preserving): nothing lands in the
+    profile without an explicit manager action on the team endpoints.
+    """
+    member_id = seed_member(session_factory)
+    proposal = json.dumps(
+        {
+            "clarification": None,
+            "segments": [
+                {
+                    "content": "Kevin was born on February 11 and loves New Order.",
+                    "data_type": "warm",
+                    "sensitivity_level": 3,
+                    "tags": [{"entity_type": "team_member", "entity_id": member_id, "view_type": None, "confidence": 0.9}],
+                }
+            ],
+            "profile_suggestions": [
+                {"team_member_id": member_id, "text": "Fan of New Order.", "birthday": "1985-02-11"},
+                {"team_member_id": 999, "text": "Ghost fact.", "birthday": None},
+            ],
+        }
+    )
+    service, llm, store = make_service(session_factory, [proposal, proposal])
+
+    # The note states the full year: the birthday is trusted.
+    result = capture_note(service, "kevin est ne le 11 fevrier 1985, fan de new order")
+
+    assert len(result.profile_suggestions) == 1
+    suggestion = result.profile_suggestions[0]
+    assert suggestion.member_name == "Kevin"
+    assert suggestion.text == "Fan of New Order."
+    assert str(suggestion.birthday) == "1985-02-11"
+    # The suggestion is NOT persisted anywhere: profile untouched.
+    from backend.app.domain.models import TeamMember
+
+    with session_factory() as session:
+        assert session.get(TeamMember, member_id).personal_profile is None
+
+    # No year in the note: the model invented it, the guard drops it.
+    result = capture_note(service, "kevin est ne le 11 fevrier, fan de new order")
+    assert result.profile_suggestions[0].birthday is None
+
+
 def test_routing_context_lists_known_entities(session_factory):
     """The prompt receives the actual roster, with ids the model may use."""
     member_id = seed_member(session_factory)
