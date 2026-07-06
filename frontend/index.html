@@ -16,6 +16,7 @@
   <aside class="sidebar">
     <div class="logo">SCRANTON<span class="logo-dot">_</span></div>
     <nav id="nav" class="nav"></nav>
+    <div id="mayor-banner" class="mayor-banner" hidden></div>
     <p class="tagline">One smart notepad.<br />Zero bureaucracy.<br />100% team.</p>
   </aside>
 
@@ -109,12 +110,13 @@
     </section>
   </main>
 
-  <!-- That's What She Said: completion reward overlay -->
+  <!-- That's What She Said: completion reward overlay (also hosts the
+       Maire de Scranton celebration, same stage different show) -->
   <div id="twss" hidden>
-    <div class="twss-card">
-      <p class="twss-title">THAT'S WHAT SHE SAID</p>
+    <div class="twss-card" id="twss-card">
+      <p class="twss-title" id="twss-title">THAT'S WHAT SHE SAID</p>
       <p class="twss-quote" id="twss-quote"></p>
-      <p class="twss-sig">- Michael Scott, probably</p>
+      <p class="twss-sig" id="twss-sig">- Michael Scott, probably</p>
     </div>
   </div>
 

@@ -464,6 +464,32 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 
 .member-profile textarea { background: var(--black); }
 
+/* --- Maire de Scranton --- */
+
+.mayor-banner {
+  border: 1px solid var(--purple);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--white);
+}
+
+.mayor-banner .mayor-title {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--purple);
+  margin-bottom: 4px;
+}
+
+.chip.mayor { color: var(--purple); border: 1px solid var(--purple); }
+
+.card.ritual { border-left-color: var(--purple); }
+
+.twss-card.mayor { border-color: var(--purple); }
+.twss-card.mayor .twss-title { color: var(--purple); }
+
 /* --- That's What She Said --- */
 
 #twss {

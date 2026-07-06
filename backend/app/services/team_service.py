@@ -1,18 +1,46 @@
-"""Team roster and the human profile ("what they love").
+"""Team roster, the human profile ("what they love"), and the Maire ritual.
 
 The data ownership split is the whole point of this service: the
 personal profile and the birthday belong to the TEAM MEMBER, not to the
 manager and not to the company. In the POC (single user, no auth) the
 manager records on the member's behalf; in V2 each member edits their
 own profile directly. Nothing here is ever used to score anyone.
+
+Maire de Scranton: on their birthday (day + month - the year does not
+exist here), a member is mayor for 24 hours. The overview is computed
+on read - no scheduler, no state: the POC's answer to the scheduling
+seam (a real notifier can plug in later without touching this logic).
 """
+
+import calendar
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.domain.models import BIRTHDAY_YEAR, TeamMember
-from backend.app.domain.schemas import MemberOut, ProfileUpdate
+from backend.app.domain.schemas import MayorOverview, MemberOut, ProfileUpdate, UpcomingBirthday
 from backend.app.services.mood_service import MemberNotFoundError
+
+# The manager reminder horizon: "the birthday is in N days" (BACKLOG:
+# Pam warns one week ahead so there is time to prepare something).
+REMINDER_WINDOW_DAYS = 7
+
+
+def next_occurrence(birthday: date, today: date) -> date:
+    """The next calendar occurrence of a birthday's day + month.
+
+    February 29 is celebrated on February 28 in non-leap years: a
+    birthday every four years would be the opposite of a ritual.
+    """
+    for year in (today.year, today.year + 1):
+        month, day = birthday.month, birthday.day
+        if month == 2 and day == 29 and not calendar.isleap(year):
+            day = 28
+        candidate = date(year, month, day)
+        if candidate >= today:
+            return candidate
+    raise AssertionError("unreachable: a birthday recurs within two years")
 
 
 class TeamService:
@@ -51,3 +79,31 @@ class TeamService:
             )
             session.commit()
             return MemberOut.model_validate(member)
+
+    def mayor_overview(self, *, today: date | None = None) -> MayorOverview:
+        """Today's Maire de Scranton and the birthdays of the next 7 days.
+
+        today is injectable for tests; production uses the office clock
+        (local date), because a birthday is a calendar day for the
+        people in the room, not a UTC instant.
+        """
+        today = today or date.today()
+        mayor = None
+        upcoming: list[UpcomingBirthday] = []
+        with self.session_factory() as session:
+            members = session.scalars(
+                select(TeamMember)
+                .where(TeamMember.is_active.is_(True), TeamMember.birthday.is_not(None))
+            ).all()
+            for member in members:
+                delta = (next_occurrence(member.birthday, today) - today).days
+                if delta == 0:
+                    mayor = MemberOut.model_validate(member)
+                elif delta <= REMINDER_WINDOW_DAYS:
+                    upcoming.append(
+                        UpcomingBirthday(
+                            member=MemberOut.model_validate(member), in_days=delta
+                        )
+                    )
+        upcoming.sort(key=lambda item: item.in_days)
+        return MayorOverview(mayor=mayor, upcoming=upcoming)

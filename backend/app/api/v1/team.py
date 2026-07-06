@@ -3,11 +3,21 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.api.deps import get_team_service
-from backend.app.domain.schemas import MemberOut, ProfileUpdate
+from backend.app.domain.schemas import MayorOverview, MemberOut, ProfileUpdate
 from backend.app.services.mood_service import MemberNotFoundError
 from backend.app.services.team_service import TeamService
 
 router = APIRouter(prefix="/team", tags=["team"])
+
+
+@router.get("/mayor", response_model=MayorOverview)
+def get_mayor(service: TeamService = Depends(get_team_service)) -> MayorOverview:
+    """Today's Maire de Scranton (if any) and the upcoming birthdays.
+
+    Computed on read: the ritual needs no scheduler in a single-user
+    POC. The manager reminder lives in the upcoming list.
+    """
+    return service.mayor_overview()
 
 
 @router.get("/members", response_model=list[MemberOut])

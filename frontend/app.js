@@ -422,13 +422,77 @@ const TWSS_QUOTES = [
 
 let twssTimer = null;
 
-function twss() {
+function twss(options = {}) {
   const overlay = document.getElementById("twss");
+  document.getElementById("twss-title").textContent =
+    options.title || "THAT'S WHAT SHE SAID";
   document.getElementById("twss-quote").textContent =
-    TWSS_QUOTES[Math.floor(Math.random() * TWSS_QUOTES.length)];
+    options.quote || TWSS_QUOTES[Math.floor(Math.random() * TWSS_QUOTES.length)];
+  document.getElementById("twss-sig").textContent =
+    options.signature || "- Michael Scott, probably";
+  document.getElementById("twss-card").classList.toggle("mayor", Boolean(options.mayor));
   overlay.hidden = false;
   clearTimeout(twssTimer);
-  twssTimer = setTimeout(() => { overlay.hidden = true; }, 3200);
+  twssTimer = setTimeout(() => { overlay.hidden = true; }, options.duration || 3200);
+}
+
+/* --- Maire de Scranton (birthday ritual) --- */
+
+async function loadMayor() {
+  try {
+    state.mayorOverview = await api("/team/mayor");
+  } catch {
+    state.mayorOverview = { mayor: null, upcoming: [] };
+  }
+  const banner = document.getElementById("mayor-banner");
+  const { mayor, upcoming } = state.mayorOverview;
+  if (mayor) {
+    banner.innerHTML =
+      `<span class="mayor-title">MAIRE DE SCRANTON</span>${esc(mayor.full_name)}, today`;
+    banner.hidden = false;
+    // The ritual fires on its own on the day (BACKLOG spec): one
+    // celebration per page load, a beat after the app settles.
+    setTimeout(
+      () =>
+        twss({
+          mayor: true,
+          title: "MAIRE DE SCRANTON",
+          quote: `${mayor.full_name} runs this town today. Their day, their rules.`,
+          signature: "- By order of the Office of the Mayor",
+          duration: 5200,
+        }),
+      900
+    );
+  } else if (upcoming.length) {
+    const next = upcoming[0];
+    banner.innerHTML =
+      `<span class="mayor-title">UPCOMING</span>${esc(next.member.full_name)}'s birthday in ${next.in_days} day${next.in_days > 1 ? "s" : ""}`;
+    banner.hidden = false;
+  } else {
+    banner.hidden = true;
+  }
+}
+
+function ritualCard() {
+  const { mayor, upcoming } = state.mayorOverview || { mayor: null, upcoming: [] };
+  if (!mayor && !upcoming.length) return "";
+  const mayorLine = mayor
+    ? `<p class="card-content"><strong>${esc(mayor.full_name)}</strong> is Maire de Scranton today.</p>`
+    : "";
+  const reminders = upcoming
+    .map((item) => {
+      const inspiration = item.member.personal_profile
+        ? ` They love: ${esc(item.member.personal_profile)}`
+        : "";
+      return `<p class="signal-detail"><strong>${esc(item.member.full_name)}</strong>'s birthday is in ${item.in_days} day${item.in_days > 1 ? "s" : ""}. Want to prepare something with the team?${inspiration}</p>`;
+    })
+    .join("");
+  return `
+    <div class="card ritual">
+      <div class="card-meta"><span class="chip mayor">maire de scranton</span></div>
+      ${mayorLine}
+      ${reminders}
+    </div>`;
 }
 
 /* --- Ask Pam --- */
@@ -639,11 +703,13 @@ function memberProfileCard(member) {
     .concat(MONTHS.map((name, i) =>
       `<option value="${i + 1}" ${Number(month) === i + 1 ? "selected" : ""}>${name}</option>`))
     .join("");
+  const isMayor = state.mayorOverview?.mayor?.id === member.id;
   return `
     <div class="card member-profile" data-member="${member.id}">
       <div class="member-head">
         <strong>${esc(member.full_name)}</strong>
         <span class="member-role">${esc(member.role || "")}</span>
+        ${isMayor ? '<span class="chip mayor">maire today</span>' : ""}
       </div>
       <label class="field-label">Birthday - day and month only, never the year</label>
       <div class="birthday-row">
@@ -664,7 +730,7 @@ function memberProfileCard(member) {
 async function loadTeam() {
   show("team-body", `<p class="thinking">Loading the roster</p>`);
   const members = await api("/team/members");
-  show("team-body", members.map(memberProfileCard).join(""));
+  show("team-body", ritualCard() + members.map(memberProfileCard).join(""));
   // onclick (not addEventListener): the container survives view switches,
   // so a cumulative listener would fire once per past visit.
   document.getElementById("team-body").onclick = async (event) => {
@@ -704,6 +770,7 @@ async function init() {
   renderNav();
   applyCharacterHeaders();
   switchView("dwight");
+  loadMayor();
 
   document.getElementById("dwight-form").addEventListener("submit", submitDwight);
   document.getElementById("pam-form").addEventListener("submit", submitPam);

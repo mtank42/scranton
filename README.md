@@ -29,6 +29,7 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 | **That's What She Said** | Completion reward. A random quote on every validated segment or check-in. |
 | **Google Drive ingestion** | Pull a Drive folder through the same capture pipeline (one-time OAuth setup). |
 | **Human profile** | Member-owned personal profile ("what they love"). Dwight suggests additions from your notes; you decide. |
+| **Maire de Scranton** | On their birthday, a member runs the town for 24 hours. The manager gets a week's notice, interests included. |
 
 ---
 
@@ -49,7 +50,7 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 Pre-alpha. **MLP code-complete (M3)**: the full demo loop runs in the browser — capture and validate with Tell Dwight, query the memory with Ask Pam, daily Pretzel Day check-ins, team trends and weak signals in Meet Toby, a That's What She Said reward on every completion. Seeded Dunder Mifflin dataset with golden anti-regression queries (5/5 against the real provider). Google Drive ingestion is wired and tested on mocks; its end-to-end run needs the one-time OAuth setup ([docs/google_drive_ingestion.md](docs/google_drive_ingestion.md)).
 
-V1 in progress: **human profile shipped** (member-owned data, consent-preserving extraction). Next: Maire de Scranton or Smart Summaries, plus the tuning pass (agent relevance, tone, reward pacing).
+V1 in progress: **human profile** and **Maire de Scranton** shipped. Next: Smart Summaries, plus the tuning pass (agent relevance, tone, reward pacing).
 
 ---
 

@@ -29,6 +29,7 @@ from backend.app.config import get_settings
 from backend.app.db.init_db import init_db
 from backend.app.db.session import build_engine, build_session_factory
 from backend.app.domain.models import (
+    BIRTHDAY_YEAR,
     Client,
     DataType,
     EntityType,
@@ -68,14 +69,16 @@ TEAM = [
 
 # Member-owned data (human profile). Sparse on purpose: profiles grow
 # from real conversations, they are not an HR form to fill. Birthdays
-# are day + month only (year fixed to 2000, never shown - owner rule).
+# are day + month only (year fixed to 2000, never shown - owner rule)
+# and RELATIVE to seed day, like the rest of the dataset: Kelly is
+# Maire de Scranton on demo day, Darryl's reminder shows at J-3.
 PROFILES: dict[str, dict] = {
     "Kelly": {
-        "birthday": "2000-02-14",
+        "birthday_in_days": 0,
         "personal_profile": "Loves romantic comedies and celebrity news. Collects lip gloss.",
     },
     "Darryl": {
-        "birthday": "2000-10-01",
+        "birthday_in_days": 3,
         "personal_profile": "Plays keyboard in a band. Chess player. Dreams of running his own business.",
     },
 }
@@ -187,14 +190,16 @@ def seed(
         members = {}
         for name, role in TEAM:
             profile = PROFILES.get(name, {})
+            birthday = None
+            if "birthday_in_days" in profile:
+                occurrence = (
+                    datetime.now(timezone.utc) + timedelta(days=profile["birthday_in_days"])
+                ).date()
+                birthday = occurrence.replace(year=BIRTHDAY_YEAR)
             members[name] = TeamMember(
                 full_name=name,
                 role=role,
-                birthday=(
-                    datetime.strptime(profile["birthday"], "%Y-%m-%d").date()
-                    if "birthday" in profile
-                    else None
-                ),
+                birthday=birthday,
                 personal_profile=profile.get("personal_profile"),
             )
         clients = {name: Client(name=name) for name in CLIENTS}

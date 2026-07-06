@@ -332,6 +332,26 @@ class ProfileUpdate(BaseModel):
     birthday: date | None = None
 
 
+class UpcomingBirthday(BaseModel):
+    """One birthday inside the reminder window: the Maire-to-be."""
+
+    member: MemberOut
+    in_days: int
+
+
+class MayorOverview(BaseModel):
+    """Response for GET /api/v1/team/mayor.
+
+    mayor is the member whose birthday (day + month) is today: Maire de
+    Scranton for 24 hours. upcoming feeds the manager reminder ('the
+    birthday is in N days - want to prepare something?') with the human
+    profile along for inspiration.
+    """
+
+    mayor: MemberOut | None = None
+    upcoming: list[UpcomingBirthday] = []
+
+
 # --- Ingestion API surface ---
 
 
