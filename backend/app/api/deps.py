@@ -7,7 +7,10 @@ swap any seam through app.dependency_overrides without patching.
 
 from fastapi import Request
 
+from backend.app.adapters.ingestion.factory import build_ingestion_source
+from backend.app.config import get_settings
 from backend.app.services.dwight_service import DwightService
+from backend.app.services.ingestion_service import IngestionService
 from backend.app.services.mood_service import MoodService
 from backend.app.services.pam_service import PamService
 from backend.app.services.toby_service import TobyService
@@ -36,6 +39,14 @@ def get_pam_service(request: Request) -> PamService:
 def get_mood_service(request: Request) -> MoodService:
     """Build a MoodService wired to the app-level session factory."""
     return MoodService(session_factory=request.app.state.session_factory)
+
+
+def get_gdrive_ingestion_service(request: Request) -> IngestionService:
+    """Build the Drive ingestion loop on top of the Dwight pipeline."""
+    return IngestionService(
+        source=build_ingestion_source(get_settings(), kind="gdrive"),
+        dwight=get_dwight_service(request),
+    )
 
 
 def get_toby_service(request: Request) -> TobyService:

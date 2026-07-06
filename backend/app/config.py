@@ -36,6 +36,9 @@ class Settings:
     gemini_api_key: str
     database_url: str
     chroma_dir: str
+    google_client_secrets: str
+    google_token_file: str
+    gdrive_folder_id: str
 
 
 def get_settings() -> Settings:
@@ -53,4 +56,13 @@ def get_settings() -> Settings:
             "DATABASE_URL", f"sqlite:///{REPO_ROOT / 'data' / 'scranton.db'}"
         ),
         chroma_dir=os.getenv("CHROMA_DIR", str(REPO_ROOT / "data" / "chroma")),
+        # Google Drive connector (MLP). Both files live under data/ and are
+        # git-ignored: OAuth material never reaches the repository.
+        google_client_secrets=os.getenv(
+            "GOOGLE_CLIENT_SECRETS", str(REPO_ROOT / "data" / "google_client_secrets.json")
+        ),
+        google_token_file=os.getenv(
+            "GOOGLE_TOKEN_FILE", str(REPO_ROOT / "data" / "google_token.json")
+        ),
+        gdrive_folder_id=os.getenv("GDRIVE_FOLDER_ID", ""),
     )

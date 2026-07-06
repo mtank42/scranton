@@ -26,6 +26,9 @@ venv/
 # ChromaDB local store
 data/chroma/
 
+# Google OAuth material (client secrets + cached token) - never committed
+data/*.json
+
 # macOS
 .DS_Store
 .AppleDouble

@@ -22,9 +22,12 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 | Feature | Description |
 |---|---|
-| **Tell Dwight** | Universal free-text input. Segments, routes, and reformulates notes automatically. |
-| **Ask Pam** | Collective memory. Plain-language queries on your team's entire history. |
+| **Tell Dwight** | Universal free-text input. Segments, routes, and reformulates notes; the manager validates. |
+| **Ask Pam** | Collective memory. Plain-language queries, grounded answers with cited sources. |
 | **Pretzel Day** | 30-second daily mood check-in. 6-level palette from Flow to Danger. |
+| **Meet Toby** | Team health overview: mood trends and weak signals. Facts, never scores. |
+| **That's What She Said** | Completion reward. A random quote on every validated segment or check-in. |
+| **Google Drive ingestion** | Pull a Drive folder through the same capture pipeline (one-time OAuth setup). |
 
 ---
 
@@ -43,9 +46,9 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 ## Status
 
-Pre-alpha. **MVP complete (M2)**: the memory loop is closed. Tell Dwight captures and routes (segments classified cold/warm with sensitivity levels, manager validation as the gate), Ask Pam answers plain-language questions grounded in the validated memory, with cited sources. Verified end to end on the real Mistral API — including honest "I have nothing on that" answers instead of invention.
+Pre-alpha. **MLP code-complete (M3)**: the full demo loop runs in the browser — capture and validate with Tell Dwight, query the memory with Ask Pam, daily Pretzel Day check-ins, team trends and weak signals in Meet Toby, a That's What She Said reward on every completion. Seeded Dunder Mifflin dataset with golden anti-regression queries (5/5 against the real provider). Google Drive ingestion is wired and tested on mocks; its end-to-end run needs the one-time OAuth setup ([docs/google_drive_ingestion.md](docs/google_drive_ingestion.md)).
 
-Next: M3 — the MLP demo threshold (Pretzel Day, Meet Toby v0, That's What She Said, modern UI shell, Google Drive ingestion, seeded demo dataset).
+Next: demo polish, then V1 (human profile, handover, smart summaries).
 
 ---
 

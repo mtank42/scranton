@@ -16,6 +16,9 @@ def make_settings(provider: str) -> Settings:
         gemini_api_key="test-key",
         database_url="sqlite:///:memory:",
         chroma_dir="unused",
+        google_client_secrets="unused",
+        google_token_file="unused",
+        gdrive_folder_id="",
     )
 
 

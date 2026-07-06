@@ -259,3 +259,19 @@ class TobyOverview(BaseModel):
     team_trend: list[TeamTrendPoint]
     members: list[TobyMemberOverview]
     signals: list[TobySignal]
+
+
+# --- Ingestion API surface ---
+
+
+class IngestSummary(BaseModel):
+    """Response for POST /api/v1/ingest/gdrive: what one pull produced.
+
+    entry_ids point at the created entries; their proposed segments
+    await validation in the normal Tell Dwight flow.
+    """
+
+    documents: int = 0
+    entry_ids: list[int] = []
+    clarifications: int = 0
+    failures: int = 0
