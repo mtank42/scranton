@@ -23,8 +23,10 @@ Local-first **FastAPI monolith**, single process, runs on a Mac Mini for the POC
 
 - **SQLite** = structured/relational truth (the 8 tables). Facts, segments, tags, moods.
 - **ChromaDB** (local, persistent) = one vector per segment, for semantic retrieval.
-- **Swappable seams**: `LLMProvider`, `IngestionSource`, `VectorStore`, and a `characters` config map.
+- **Swappable seams**: `LLMProvider`, `IngestionSource`, `VectorStore`, and a `characters` config map (which doubles as the **agent registry**).
 - **Frontend**: HTML/CSS/JS (no framework), talks only to `/api/v1`.
+
+Each service implements one **agent** with a narrow mandate (Dwight structures, Pam remembers, Toby aggregates), all sharing the same memory. The orchestrator is the manager, by design: agents propose, the human validates (see SCRANTON_CONTEXT §1, "Agent architecture — human-orchestrated").
 
 ```
 [ Frontend HTML/CSS/JS ]

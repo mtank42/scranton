@@ -1,4 +1,8 @@
-"""Character configuration map: the IP-safe rebrand seam.
+"""Character configuration map: the agent registry and IP-safe rebrand seam.
+
+Each entry is one of Scranton's specialized agents (Dwight structures,
+Pam remembers, Toby aggregates, ...) - narrow mandate, shared memory,
+orchestrated by the manager (SCRANTON_CONTEXT.md section 1).
 
 Every display name and avatar in the product comes from this map. Routes
 and UI reference character keys only ('dwight', 'pam', ...), never the

@@ -2,7 +2,7 @@
 > Feed this file to Claude Code at the start of every session.
 > Location: `Pre-dev/product/SCRANTON_CONTEXT.md` (moved from repo root, July 2026 — repo cleanup).
 > Product tiering (MVP / MLP / V1 / V2), prioritized backlog and dependencies live in `Pre-dev/product/PRODUCT_ROADMAP.md` — the single source of truth for what gets built and in what order.
-> Last updated: July 2026 — product roadmap session (MVP/MLP defined, provider abstraction decided)
+> Last updated: July 2026 — agentic framing named (human-orchestrated agents, see §1); previously: product roadmap session (MVP/MLP defined, provider abstraction decided)
 
 ---
 
@@ -22,6 +22,13 @@ Inspired by the worst manager on American TV. Built for the best.
 ### Core philosophy
 AI is never visible as a decision-maker. It structures, summarises, detects — silently.
 The manager remains the sole source of every human decision.
+
+### Agent architecture — human-orchestrated (naming settled July 2026)
+The character features (Tell Dwight, Ask Pam, Meet Toby, Send Angela, ...) are **specialized agents**: each has a narrow mandate, and they share one collective memory (SQLite + ChromaDB). Agents interact — Smart Summaries are Dwight + Pam together, Maire de Scranton is Pam triggering That's What She Said. The `characters` config map is, in effect, the agent registry.
+
+**The orchestrator is the manager — deliberately.** Agents propose (segments, routings, answers, reminders); the manager validates. This enters the agentic-orchestration conversation through the anti-surveillance door: *human-orchestrated agents*, never autonomous deciders. It is the north star made architectural.
+
+**Calibration (do not overclaim):** in the POC, each agent is a deterministic LLM pipeline — no tool loops, no planning, no autonomy. Agency grows by tier: clarification dialogue (MVP), proactive reminders (V1: Pam, Maire de Scranton), async batch work (V2: voice capture "in the truck"). Pitch and README must never claim multi-agent autonomy that the code does not have.
 
 ---
 

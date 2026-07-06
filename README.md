@@ -12,6 +12,8 @@ Inspired by the worst manager on American TV. Built for the best.
 
 Scranton captures the human layer that falls between every other tool — informal decisions, weak signals, verbal commitments, team mood. It structures silently, surfaces what matters, and never lets the manager become a bureaucrat.
 
+Under the hood, Scranton is a team of **specialized agents** — Dwight captures and routes, Pam remembers, Toby watches over team health, Angela exports — sharing one memory and **orchestrated by the manager**, never the other way around. Where the market sells autonomous agents that decide for you, Scranton's agents propose and the human validates. Human-orchestrated agency is the product thesis, not a limitation.
+
 The AI is never visible as a decision-maker. The manager remains the sole source of every human decision.
 
 ---
