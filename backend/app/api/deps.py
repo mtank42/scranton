@@ -8,7 +8,9 @@ swap any seam through app.dependency_overrides without patching.
 from fastapi import Request
 
 from backend.app.services.dwight_service import DwightService
+from backend.app.services.mood_service import MoodService
 from backend.app.services.pam_service import PamService
+from backend.app.services.toby_service import TobyService
 
 
 def get_dwight_service(request: Request) -> DwightService:
@@ -29,3 +31,13 @@ def get_pam_service(request: Request) -> PamService:
         session_factory=state.session_factory,
         vector_store=state.vector_store,
     )
+
+
+def get_mood_service(request: Request) -> MoodService:
+    """Build a MoodService wired to the app-level session factory."""
+    return MoodService(session_factory=request.app.state.session_factory)
+
+
+def get_toby_service(request: Request) -> TobyService:
+    """Build a TobyService wired to the app-level session factory."""
+    return TobyService(session_factory=request.app.state.session_factory)

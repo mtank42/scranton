@@ -8,7 +8,7 @@ Three families live here:
   answer fails loudly at the edge instead of corrupting the database.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.app.domain.models import (
     DataType,
     EntityType,
+    MoodLevel,
     ProcessingStatus,
     ProposedBy,
     SourceType,
@@ -174,3 +175,87 @@ class PamAnswer(BaseModel):
 
     answer: str
     sources: list[PamSource] = []
+
+
+# --- Pretzel Day (mood) API surface ---
+
+
+class MoodCheckinCreate(BaseModel):
+    """Request body for POST /api/v1/mood/checkins.
+
+    Attributed by design (no anonymous mode): the trust model is the
+    manager protecting the data, not the tool anonymizing it.
+    """
+
+    team_member_id: int
+    mood_level: MoodLevel
+    note: str | None = None
+
+
+class MoodCheckinOut(BaseModel):
+    """One recorded check-in."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    team_member_id: int
+    mood_level: MoodLevel
+    note: str | None
+    created_at: datetime
+
+
+# --- Meet Toby v0 API surface ---
+
+
+class TeamTrendPoint(BaseModel):
+    """One day of team mood: average palette index across check-ins.
+
+    The average indexes moods, never people (see MOOD_INDEX in models).
+    """
+
+    day: date
+    average_mood_index: float
+    checkins: int
+
+
+class MemberMoodPoint(BaseModel):
+    """One check-in in a member's timeline."""
+
+    at: datetime
+    mood_level: MoodLevel
+
+
+class TobySignal(BaseModel):
+    """One weak signal, stated as a dated fact - no score, no ranking.
+
+    The four v0 signal types were validated with the owner (M3 plan):
+    declining_mood, low_mood, sensitive_warm_segment, no_recent_checkin.
+    """
+
+    type: Literal[
+        "declining_mood", "low_mood", "sensitive_warm_segment", "no_recent_checkin"
+    ]
+    team_member_id: int
+    member_name: str
+    detail: str
+
+
+class TobyMemberOverview(BaseModel):
+    """One member's mood timeline over the window. Facts only."""
+
+    team_member_id: int
+    full_name: str
+    role: str | None
+    latest_mood: MoodLevel | None
+    latest_checkin_at: datetime | None
+    checkins: list[MemberMoodPoint]
+
+
+class TobyOverview(BaseModel):
+    """Response for GET /api/v1/toby/overview: the team health picture."""
+
+    window_days: int
+    generated_at: datetime
+    team_trend: list[TeamTrendPoint]
+    members: list[TobyMemberOverview]
+    signals: list[TobySignal]

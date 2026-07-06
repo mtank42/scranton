@@ -138,6 +138,19 @@ class MoodLevel(str, enum.Enum):
     DANGER = "danger"
 
 
+# Ordinal index of the palette, used to draw trends (5 is flow, 0 is
+# danger). This indexes the MOOD, never the person: Scranton computes no
+# score of any human being (north star, PRODUCT_ROADMAP.md section 1).
+MOOD_INDEX: dict[MoodLevel, int] = {
+    MoodLevel.FLOW: 5,
+    MoodLevel.CTRL: 4,
+    MoodLevel.PRETZEL_DAY: 3,
+    MoodLevel.PRESS: 2,
+    MoodLevel.STUCK: 1,
+    MoodLevel.DANGER: 0,
+}
+
+
 # --- The eight tables ---
 
 
