@@ -73,6 +73,8 @@ body {
 
 .nav-item:hover { background: var(--grey); transform: translateX(2px); }
 .nav-item.active { border-color: var(--yellow); color: var(--white); }
+/* Keyboard focus must stay visible but not read as the active tab. */
+.nav-item:focus-visible { outline: 1px dashed var(--cyan); outline-offset: 2px; }
 .nav-item img, .nav-item .nav-dot {
   width: 28px; height: 28px; border-radius: 50%;
   object-fit: cover; object-position: top;
@@ -279,6 +281,142 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 .source-num { font-family: var(--mono); font-size: 12px; color: var(--yellow); flex-shrink: 0; }
 .source-text { font-size: 14px; color: var(--ltgrey); flex: 1; }
 .source-date { font-family: var(--mono); font-size: 11px; color: var(--midgrey); flex-shrink: 0; }
+
+/* --- Mood palette (Pretzel Day) --- */
+
+/* Each mood class carries its design-system colour as a variable. */
+.mood-flow { --mood: var(--green); }
+.mood-ctrl { --mood: var(--cyan); }
+.mood-pretzel_day { --mood: var(--purple); }
+.mood-press { --mood: var(--yellow); }
+.mood-stuck { --mood: var(--orange); }
+.mood-danger { --mood: var(--red); }
+
+.checkin { display: flex; flex-direction: column; gap: 14px; }
+.checkin select { width: auto; font-family: var(--mono); font-size: 14px; }
+
+.palette { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.mood-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--grey);
+  background: var(--grey);
+  color: var(--ltgrey);
+  font-family: var(--mono);
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.mood-btn:hover { transform: translateY(-2px); }
+.mood-btn.selected { border-color: var(--mood); color: var(--white); }
+
+.mood-swatch {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--mood);
+  flex-shrink: 0;
+}
+
+.chip.mood-flow, .chip.mood-ctrl, .chip.mood-pretzel_day,
+.chip.mood-press, .chip.mood-stuck, .chip.mood-danger { color: var(--mood); }
+
+.thinking-none { font-family: var(--mono); font-size: 13px; color: var(--green); }
+
+/* --- Meet Toby --- */
+
+.signal { border-left-color: var(--yellow); }
+.signal-detail { font-size: 14px; color: var(--ltgrey); margin-top: 8px; }
+.chip.signal-declining_mood { color: var(--orange); }
+.chip.signal-low_mood { color: var(--red); }
+.chip.signal-sensitive_warm_segment { color: var(--purple); }
+.chip.signal-no_recent_checkin { color: var(--midgrey); }
+
+.trend {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 110px;
+  padding: 10px 0 4px;
+  border-bottom: 1px solid var(--grey);
+  margin-bottom: 20px;
+}
+
+.trend-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+
+.trend-bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(to top, var(--purple), var(--cyan));
+  min-height: 6px;
+  transition: filter 0.15s ease;
+}
+.trend-col:hover .trend-bar { filter: brightness(1.3); }
+
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: color-mix(in srgb, var(--grey) 55%, var(--black));
+}
+
+.member-id { width: 180px; display: flex; flex-direction: column; }
+.member-role { font-family: var(--mono); font-size: 11px; color: var(--midgrey); }
+
+.dots { display: flex; gap: 5px; flex: 1; flex-wrap: wrap; }
+.dot {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--mood, var(--grey));
+}
+
+/* --- That's What She Said --- */
+
+#twss {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 10, 10, 0.78);
+  z-index: 50;
+  cursor: pointer;
+}
+
+/* display:grid above would defeat the hidden attribute (UA rule loses
+   to author styles): restate it explicitly. */
+#twss[hidden] { display: none; }
+
+.twss-card {
+  background: var(--black);
+  border: 2px solid var(--yellow);
+  border-radius: 16px;
+  padding: 38px 46px;
+  text-align: center;
+  max-width: 480px;
+  animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+@keyframes pop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.twss-title {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--yellow);
+}
+
+.twss-quote { font-size: 21px; font-weight: 700; line-height: 1.45; margin-top: 14px; }
+
+.twss-sig { font-family: var(--mono); font-size: 12px; color: var(--midgrey); margin-top: 12px; }
 
 /* --- Responsive --- */
 

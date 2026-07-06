@@ -68,6 +68,9 @@ function switchView(view) {
   document.querySelectorAll(".nav-item").forEach((button) => {
     button.classList.toggle("active", button.dataset.view === view);
   });
+  // Data views refresh on entry so the picture is never stale.
+  if (view === "mood") loadMood();
+  if (view === "toby") loadToby();
 }
 
 function applyCharacterHeaders() {
@@ -162,6 +165,194 @@ async function decideSegment(segmentId, decision) {
     body: JSON.stringify({ status: decision }),
   });
   document.getElementById(`segment-${segmentId}`).outerHTML = segmentCard(segment);
+  // Completion moment: a validated segment just entered the memory.
+  if (decision === "validated") twss();
+}
+
+/* --- That's What She Said (completion reward) --- */
+
+/* Original Michael-Scott-flavoured lines, written for this demo - not
+ * verbatim show quotes (IP caution, see PRODUCT_ROADMAP section 8). */
+const TWSS_QUOTES = [
+  "You miss 100% of the notes you don't take. Wayne Gretzky never said that.",
+  "That was so efficient it should be illegal in at least four states.",
+  "Somewhere, a spreadsheet just shed a single tear of joy.",
+  "You are the Springsteen of paperwork. The Boss.",
+  "I would promote you right now, if promotions were mine to give. They are not.",
+  "This is what peak management looks like. Take a mental picture.",
+  "Great managers are made of moments like this. And free pretzels.",
+  "If caring about your team were a crime, you would be in so much trouble.",
+  "The team's memory just got one segment stronger. Beautiful.",
+  "Declared: today is now officially a good day. No takebacks.",
+  "You did not drop the ball. You dunked it.",
+  "World's best boss behaviour detected.",
+  "That note will outlive us all. Legacy: secured.",
+  "Somewhere in Scranton, a bell just rang for you.",
+  "One small click for you, one giant leap for team morale.",
+  "Filed, remembered, never lost. That is the dream.",
+  "You just out-managed 94% of managers. Statistic invented, feeling real.",
+  "Pretzel Day energy. Keep it going.",
+];
+
+let twssTimer = null;
+
+function twss() {
+  const overlay = document.getElementById("twss");
+  document.getElementById("twss-quote").textContent =
+    TWSS_QUOTES[Math.floor(Math.random() * TWSS_QUOTES.length)];
+  overlay.hidden = false;
+  clearTimeout(twssTimer);
+  twssTimer = setTimeout(() => { overlay.hidden = true; }, 3200);
+}
+
+/* --- Pretzel Day (mood check-in) --- */
+
+const MOODS = [
+  { level: "flow", label: "Flow" },
+  { level: "ctrl", label: "Ctrl" },
+  { level: "pretzel_day", label: "Pretzel Day" },
+  { level: "press", label: "Press" },
+  { level: "stuck", label: "Stuck" },
+  { level: "danger", label: "Danger" },
+];
+
+const moodState = { memberId: null, level: null };
+
+async function loadMood() {
+  const overview = await api("/toby/overview?days=1");
+  const members = overview.members;
+  moodState.memberId = members.length ? members[0].team_member_id : null;
+  moodState.level = null;
+  show(
+    "mood-body",
+    `<div class="checkin">
+       <select id="mood-member">
+         ${members
+           .map(
+             (member) =>
+               `<option value="${member.team_member_id}">${esc(member.full_name)}</option>`
+           )
+           .join("")}
+       </select>
+       <div class="palette" id="mood-palette">
+         ${MOODS.map(
+           (mood) =>
+             `<button type="button" class="mood-btn mood-${mood.level}" data-level="${mood.level}">
+                <span class="mood-swatch"></span>${mood.label}
+              </button>`
+         ).join("")}
+       </div>
+       <input id="mood-note" type="text" placeholder="Optional note - one line is plenty" />
+       <div class="form-row">
+         <button class="btn btn-primary" id="mood-submit" disabled>Check in</button>
+         <span id="mood-feedback" class="thinking-none"></span>
+       </div>
+     </div>`
+  );
+  document.getElementById("mood-member").addEventListener("change", (event) => {
+    moodState.memberId = Number(event.target.value);
+  });
+  document.getElementById("mood-palette").addEventListener("click", (event) => {
+    const button = event.target.closest(".mood-btn");
+    if (!button) return;
+    moodState.level = button.dataset.level;
+    document
+      .querySelectorAll(".mood-btn")
+      .forEach((b) => b.classList.toggle("selected", b === button));
+    document.getElementById("mood-submit").disabled = false;
+  });
+  document.getElementById("mood-submit").addEventListener("click", submitMood);
+}
+
+async function submitMood() {
+  const button = document.getElementById("mood-submit");
+  button.disabled = true;
+  try {
+    const note = document.getElementById("mood-note").value.trim();
+    await api("/mood/checkins", {
+      method: "POST",
+      body: JSON.stringify({
+        team_member_id: moodState.memberId,
+        mood_level: moodState.level,
+        note: note || null,
+      }),
+    });
+    document.getElementById("mood-feedback").textContent = "Recorded.";
+    document.getElementById("mood-note").value = "";
+    twss();
+  } catch (error) {
+    document.getElementById("mood-feedback").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/* --- Meet Toby (team health) --- */
+
+function moodChip(level) {
+  return level
+    ? `<span class="chip mood-${level}">${level}</span>`
+    : `<span class="chip">no check-in</span>`;
+}
+
+function signalCard(signal) {
+  return `
+    <div class="card signal">
+      <div class="card-meta">
+        <span class="chip signal-${signal.type}">${signal.type}</span>
+        <strong>${esc(signal.member_name)}</strong>
+      </div>
+      <p class="signal-detail">${esc(signal.detail)}</p>
+    </div>`;
+}
+
+function trendChart(points) {
+  if (!points.length) return `<p class="placeholder">No check-ins in the window yet.</p>`;
+  return `
+    <div class="trend">
+      ${points
+        .map((point) => {
+          const height = Math.max(8, (point.average_mood_index / 5) * 100);
+          return `<div class="trend-col" title="${point.day}: ${point.average_mood_index} (${point.checkins} check-ins)">
+                    <div class="trend-bar" style="height:${height}%"></div>
+                  </div>`;
+        })
+        .join("")}
+    </div>`;
+}
+
+function memberRow(member) {
+  const dots = member.checkins
+    .map(
+      (point) =>
+        `<span class="dot mood-${point.mood_level}" title="${point.at.slice(0, 10)}: ${point.mood_level}"></span>`
+    )
+    .join("");
+  return `
+    <div class="member-row">
+      <div class="member-id">
+        <strong>${esc(member.full_name)}</strong>
+        <span class="member-role">${esc(member.role || "")}</span>
+      </div>
+      <div class="dots">${dots}</div>
+      ${moodChip(member.latest_mood)}
+    </div>`;
+}
+
+async function loadToby() {
+  show("toby-body", `<p class="thinking">Toby is aggregating</p>`);
+  const overview = await api("/toby/overview?days=30");
+  const signals = overview.signals.length
+    ? overview.signals.map(signalCard).join("")
+    : `<p class="placeholder">No weak signal in the window. Good.</p>`;
+  show(
+    "toby-body",
+    `<p class="sources-title">Weak signals</p>${signals}
+     <p class="sources-title">Team mood - last ${overview.window_days} days</p>
+     ${trendChart(overview.team_trend)}
+     <p class="sources-title">Members</p>
+     ${overview.members.map(memberRow).join("")}`
+  );
 }
 
 /* --- Ask Pam --- */
@@ -210,6 +401,9 @@ async function init() {
 
   document.getElementById("dwight-form").addEventListener("submit", submitDwight);
   document.getElementById("pam-form").addEventListener("submit", submitPam);
+  document.getElementById("twss").addEventListener("click", (event) => {
+    event.currentTarget.hidden = true;
+  });
   document.getElementById("dwight-result").addEventListener("click", async (event) => {
     const button = event.target.closest("[data-segment]");
     if (!button) return;
