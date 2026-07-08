@@ -11,6 +11,7 @@ from backend.app.adapters.ingestion.factory import build_ingestion_source
 from backend.app.config import get_settings
 from backend.app.services.angela_service import AngelaService
 from backend.app.services.dwight_service import DwightService
+from backend.app.services.handover_service import HandoverService
 from backend.app.services.ingestion_service import IngestionService
 from backend.app.services.mood_service import MoodService
 from backend.app.services.pam_service import PamService
@@ -71,3 +72,8 @@ def get_summary_service(request: Request) -> SummaryService:
 def get_angela_service(request: Request) -> AngelaService:
     """Build an AngelaService on top of the summary engine."""
     return AngelaService(summary_service=get_summary_service(request))
+
+
+def get_handover_service(request: Request) -> HandoverService:
+    """Build a HandoverService wired to the app-level session factory."""
+    return HandoverService(session_factory=request.app.state.session_factory)

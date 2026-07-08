@@ -821,6 +821,9 @@ function memberProfileCard(member) {
       >${esc(member.personal_profile || "")}</textarea>
       <div class="card-actions">
         <button class="btn btn-primary" data-profile-save="${member.id}">Save</button>
+        <a class="btn btn-ghost" href="${API}/handover/${member.id}/export?format=html"
+           target="_blank" rel="noopener"
+           title="Printable handover fiche - review state, all observations shown">Transfer to Philly</a>
         <span class="thinking-none" data-feedback></span>
       </div>
     </div>`;

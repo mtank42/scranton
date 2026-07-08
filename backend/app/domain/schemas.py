@@ -417,6 +417,55 @@ class SummaryResponse(BaseModel):
     sources: list[PamSource]
 
 
+# --- Transfer to Philly (handover) API surface ---
+
+# The portable contract identity. Case 2 (V2) makes two Scranton
+# instances exchange this document, so its shape is a promise: bump the
+# version ONLY with a migration note in docs/transfer_to_philly.md.
+HANDOVER_SCHEMA = "scranton.handover.member"
+HANDOVER_SCHEMA_VERSION = 1
+
+
+class HandoverItem(BaseModel):
+    """One VERBATIM validated segment inside a handover dossier.
+
+    Verbatim on purpose: a GDPR consent artifact carries the exact
+    validated text, never a model paraphrase.
+    """
+
+    segment_id: int
+    content: str
+    data_type: DataType
+    sensitivity_level: int
+    created_at: datetime
+    # Human-readable routing labels (entity names, view names), resolved
+    # at generation time: context for the receiving manager.
+    topics: list[str] = []
+
+
+class HandoverDossier(BaseModel):
+    """The portable handover document (Transfer to Philly, case 1).
+
+    Cold data is transmissible a priori; warm data is the manager's
+    explicit selection, sensitivity-sorted for review. The member-owned
+    human profile and the mood history are NEVER part of a handover:
+    they belong to the member, who discloses to whom they choose.
+    """
+
+    schema_id: str = HANDOVER_SCHEMA
+    schema_version: int = HANDOVER_SCHEMA_VERSION
+    generated_at: datetime
+    member_id: int
+    member_name: str
+    member_role: str | None
+    cold: list[HandoverItem]
+    warm: list[HandoverItem]
+    # Transparency for the receiving side: how many warm observations
+    # the outgoing manager chose NOT to transmit. The count travels,
+    # the content never does.
+    excluded_warm_count: int = 0
+
+
 # --- Ingestion API surface ---
 
 
