@@ -120,9 +120,9 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 
 ---
 
-## 5. Data model — validated May 2026
+## 5. Data model — validated May 2026 (+ handover session July 2026)
 
-### SQLite tables (8)
+### SQLite tables (9)
 
 | Table | Role |
 |---|---|
@@ -134,6 +134,7 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 | `projects` | Project entities, optionally linked to a client. |
 | `stakeholders` | Partners, subcontractors, investors, institutional contacts, secondary client contacts. |
 | `mood_checkins` | Pretzel Day daily check-ins. Attributed (not anonymous). |
+| `handover_validations` | Transfer to Philly consent trail (dedicated session, 2026-07-08). One record per handover: status, frozen selection, typed signatures, fiche hash. |
 
 ### Key fields
 
@@ -168,6 +169,13 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 **`mood_checkins`**
 - `mood_level` — flow / ctrl / pretzel_day / press / stuck / danger
 - `note` — nullable free text
+
+**`handover_validations`** (session 2026-07-08 — full rationale in `docs/transfer_to_philly.md`)
+- `status` — proposed / employee_reviewed / both_validated / sent, strictly forward
+- `disclosed_warm_ids` — JSON text; the selection, mutable only while proposed
+- `fiche_sha256` — hash of the markdown fiche, frozen at signature
+- `manager_signature_name` + `manager_signed_at`, `member_signature_name` + `member_signed_at` — typed name + timestamp per party
+- `created_at` / `reviewed_at` / `validated_at` / `sent_at` — one timestamp per transition
 
 ### View types (10)
 

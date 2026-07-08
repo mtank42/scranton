@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.app.domain.models import (
     DataType,
     EntityType,
+    HandoverStatus,
     MoodLevel,
     ProcessingStatus,
     ProposedBy,
@@ -464,6 +465,57 @@ class HandoverDossier(BaseModel):
     # the outgoing manager chose NOT to transmit. The count travels,
     # the content never does.
     excluded_warm_count: int = 0
+
+
+class HandoverValidationCreate(BaseModel):
+    """Request body for POST /api/v1/handover/{member_id}/validations.
+
+    The default is an empty selection on purpose: nothing warm is
+    disclosed unless the manager explicitly selects it.
+    """
+
+    disclosed_warm_ids: list[int] = []
+
+
+class HandoverSelectionUpdate(BaseModel):
+    """Request body for PUT /api/v1/handover/validations/{id}/selection."""
+
+    disclosed_warm_ids: list[int]
+
+
+class HandoverSignatures(BaseModel):
+    """Request body for POST /api/v1/handover/validations/{id}/sign.
+
+    Typed name + server timestamp is the POC signature level (owner
+    decision, 2026-07-08); a content hash per signature is the case 2
+    upgrade. Both names arrive together because in the POC the two
+    parties sign side by side, on the manager's screen.
+    """
+
+    manager_name: str = Field(min_length=1, max_length=120)
+    member_name: str = Field(min_length=1, max_length=120)
+
+
+class HandoverValidationOut(BaseModel):
+    """One handover consent record: the audit trail of who agreed to what.
+
+    disclosed_warm_ids is the selection under consent; fiche_sha256 is
+    the integrity anchor of the signed artifact (set at signature time).
+    """
+
+    id: int
+    team_member_id: int
+    status: HandoverStatus
+    disclosed_warm_ids: list[int]
+    fiche_sha256: str | None
+    manager_signature_name: str | None
+    manager_signed_at: datetime | None
+    member_signature_name: str | None
+    member_signed_at: datetime | None
+    created_at: datetime
+    reviewed_at: datetime | None
+    validated_at: datetime | None
+    sent_at: datetime | None
 
 
 # --- Ingestion API surface ---

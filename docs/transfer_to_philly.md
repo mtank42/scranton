@@ -1,8 +1,8 @@
-# Transfer to Philly — handover, case 1 core (V1.5)
+# Transfer to Philly — handover, case 1 (V1.5 core + V1.6 consent trail)
 
 > Component doc, per the project QA standard: one .md per component.
 > Code: `backend/app/services/handover_service.py`, `backend/app/adapters/export/handover.py`, `backend/app/api/v1/handover.py`.
-> Status: the **core** ships (dossier, selective disclosure, portable contract, signable fiche). The validation **traceability** (`handover_validations` table) awaits a dedicated data model session — full proposal at the end of this doc.
+> Status: **complete for case 1.** The core (dossier, selective disclosure, portable contract, signable fiche) shipped in V1.5; the validation traceability (`handover_validations` table) was decided in the dedicated data model session of 2026-07-08 and shipped in V1.6.
 
 ## What it does
 
@@ -23,7 +23,17 @@ handover dossier — the GDPR differentiator of the product:
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/api/v1/handover/{member_id}?include_warm=` | The portable dossier (JSON). Absent param = review state (all warm shown). `404` unknown member. |
-| GET | `/api/v1/handover/{member_id}/export?format=md\|html&include_warm=` | The printable, signable fiche as a download. `422` on unknown format or malformed selection. |
+| GET | `/api/v1/handover/{member_id}/export?format=md\|html&include_warm=` | The printable fiche as a download — unsigned review material. `422` on unknown format or malformed selection. |
+| GET | `/api/v1/handover/{member_id}/validations` | Every consent record for the member, newest first. |
+| POST | `/api/v1/handover/{member_id}/validations` | Open a handover (`proposed`). Body: `{disclosed_warm_ids: []}`. `409` if one is already open, `422` on a non-disclosable id. |
+| PUT | `/api/v1/handover/validations/{id}/selection` | Rework the selection — only while `proposed` (`409` after). |
+| POST | `/api/v1/handover/validations/{id}/review` | `proposed` → `employee_reviewed`. |
+| POST | `/api/v1/handover/validations/{id}/sign` | `employee_reviewed` → `both_validated`. Body: both typed names. Freezes `fiche_sha256`. |
+| POST | `/api/v1/handover/validations/{id}/send` | `both_validated` → `sent`. Explicit manager action, never a download side effect. |
+| GET | `/api/v1/handover/validations/{id}/export?format=md\|html` | The **signed** artifact (frozen selection, typed signatures). `409` before signature. Byte-stable for `md`: hashing the download reproduces `fiche_sha256`. |
+
+Consent-trail error contract: not-found is `404`, a move the state
+machine forbids is `409`, a bad selection is `422`.
 
 `include_warm` is ONE comma-separated param, deliberately: a repeated
 param cannot express an empty list on the wire (it just vanishes), so
@@ -44,53 +54,53 @@ string param the three states stay distinct: absent → review; `''` or
    Case 2 (V2) makes two Scranton instances exchange this document;
    its shape is a promise. Bump the version only with a migration note
    here.
-4. **Paper-level validation for now**: the printed fiche ends with a
-   two-party signature block (outgoing manager + team member). This is
-   a deliberate placeholder until `handover_validations` exists — not
-   the final audit trail.
-5. **UI is one link** on each Team card ("Transfer to Philly", opens
-   the printable review-state fiche). The full review → select →
-   confirm flow arrives with the validation workflow (see below).
+4. **The consent trail is the validation** (since V1.6): the
+   `handover_validations` table records who agreed to what, when. The
+   fiche of a signed handover carries the typed signatures; the
+   unsigned review export keeps blank paper lines.
+5. **UI is the full workflow** on each Team card ("Transfer to Philly"
+   opens the panel): review the warm observations → select → preview
+   the fiche → "reviewed together" → both parties sign with typed
+   names → download the signed fiche → "mark as transmitted".
 
-## The data model session — dossier for the owner
+## The consent trail — decided 2026-07-08 (data model session)
 
-Everything below touches the frozen data model and therefore waits for
-an explicit session. Decisions to bring:
-
-### `handover_validations` (proposed shape)
+### `handover_validations` (the ninth table)
 
 | Column | Purpose |
 |---|---|
 | `id` | PK |
 | `team_member_id` | FK — who the handover is about |
-| `status` | `proposed` → `employee_reviewed` → `both_validated` → `sent` |
-| `disclosed_warm_ids` | the frozen selection (JSON text) |
+| `status` | `proposed` → `employee_reviewed` → `both_validated` → `sent`, strictly forward |
+| `disclosed_warm_ids` | the selection (JSON text). `'[]'` means "disclose nothing" |
+| `fiche_sha256` | SHA-256 of the markdown fiche, frozen at signature time |
+| `manager_signature_name`, `manager_signed_at` | typed name + timestamp |
+| `member_signature_name`, `member_signed_at` | typed name + timestamp (separate columns so V2 can split the signing act) |
 | `created_at`, `reviewed_at`, `validated_at`, `sent_at` | one timestamp per state transition |
-| `manager_signature`, `member_signature` | see question 1 |
 
-Adding the table is cheap once decided: `init_db` uses `create_all`,
-which creates missing tables without touching existing ones — no
-migration tooling needed.
+The table was added through `create_all` (idempotent, creates missing
+tables only) — no migration tooling, as planned.
 
-### Questions to decide
+### The three decisions (owner, 2026-07-08)
 
-1. **Signatures or boolean?** A boolean is trivial; typed name +
-   timestamp is a reasonable POC middle ground; a content hash is the
-   strong version. Recommendation: typed name + timestamp now, hash
-   with case 2.
-2. **Snapshot or re-derivation?** Segments can change after validation
-   (rework, new captures), but a handover is a point-in-time consent.
-   Recommendation: freeze `disclosed_warm_ids` + a SHA-256 of the
-   rendered fiche at `both_validated`; the fiche file itself is the
-   artifact both parties signed.
-3. **Who triggers `sent`?** Angela delivering (export downloaded) or an
-   explicit manager action? Recommendation: explicit action — a
-   download is not a transmission.
-4. **Case 2 constraints (V2, decide nothing now)**: batch fiches per
-   member, the outgoing manager's right to purge their own warm data
-   (soft-delete with `deleted_by_manager_at`, never physical), and the
-   ChromaDB export subset. The versioned contract above is the early
-   insurance; nothing in it forecloses these.
+1. **Signatures: typed name + timestamp.** The POC middle ground; a
+   per-signature content hash is the case 2 upgrade.
+2. **Snapshot, not re-derivation.** A handover is a point-in-time
+   consent: `disclosed_warm_ids` stops moving once the member reviews
+   it (stricter than the minimum, so nothing changes under a signature),
+   and `fiche_sha256` freezes at `both_validated`. The signed fiche is
+   re-rendered byte-identically (`generated_at` pinned to
+   `validated_at`); if the underlying segments were edited since, the
+   bytes diverge and the hash exposes it — tamper evidence, by design.
+3. **`sent` is an explicit manager action.** A download is a
+   verification; a transmission is a decision. The export endpoints
+   never mutate state.
+
+**Case 2 constraints (V2, still open, nothing decided)**: batch fiches
+per member, the outgoing manager's right to purge their own warm data
+(soft-delete with `deleted_by_manager_at`, never physical), the
+ChromaDB export subset, per-signature content hashes. The versioned
+contract is the early insurance; nothing shipped forecloses these.
 
 ## Testing
 
@@ -98,4 +108,8 @@ migration tooling needed.
 sensitivity sort, member-owned data never leaks (asserted on the JSON
 dump), selective disclosure with withheld count, disclose-nothing on
 the wire, verbatim + signature block in markdown, HTML escaping, and
-the endpoint error contract.
+the endpoint error contract. For the consent trail: the happy path,
+strictly-forward transitions, selection frozen at review, selection
+vetting (cold/foreign/ghost ids refused), one open handover per member,
+byte-stable signed fiche whose hash matches `fiche_sha256`, and the
+download-is-not-a-transmission guarantee.

@@ -821,12 +821,180 @@ function memberProfileCard(member) {
       >${esc(member.personal_profile || "")}</textarea>
       <div class="card-actions">
         <button class="btn btn-primary" data-profile-save="${member.id}">Save</button>
-        <a class="btn btn-ghost" href="${API}/handover/${member.id}/export?format=html"
-           target="_blank" rel="noopener"
-           title="Printable handover fiche - review state, all observations shown">Transfer to Philly</a>
+        <button class="btn btn-ghost" data-handover-open
+           title="Handover workflow: review, select, sign, transmit">Transfer to Philly</button>
         <span class="thinking-none" data-feedback></span>
       </div>
+      <div class="handover-panel" data-handover-panel hidden></div>
     </div>`;
+}
+
+/* --- Transfer to Philly: the consent workflow (V1.6) ---
+ *
+ * One panel per member card, drawn from two calls: the review dossier
+ * (all warm observations shown) and the consent records. The strictly
+ * forward state machine lives server-side; the panel only renders the
+ * current stage and offers its one legal move. */
+
+const HANDOVER_STAGES = {
+  proposed: "Selection open - review the fiche together, then confirm.",
+  employee_reviewed: "Selection frozen - both parties sign with a typed name.",
+  both_validated: "Signed - download the fiche, transmit when YOU decide.",
+};
+
+function selectedWarmIds(panel) {
+  return Array.from(panel.querySelectorAll("[data-ho-warm]:checked")).map((box) =>
+    Number(box.value)
+  );
+}
+
+function warmChecklist(dossier, selected, editable) {
+  if (!dossier.warm.length) {
+    return `<p class="ho-note">No warm observations in the memory for this member.</p>`;
+  }
+  return dossier.warm
+    .map(
+      (item) => `
+      <label class="ho-warm">
+        <input type="checkbox" value="${item.segment_id}" data-ho-warm
+          ${selected.has(item.segment_id) ? "checked" : ""} ${editable ? "" : "disabled"} />
+        <span>${sensitivityDots(item.sensitivity_level)} ${esc(item.content)}</span>
+      </label>`
+    )
+    .join("");
+}
+
+function handoverDownloads(validation) {
+  const base = `${API}/handover/validations/${validation.id}/export?format=`;
+  return `
+    <a class="btn btn-validate" href="${base}md" download>signed fiche - .md</a>
+    <a class="btn btn-ghost" href="${base}html" download>printable .html</a>`;
+}
+
+function handoverPanelHtml(dossier, open, latest) {
+  const intro = `<p class="ho-note">${dossier.cold.length} cold fact(s) travel whole.
+    Warm observations travel only if you select them: the rest becomes a count,
+    never content.</p>`;
+
+  if (!open) {
+    const history = latest
+      ? `<p class="ho-note"><span class="chip">sent</span>
+           Last handover transmitted ${new Date(latest.sent_at).toLocaleString()}.</p>
+         <div class="card-actions">${handoverDownloads(latest)}</div>`
+      : "";
+    return `
+      ${history}${intro}
+      ${warmChecklist(dossier, new Set(), true)}
+      <div class="card-actions">
+        <button class="btn btn-primary" data-ho-action="start">Start handover</button>
+      </div>`;
+  }
+
+  const stage = `<p class="ho-note"><span class="chip">${esc(open.status)}</span>
+    ${esc(HANDOVER_STAGES[open.status] || "")}</p>`;
+  const selected = new Set(open.disclosed_warm_ids);
+
+  if (open.status === "proposed") {
+    const preview =
+      `${API}/handover/${open.team_member_id}/export?format=html` +
+      `&include_warm=${open.disclosed_warm_ids.join(",") || "none"}`;
+    return `
+      ${stage}${intro}
+      ${warmChecklist(dossier, selected, true)}
+      <div class="card-actions">
+        <button class="btn btn-primary" data-ho-action="save-selection" data-ho-id="${open.id}">Save selection</button>
+        <a class="btn btn-ghost" href="${preview}" target="_blank" rel="noopener">Preview fiche</a>
+        <button class="btn btn-validate" data-ho-action="review" data-ho-id="${open.id}">Reviewed together</button>
+      </div>`;
+  }
+
+  if (open.status === "employee_reviewed") {
+    return `
+      ${stage}
+      ${warmChecklist(dossier, selected, false)}
+      <div class="form-row">
+        <input type="text" placeholder="Outgoing manager - typed name" data-ho-manager-name />
+        <input type="text" placeholder="Team member - typed name" data-ho-member-name />
+      </div>
+      <div class="card-actions">
+        <button class="btn btn-primary" data-ho-action="sign" data-ho-id="${open.id}">Sign both</button>
+      </div>`;
+  }
+
+  // both_validated: downloads plus the one decision left, transmission.
+  return `
+    ${stage}
+    <p class="ho-note">Signed by ${esc(open.manager_signature_name)} and
+      ${esc(open.member_signature_name)} on ${new Date(open.validated_at).toLocaleString()}.
+      Fiche integrity: <code class="ho-hash" title="${esc(open.fiche_sha256 || "")}">
+      ${esc((open.fiche_sha256 || "").slice(0, 16))}&hellip;</code></p>
+    <div class="card-actions">
+      ${handoverDownloads(open)}
+      <button class="btn btn-primary" data-ho-action="send" data-ho-id="${open.id}">Mark as transmitted</button>
+    </div>`;
+}
+
+async function renderHandoverPanel(memberId, panel) {
+  panel.innerHTML = `<p class="thinking">Assembling the handover</p>`;
+  try {
+    const [dossier, validations] = await Promise.all([
+      api(`/handover/${memberId}`),
+      api(`/handover/${memberId}/validations`),
+    ]);
+    const open = validations.find((v) => v.status !== "sent") || null;
+    panel.innerHTML = handoverPanelHtml(dossier, open, validations[0] || null);
+  } catch (error) {
+    panel.innerHTML = `<div class="error-banner">${esc(error.message)}</div>`;
+  }
+}
+
+async function handleHandoverClick(button) {
+  const card = button.closest(".member-profile");
+  const memberId = Number(card.dataset.member);
+  const panel = card.querySelector("[data-handover-panel]");
+
+  if (button.hasAttribute("data-handover-open")) {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) await renderHandoverPanel(memberId, panel);
+    return;
+  }
+
+  const action = button.dataset.hoAction;
+  const id = button.dataset.hoId;
+  button.disabled = true;
+  try {
+    if (action === "start") {
+      await api(`/handover/${memberId}/validations`, {
+        method: "POST",
+        body: JSON.stringify({ disclosed_warm_ids: selectedWarmIds(panel) }),
+      });
+    } else if (action === "save-selection") {
+      await api(`/handover/validations/${id}/selection`, {
+        method: "PUT",
+        body: JSON.stringify({ disclosed_warm_ids: selectedWarmIds(panel) }),
+      });
+    } else if (action === "review") {
+      await api(`/handover/validations/${id}/review`, { method: "POST" });
+    } else if (action === "sign") {
+      const managerName = panel.querySelector("[data-ho-manager-name]").value.trim();
+      const memberName = panel.querySelector("[data-ho-member-name]").value.trim();
+      if (!managerName || !memberName) {
+        alert("Both typed names are required to sign.");
+        return;
+      }
+      await api(`/handover/validations/${id}/sign`, {
+        method: "POST",
+        body: JSON.stringify({ manager_name: managerName, member_name: memberName }),
+      });
+    } else if (action === "send") {
+      await api(`/handover/validations/${id}/send`, { method: "POST" });
+    }
+    await renderHandoverPanel(memberId, panel);
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function loadTeam() {
@@ -836,6 +1004,13 @@ async function loadTeam() {
   // onclick (not addEventListener): the container survives view switches,
   // so a cumulative listener would fire once per past visit.
   document.getElementById("team-body").onclick = async (event) => {
+    const handoverButton = event.target.closest(
+      "[data-handover-open], [data-ho-action]"
+    );
+    if (handoverButton) {
+      await handleHandoverClick(handoverButton);
+      return;
+    }
     const button = event.target.closest("[data-profile-save]");
     if (!button) return;
     const card = button.closest(".member-profile");

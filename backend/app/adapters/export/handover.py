@@ -9,7 +9,11 @@ though: zero dependencies, markdown + standalone printable HTML.
 from html import escape
 
 from backend.app.adapters.export.base import ExportFile, slugify
-from backend.app.domain.schemas import HandoverDossier, HandoverItem
+from backend.app.domain.schemas import (
+    HandoverDossier,
+    HandoverItem,
+    HandoverValidationOut,
+)
 
 SIGNATURE_NOTE = (
     "Both parties reviewed this document together. The employee saw every "
@@ -56,7 +60,35 @@ def _item_line(item: HandoverItem) -> str:
     )
 
 
-def render_markdown(dossier: HandoverDossier) -> ExportFile:
+def _signed(validation: HandoverValidationOut | None) -> bool:
+    """Whether the fiche carries typed signatures instead of blank lines."""
+    return validation is not None and validation.validated_at is not None
+
+
+def _md_signature_lines(validation: HandoverValidationOut | None) -> list[str]:
+    """Blank paper lines before signature, typed names + timestamps after.
+
+    The hash itself is never rendered into the fiche (it hashes the
+    fiche, so it cannot be part of it); it lives in the consent record.
+    """
+    if not _signed(validation):
+        return [
+            "Outgoing manager: ______________________  date: __________",
+            "",
+            "Team member:      ______________________  date: __________",
+        ]
+    return [
+        f"Outgoing manager: {validation.manager_signature_name}  "
+        f"signed: {validation.manager_signed_at:%Y-%m-%d %H:%M} UTC",
+        "",
+        f"Team member:      {validation.member_signature_name}  "
+        f"signed: {validation.member_signed_at:%Y-%m-%d %H:%M} UTC",
+    ]
+
+
+def render_markdown(
+    dossier: HandoverDossier, validation: HandoverValidationOut | None = None
+) -> ExportFile:
     """The fiche as .md: two blocks, withheld count, signature block."""
     withheld = (
         [
@@ -88,9 +120,7 @@ def render_markdown(dossier: HandoverDossier) -> ExportFile:
         "",
         SIGNATURE_NOTE,
         "",
-        "Outgoing manager: ______________________  date: __________",
-        "",
-        "Team member:      ______________________  date: __________",
+        *_md_signature_lines(validation),
         "",
     ]
     return ExportFile(
@@ -110,7 +140,26 @@ def _item_html(item: HandoverItem) -> str:
     )
 
 
-def render_html(dossier: HandoverDossier) -> ExportFile:
+def _html_signature_lines(validation: HandoverValidationOut | None) -> str:
+    """The two sign-line spans, blank or carrying the typed signatures."""
+    if not _signed(validation):
+        return (
+            '<span class="sign-line">Outgoing manager - date</span>'
+            '<span class="sign-line">Team member - date</span>'
+        )
+    return (
+        f'<span class="sign-line">Outgoing manager - '
+        f"{escape(validation.manager_signature_name)} - "
+        f"signed {validation.manager_signed_at:%Y-%m-%d %H:%M} UTC</span>"
+        f'<span class="sign-line">Team member - '
+        f"{escape(validation.member_signature_name)} - "
+        f"signed {validation.member_signed_at:%Y-%m-%d %H:%M} UTC</span>"
+    )
+
+
+def render_html(
+    dossier: HandoverDossier, validation: HandoverValidationOut | None = None
+) -> ExportFile:
     """The fiche as a standalone printable page, everything escaped."""
     cold = "".join(_item_html(item) for item in dossier.cold) or (
         '<p class="withheld">Nothing recorded.</p>'
@@ -137,8 +186,7 @@ def render_html(dossier: HandoverDossier) -> ExportFile:
         f"<h2>Warm data (manager observations - disclosed selection)</h2>{warm}"
         f"{withheld}"
         f'<div class="signatures"><p>{escape(SIGNATURE_NOTE)}</p>'
-        '<span class="sign-line">Outgoing manager - date</span>'
-        '<span class="sign-line">Team member - date</span></div>'
+        f"{_html_signature_lines(validation)}</div>"
         "</body></html>"
     )
     return ExportFile(

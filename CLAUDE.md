@@ -21,7 +21,7 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 
 1. **Never write code without an explicit "go".** Surface options first.
 2. **Never modify the validated data model** (`SCRANTON_CONTEXT.md` §5:
-   8 tables) without a dedicated session. Mapping it to the ORM is fine;
+   9 tables) without a dedicated session. Mapping it to the ORM is fine;
    adding/renaming fields is not.
 3. **Honor the seams** - never hardcode a provider, a data source, a
    vector store, or a character name/avatar. Each lives behind an
@@ -53,6 +53,12 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 - **Transfer to Philly is verbatim and LLM-free.** A GDPR artifact
   carries exact validated segments. The member-owned profile and mood
   history are NEVER in a handover.
+- **A handover is a point-in-time consent.** `handover_validations`
+  moves strictly forward (proposed -> employee_reviewed ->
+  both_validated -> sent); the selection freezes at review, the fiche
+  SHA-256 at signature, and `sent` is an explicit manager action - a
+  download never transmits. The signed export re-renders byte-identical
+  bytes (generated_at pinned to validated_at): keep it deterministic.
 - **People are never scored** (the north star). `MOOD_INDEX` indexes the
   mood, never the person. Team-level averages are fine; ranking or rating
   a human is off-thesis. Toby signals and the annual-review template are
@@ -128,21 +134,19 @@ Dock launcher (must stay in the repo).
 
 ## Current state (July 2026)
 
-MVP + MLP shipped; V1 nearly complete: **human profile**, **Maire de
-Scranton**, **Smart Summaries**, **Send Angela**, and the **Transfer to
-Philly core** (dossier + selective disclosure + signable fiche) are done
-and pushed. Remaining:
+MVP + MLP shipped; **V1 feature-complete**: **human profile**, **Maire
+de Scranton**, **Smart Summaries**, **Send Angela**, and **Transfer to
+Philly** (dossier + selective disclosure + signable fiche + the
+`handover_validations` consent trail, data model session held
+2026-07-08) are done and pushed. Remaining:
 
-1. **`handover_validations` data model session** with the owner - the
-   only V1 piece left, blocked on schema decisions. Dossier ready in
-   `docs/transfer_to_philly.md`.
-2. **Tuning pass (assigned to Opus/owner, not to be re-litigated here)**:
+1. **Tuning pass (assigned to Opus/owner, not to be re-litigated here)**:
    agent relevance is weak, tone too neutral, the TWSS window is too
    short to read, and summary answer-language isn't always honored. This
    is a deliberate later pass, not a set of per-feature bugs.
-3. **GDrive end-to-end run**: wired and tested on mocks, needs the
+2. **GDrive end-to-end run**: wired and tested on mocks, needs the
    owner's one-time OAuth setup (`docs/google_drive_ingestion.md`).
-4. Backlog candidates: Pam's Front Page, mood-adaptive TWSS, festive
+3. Backlog candidates: Pam's Front Page, mood-adaptive TWSS, festive
    Maire (owner wants "plus festif" - custom background or similar),
    and the Pretzel Day icon the owner will provide.
 

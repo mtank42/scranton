@@ -4,6 +4,7 @@ Everything here is deterministic - no scripted LLM anywhere, because
 the handover pipeline has no LLM by design (verbatim GDPR artifact).
 """
 
+import hashlib
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -15,6 +16,7 @@ from backend.app.domain.models import (
     EntityType,
     Entry,
     EntrySegment,
+    HandoverStatus,
     MoodCheckin,
     MoodLevel,
     ProposedBy,
@@ -23,7 +25,13 @@ from backend.app.domain.models import (
     TeamMember,
     ValidationStatus,
 )
-from backend.app.services.handover_service import HandoverService
+from backend.app.services.handover_service import (
+    ActiveHandoverExistsError,
+    HandoverNotFoundError,
+    HandoverService,
+    InvalidSelectionError,
+    InvalidTransitionError,
+)
 from backend.app.services.mood_service import MemberNotFoundError
 
 
@@ -184,6 +192,210 @@ def test_html_fiche_escapes_everything(session_factory):
     assert "&lt;Dubreuil&gt;" in html
     assert "<Dubreuil>" not in html.split("</style>")[1]
     assert 'class="sign-line"' in html
+
+
+def test_consent_trail_happy_path(session_factory):
+    """create -> review -> sign -> send, one timestamp per transition."""
+    ids = seed_handover_case(session_factory)
+    service = HandoverService(session_factory)
+
+    record = service.create_validation(
+        ids["kevin"], disclosed_warm_ids=[ids["warm_mild"]]
+    )
+    assert record.status is HandoverStatus.PROPOSED
+    assert record.disclosed_warm_ids == [ids["warm_mild"]]
+    assert record.fiche_sha256 is None
+
+    record = service.mark_reviewed(record.id)
+    assert record.status is HandoverStatus.EMPLOYEE_REVIEWED
+    assert record.reviewed_at is not None
+
+    record = service.sign(
+        record.id, manager_name="Michael Scott", member_name="Kevin"
+    )
+    assert record.status is HandoverStatus.BOTH_VALIDATED
+    assert record.manager_signature_name == "Michael Scott"
+    assert record.member_signature_name == "Kevin"
+    assert record.manager_signed_at is not None
+    assert record.member_signed_at is not None
+    assert record.validated_at is not None
+    assert record.fiche_sha256 is not None and len(record.fiche_sha256) == 64
+
+    record = service.mark_sent(record.id)
+    assert record.status is HandoverStatus.SENT
+    assert record.sent_at is not None
+
+
+def test_signed_fiche_is_byte_stable_and_matches_the_hash(session_factory):
+    """The download reproduces the signed bytes; hashing it verifies them."""
+    ids = seed_handover_case(session_factory)
+    service = HandoverService(session_factory)
+    record = service.create_validation(
+        ids["kevin"], disclosed_warm_ids=[ids["warm_mild"]]
+    )
+    service.mark_reviewed(record.id)
+    record = service.sign(record.id, manager_name="Michael Scott", member_name="Kevin")
+
+    first = service.signed_fiche(record.id, format_key="md")
+    second = service.signed_fiche(record.id, format_key="md")
+    assert first.content == second.content
+    assert hashlib.sha256(first.content).hexdigest() == record.fiche_sha256
+
+    text = first.content.decode()
+    assert "Michael Scott" in text  # typed signature, not a blank line
+    assert "______" not in text
+    assert "Prefers working alone in the morning." in text  # frozen selection
+    assert "Mentioned a job interview elsewhere." not in text  # withheld
+    assert "2 observation(s) withheld" in text
+    # The printable variant carries the signatures too.
+    assert "Michael Scott" in service.signed_fiche(record.id, format_key="html").content.decode()
+    # Downloading is a verification, never a transmission.
+    assert service.validations(ids["kevin"])[0].status is HandoverStatus.BOTH_VALIDATED
+
+
+def test_transitions_are_strictly_forward(session_factory):
+    """No skipping, no repeating, no fiche before signature."""
+    ids = seed_handover_case(session_factory)
+    service = HandoverService(session_factory)
+    record = service.create_validation(ids["kevin"], disclosed_warm_ids=[])
+
+    with pytest.raises(InvalidTransitionError):
+        service.sign(record.id, manager_name="M", member_name="K")  # skips review
+    with pytest.raises(InvalidTransitionError):
+        service.mark_sent(record.id)  # skips two states
+    with pytest.raises(InvalidTransitionError):
+        service.signed_fiche(record.id, format_key="md")  # nothing signed yet
+
+    service.mark_reviewed(record.id)
+    with pytest.raises(InvalidTransitionError):
+        service.mark_reviewed(record.id)  # no state repeats
+
+    with pytest.raises(HandoverNotFoundError):
+        service.mark_reviewed(9999)
+
+
+def test_selection_freezes_once_reviewed(session_factory):
+    """Mutable while proposed, frozen from employee_reviewed on."""
+    ids = seed_handover_case(session_factory)
+    service = HandoverService(session_factory)
+    record = service.create_validation(ids["kevin"], disclosed_warm_ids=[])
+
+    record = service.update_selection(
+        record.id, disclosed_warm_ids=[ids["warm_high"], ids["warm_mild"]]
+    )
+    assert record.disclosed_warm_ids == sorted([ids["warm_mild"], ids["warm_high"]])
+
+    service.mark_reviewed(record.id)
+    with pytest.raises(InvalidTransitionError):
+        service.update_selection(record.id, disclosed_warm_ids=[])
+
+
+def test_selection_only_accepts_disclosable_warm_segments(session_factory):
+    """Cold ids, foreign ids and ghost members are all refused."""
+    ids = seed_handover_case(session_factory)
+    service = HandoverService(session_factory)
+
+    with pytest.raises(InvalidSelectionError):
+        service.create_validation(ids["kevin"], disclosed_warm_ids=[ids["cold"]])
+    with pytest.raises(InvalidSelectionError):
+        service.create_validation(ids["kevin"], disclosed_warm_ids=[99999])
+    with pytest.raises(MemberNotFoundError):
+        service.create_validation(999, disclosed_warm_ids=[])
+
+
+def test_one_open_handover_per_member(session_factory):
+    """A second consent thread would make 'what was agreed' ambiguous."""
+    ids = seed_handover_case(session_factory)
+    service = HandoverService(session_factory)
+    record = service.create_validation(ids["kevin"], disclosed_warm_ids=[])
+
+    with pytest.raises(ActiveHandoverExistsError):
+        service.create_validation(ids["kevin"], disclosed_warm_ids=[])
+
+    # A sent handover closes the thread: a new one may open.
+    service.mark_reviewed(record.id)
+    service.sign(record.id, manager_name="Michael Scott", member_name="Kevin")
+    service.mark_sent(record.id)
+    second = service.create_validation(ids["kevin"], disclosed_warm_ids=[])
+    assert second.id != record.id
+    assert [v.id for v in service.validations(ids["kevin"])] == [second.id, record.id]
+
+
+def test_consent_trail_endpoints(app, client):
+    """The full workflow on the wire, plus the error contract."""
+    ids = seed_handover_case(app.state.session_factory)
+    kevin = ids["kevin"]
+
+    created = client.post(
+        f"/api/v1/handover/{kevin}/validations",
+        json={"disclosed_warm_ids": [ids["warm_mild"]]},
+    )
+    assert created.status_code == 200
+    vid = created.json()["id"]
+    assert created.json()["status"] == "proposed"
+
+    # One open handover per member.
+    assert client.post(f"/api/v1/handover/{kevin}/validations", json={}).status_code == 409
+
+    updated = client.put(
+        f"/api/v1/handover/validations/{vid}/selection",
+        json={"disclosed_warm_ids": [ids["warm_mid"], ids["warm_mild"]]},
+    )
+    assert updated.json()["disclosed_warm_ids"] == sorted(
+        [ids["warm_mild"], ids["warm_mid"]]
+    )
+    assert (
+        client.put(
+            f"/api/v1/handover/validations/{vid}/selection",
+            json={"disclosed_warm_ids": [ids["cold"]]},
+        ).status_code
+        == 422
+    )
+
+    # Nothing signable or downloadable before its state.
+    assert client.get(f"/api/v1/handover/validations/{vid}/export").status_code == 409
+    assert (
+        client.post(
+            f"/api/v1/handover/validations/{vid}/sign",
+            json={"manager_name": "Michael Scott", "member_name": "Kevin"},
+        ).status_code
+        == 409
+    )
+
+    assert client.post(f"/api/v1/handover/validations/{vid}/review").status_code == 200
+    signed = client.post(
+        f"/api/v1/handover/validations/{vid}/sign",
+        json={"manager_name": "Michael Scott", "member_name": "Kevin"},
+    )
+    assert signed.status_code == 200
+    digest = signed.json()["fiche_sha256"]
+
+    export = client.get(
+        f"/api/v1/handover/validations/{vid}/export", params={"format": "md"}
+    )
+    assert export.status_code == 200
+    assert "attachment" in export.headers["content-disposition"]
+    assert hashlib.sha256(export.content).hexdigest() == digest
+    assert "Michael Scott" in export.text
+
+    # The download did NOT transmit anything: send is an explicit action.
+    listing = client.get(f"/api/v1/handover/{kevin}/validations")
+    assert listing.json()[0]["status"] == "both_validated"
+    assert client.post(f"/api/v1/handover/validations/{vid}/send").status_code == 200
+    assert (
+        client.get(f"/api/v1/handover/{kevin}/validations").json()[0]["status"]
+        == "sent"
+    )
+
+    # Error contract leftovers.
+    assert client.get("/api/v1/handover/999/validations").status_code == 404
+    assert client.post("/api/v1/handover/validations/999/review").status_code == 404
+    assert (
+        client.get(
+            f"/api/v1/handover/validations/{vid}/export", params={"format": "pdf"}
+        ).status_code
+        == 422
+    )
 
 
 def test_handover_endpoints(app, client):

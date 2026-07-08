@@ -1,36 +1,72 @@
-"""Transfer to Philly, case 1: the handover dossier for one member.
+"""Transfer to Philly, case 1: the handover dossier and its consent trail.
 
 Deterministic on purpose - NO LLM anywhere in this pipeline. A GDPR
 consent artifact must carry the exact validated segments, verbatim,
 never a model paraphrase. The service has no LLM seam and no vector
 store: the dossier is relational truth only.
 
-What ships now is the core: generation, selective disclosure, the
-portable contract, the printable signable fiche. The validation
-TRACEABILITY (the handover_validations table) requires a dedicated
-data model session with the owner: the full proposal awaits in
-docs/transfer_to_philly.md. Until then, the printed fiche carries a
-two-party signature block - paper-level validation, deliberately.
+Two halves live here:
+- the dossier: generation, selective disclosure, the portable contract;
+- the consent trail (handover_validations, data model session
+  2026-07-08): a strictly forward state machine, proposed ->
+  employee_reviewed -> both_validated -> sent. The selection freezes
+  when the member reviews it; a SHA-256 of the rendered markdown fiche
+  freezes at signature time. Re-rendering the signed fiche later and
+  comparing hashes is the tamper evidence: if the underlying segments
+  changed since, the bytes (and the hash) no longer match.
 """
 
+import hashlib
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.app.adapters.export.base import ExportFile
+from backend.app.adapters.export.handover import HANDOVER_RENDERERS
 from backend.app.domain.models import (
     Client,
     DataType,
     EntityType,
     EntrySegment,
+    HandoverStatus,
+    HandoverValidation,
     Project,
     SegmentTag,
     Stakeholder,
     TeamMember,
     ValidationStatus,
 )
-from backend.app.domain.schemas import HandoverDossier, HandoverItem
+from backend.app.domain.schemas import (
+    HandoverDossier,
+    HandoverItem,
+    HandoverValidationOut,
+)
 from backend.app.services.mood_service import MemberNotFoundError
+
+
+class HandoverNotFoundError(LookupError):
+    """No handover validation record with that id."""
+
+
+class InvalidTransitionError(RuntimeError):
+    """The consent record cannot reach that state from where it stands."""
+
+
+class InvalidSelectionError(ValueError):
+    """The disclosure selection names segments that are not disclosable."""
+
+
+class ActiveHandoverExistsError(RuntimeError):
+    """The member already has an open (not yet sent) handover."""
+
+# The only legal moves of the consent state machine, strictly forward.
+NEXT_STATUS = {
+    HandoverStatus.PROPOSED: HandoverStatus.EMPLOYEE_REVIEWED,
+    HandoverStatus.EMPLOYEE_REVIEWED: HandoverStatus.BOTH_VALIDATED,
+    HandoverStatus.BOTH_VALIDATED: HandoverStatus.SENT,
+}
 
 # Entity tag -> table, for resolving human-readable topic labels.
 ENTITY_TABLES = {
@@ -154,3 +190,233 @@ class HandoverService:
                 if label:
                     topics.append(f"{tag.entity_type.value}: {label}")
         return topics
+
+    # --- The consent trail (handover_validations) ---
+
+    def validations(self, member_id: int) -> list[HandoverValidationOut]:
+        """Every consent record for one member, newest first."""
+        with self.session_factory() as session:
+            if session.get(TeamMember, member_id) is None:
+                raise MemberNotFoundError(f"No team member with id {member_id}.")
+            records = session.scalars(
+                select(HandoverValidation)
+                .where(HandoverValidation.team_member_id == member_id)
+                .order_by(
+                    HandoverValidation.created_at.desc(),
+                    HandoverValidation.id.desc(),
+                )
+            ).all()
+            return [self._out(record) for record in records]
+
+    def create_validation(
+        self, member_id: int, *, disclosed_warm_ids: list[int]
+    ) -> HandoverValidationOut:
+        """Open a handover: status PROPOSED, selection still mutable.
+
+        One open handover per member: a second consent thread about the
+        same person would make 'what was agreed' ambiguous. Batch fiches
+        are a case 2 (V2) topic, explicitly deferred.
+        """
+        ids = self._checked_selection(member_id, disclosed_warm_ids)
+        with self.session_factory() as session:
+            open_record = session.scalars(
+                select(HandoverValidation).where(
+                    HandoverValidation.team_member_id == member_id,
+                    HandoverValidation.status != HandoverStatus.SENT,
+                )
+            ).first()
+            if open_record is not None:
+                raise ActiveHandoverExistsError(
+                    f"Handover {open_record.id} is still open "
+                    f"({open_record.status.value}): finish or send it first."
+                )
+            record = HandoverValidation(
+                team_member_id=member_id, disclosed_warm_ids=json.dumps(ids)
+            )
+            session.add(record)
+            session.commit()
+            session.refresh(record)
+            return self._out(record)
+
+    def update_selection(
+        self, validation_id: int, *, disclosed_warm_ids: list[int]
+    ) -> HandoverValidationOut:
+        """Change the selection - only while PROPOSED.
+
+        Frozen from EMPLOYEE_REVIEWED on: the member reviewed THIS exact
+        selection, so it cannot change under their upcoming signature.
+        """
+        with self.session_factory() as session:
+            record = self._get(session, validation_id)
+            if record.status is not HandoverStatus.PROPOSED:
+                raise InvalidTransitionError(
+                    "The selection is frozen once the member reviewed it "
+                    f"(handover {validation_id} is {record.status.value})."
+                )
+            member_id = record.team_member_id
+        ids = self._checked_selection(member_id, disclosed_warm_ids)
+        with self.session_factory() as session:
+            record = self._get(session, validation_id)
+            record.disclosed_warm_ids = json.dumps(ids)
+            session.commit()
+            session.refresh(record)
+            return self._out(record)
+
+    def mark_reviewed(self, validation_id: int) -> HandoverValidationOut:
+        """PROPOSED -> EMPLOYEE_REVIEWED: the member saw this exact selection."""
+        with self.session_factory() as session:
+            record = self._advance(session, validation_id, HandoverStatus.PROPOSED)
+            record.reviewed_at = datetime.now(timezone.utc)
+            session.commit()
+            session.refresh(record)
+            return self._out(record)
+
+    def sign(
+        self, validation_id: int, *, manager_name: str, member_name: str
+    ) -> HandoverValidationOut:
+        """EMPLOYEE_REVIEWED -> BOTH_VALIDATED: typed signatures, frozen hash.
+
+        The SHA-256 covers the markdown fiche (the canonical artifact);
+        signed_fiche() re-renders those exact bytes, so anyone can verify
+        a downloaded fiche against the stored hash later.
+        """
+        # Read pass: state check + everything the renderer needs. The
+        # fiche is rendered OUTSIDE any open session (dossier() opens its
+        # own), then one single commit writes signatures + hash together.
+        with self.session_factory() as session:
+            record = self._get(session, validation_id)
+            if record.status is not HandoverStatus.EMPLOYEE_REVIEWED:
+                raise InvalidTransitionError(
+                    f"Handover {validation_id} is {record.status.value}, "
+                    "not employee_reviewed: cannot sign."
+                )
+            current = self._out(record)
+        now = datetime.now(timezone.utc)
+        signed_view = current.model_copy(
+            update={
+                "status": HandoverStatus.BOTH_VALIDATED,
+                "manager_signature_name": manager_name,
+                "manager_signed_at": now,
+                "member_signature_name": member_name,
+                "member_signed_at": now,
+                "validated_at": now,
+            }
+        )
+        digest = hashlib.sha256(self._render_fiche(signed_view, "md").content).hexdigest()
+        with self.session_factory() as session:
+            record = self._advance(
+                session, validation_id, HandoverStatus.EMPLOYEE_REVIEWED
+            )
+            record.manager_signature_name = manager_name
+            record.manager_signed_at = now
+            record.member_signature_name = member_name
+            record.member_signed_at = now
+            record.validated_at = now
+            record.fiche_sha256 = digest
+            session.commit()
+            session.refresh(record)
+            return self._out(record)
+
+    def mark_sent(self, validation_id: int) -> HandoverValidationOut:
+        """BOTH_VALIDATED -> SENT: an explicit manager action, always.
+
+        Never triggered by a download (owner decision, 2026-07-08): a
+        download is a verification, a transmission is a decision.
+        """
+        with self.session_factory() as session:
+            record = self._advance(
+                session, validation_id, HandoverStatus.BOTH_VALIDATED
+            )
+            record.sent_at = datetime.now(timezone.utc)
+            session.commit()
+            session.refresh(record)
+            return self._out(record)
+
+    def signed_fiche(self, validation_id: int, *, format_key: str) -> ExportFile:
+        """The signed artifact for download. Reads state, never changes it."""
+        with self.session_factory() as session:
+            record = self._get(session, validation_id)
+            if record.status not in (
+                HandoverStatus.BOTH_VALIDATED,
+                HandoverStatus.SENT,
+            ):
+                raise InvalidTransitionError(
+                    f"No signed fiche yet: handover {validation_id} is "
+                    f"{record.status.value}."
+                )
+            out = self._out(record)
+        return self._render_fiche(out, format_key)
+
+    def _render_fiche(
+        self, out: HandoverValidationOut, format_key: str
+    ) -> ExportFile:
+        """Render the frozen artifact from a consent view.
+
+        generated_at is pinned to validated_at, so every render after
+        signature reproduces the signed bytes exactly - that is what
+        makes the stored SHA-256 verifiable. If the underlying segments
+        were edited since, the bytes diverge and the hash exposes it.
+        """
+        dossier = self.dossier(
+            out.team_member_id, include_warm=out.disclosed_warm_ids
+        )
+        dossier = dossier.model_copy(update={"generated_at": out.validated_at})
+        return HANDOVER_RENDERERS[format_key](dossier, out)
+
+    def _checked_selection(self, member_id: int, ids: list[int]) -> list[int]:
+        """Normalize and vet a disclosure selection.
+
+        Every id must be a disclosable warm segment of THIS member: a
+        consent record must never reference something the member could
+        not have reviewed. Raises MemberNotFoundError for ghosts.
+        """
+        wanted = sorted(set(ids))
+        disclosable = {item.segment_id for item in self.dossier(member_id).warm}
+        unknown = [wid for wid in wanted if wid not in disclosable]
+        if unknown:
+            raise InvalidSelectionError(
+                f"Not disclosable warm segments of member {member_id}: {unknown}."
+            )
+        return wanted
+
+    def _advance(
+        self, session: Session, validation_id: int, expected: HandoverStatus
+    ) -> HandoverValidation:
+        """Guarded forward move: records advance one state at a time."""
+        record = self._get(session, validation_id)
+        if record.status is not expected:
+            raise InvalidTransitionError(
+                f"Handover {validation_id} is {record.status.value}, not "
+                f"{expected.value}: cannot move to {NEXT_STATUS[expected].value}."
+            )
+        record.status = NEXT_STATUS[expected]
+        return record
+
+    @staticmethod
+    def _get(session: Session, validation_id: int) -> HandoverValidation:
+        """One consent record or a clean 404-grade error."""
+        record = session.get(HandoverValidation, validation_id)
+        if record is None:
+            raise HandoverNotFoundError(
+                f"No handover validation with id {validation_id}."
+            )
+        return record
+
+    @staticmethod
+    def _out(record: HandoverValidation) -> HandoverValidationOut:
+        """ORM row -> API view, with the JSON selection decoded."""
+        return HandoverValidationOut(
+            id=record.id,
+            team_member_id=record.team_member_id,
+            status=record.status,
+            disclosed_warm_ids=json.loads(record.disclosed_warm_ids),
+            fiche_sha256=record.fiche_sha256,
+            manager_signature_name=record.manager_signature_name,
+            manager_signed_at=record.manager_signed_at,
+            member_signature_name=record.member_signature_name,
+            member_signed_at=record.member_signed_at,
+            created_at=record.created_at,
+            reviewed_at=record.reviewed_at,
+            validated_at=record.validated_at,
+            sent_at=record.sent_at,
+        )

@@ -1,8 +1,9 @@
 """SQLAlchemy ORM mapping of the validated Scranton data model.
 
-These eight tables are a direct mapping of the data model validated in
-May 2026 (SCRANTON_CONTEXT.md section 5). The model is frozen: do not
-add, remove or rename fields without a dedicated session with the owner.
+These nine tables are a direct mapping of the data model validated in
+May 2026 (SCRANTON_CONTEXT.md section 5; handover_validations added in
+the dedicated July 2026 session). The model is frozen: do not add,
+remove or rename fields without a dedicated session with the owner.
 
 Two design principles are baked into the schema and must survive here:
 - Raw entries are immutable: only segments are processed and routed.
@@ -135,6 +136,21 @@ class RelationshipType(str, enum.Enum):
     INSTITUTIONAL = "institutional"
 
 
+class HandoverStatus(str, enum.Enum):
+    """Lifecycle of a handover consent record (Transfer to Philly, V1).
+
+    Strictly forward, no shortcuts: proposed -> employee_reviewed ->
+    both_validated -> sent. Each transition is an explicit human action;
+    in particular SENT is a manager decision, never a side effect of a
+    download (owner decision, 2026-07-08).
+    """
+
+    PROPOSED = "proposed"
+    EMPLOYEE_REVIEWED = "employee_reviewed"
+    BOTH_VALIDATED = "both_validated"
+    SENT = "sent"
+
+
 class MoodLevel(str, enum.Enum):
     """The six-level Pretzel Day palette, from flow to danger."""
 
@@ -159,11 +175,11 @@ MOOD_INDEX: dict[MoodLevel, int] = {
 }
 
 
-# --- The eight tables ---
+# --- The nine tables ---
 
 
 class Base(DeclarativeBase):
-    """Declarative base shared by the eight tables."""
+    """Declarative base shared by the nine tables."""
 
 
 class TeamMember(Base):
@@ -303,6 +319,44 @@ class Stakeholder(Base):
     name: Mapped[str] = mapped_column(String(200))
     relationship_type: Mapped[RelationshipType] = mapped_column(as_db_enum(RelationshipType))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class HandoverValidation(Base):
+    """The consent trail of one handover (data model session, 2026-07-08).
+
+    A handover is a point-in-time consent, so the record freezes what was
+    agreed: the disclosed selection stops moving once the member reviewed
+    it, and a SHA-256 of the rendered fiche is captured at signature time.
+    Later segment edits can therefore never silently alter what both
+    parties signed - a mismatching hash is the tamper evidence.
+    """
+
+    __tablename__ = "handover_validations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    team_member_id: Mapped[int] = mapped_column(ForeignKey("team_members.id"))
+    status: Mapped[HandoverStatus] = mapped_column(
+        as_db_enum(HandoverStatus), default=HandoverStatus.PROPOSED
+    )
+    # JSON list of warm segment ids (e.g. '[3, 7]'). '[]' is meaningful:
+    # disclose nothing. Mutable only while PROPOSED - the member reviews
+    # THIS selection, so it cannot change under their signature.
+    disclosed_warm_ids: Mapped[str] = mapped_column(Text, default="[]")
+    # SHA-256 of the markdown fiche rendered at signature time: the
+    # integrity anchor of the artifact both parties signed.
+    fiche_sha256: Mapped[str | None] = mapped_column(String(64))
+    # Typed name + timestamp per party: the POC signature level (owner
+    # decision, 2026-07-08). A per-signature content hash is the case 2
+    # upgrade. Two timestamps because V2 lets each party sign separately.
+    manager_signature_name: Mapped[str | None] = mapped_column(String(120))
+    manager_signed_at: Mapped[datetime | None]
+    member_signature_name: Mapped[str | None] = mapped_column(String(120))
+    member_signed_at: Mapped[datetime | None]
+    # One timestamp per state transition.
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    reviewed_at: Mapped[datetime | None]
+    validated_at: Mapped[datetime | None]
+    sent_at: Mapped[datetime | None]
 
 
 class MoodCheckin(Base):
