@@ -1,7 +1,46 @@
 # Scranton — Backlog
 > Features identifiées avant le go, hors roadmap POC initiale.
 > Chaque entrée inclut : description, scope suggéré, et questions à résoudre pour le data model.
-> Last updated: July 2026 — ajout "Pam's Front Page" (feedback démo MLP)
+> Last updated: 2026-07-09 — ajout "Dwight propose de nouvelles entités" + "Écran de revue des ingestions" (test GDrive réel avec le owner)
+
+---
+
+## Dwight propose de nouvelles entités (projets, clients, stakeholders)
+
+**Catégorie** : Tell Dwight / Routage
+**Priorité** : V1.x (demande explicite du owner, 2026-07-09 — "quand il ne sait pas où ranger, il propose la création")
+**Origine** : test GDrive réel — les notes mentionnaient le projet "Matthaeus", absent de la base ; le monde clos a rabattu les segments sur "Tables mairie" à 0.7-0.8 (mésattribution plausible mais fausse).
+
+### Description
+
+Aujourd'hui le routage est en monde clos strict : une entité inconnue du roster est droppée (ou pire, rabattue sur une entité existante plausible). Attendu : quand Dwight rencontre un nom d'entité qu'il ne peut router, il **propose la création** (projet, client ou stakeholder) — exactement le modèle des profile_suggestions : transitoire, jamais persisté sans accord, le manager clique "Créer" ou "Ignorer". À la création, les tags du rapport en cours sont re-routés vers la nouvelle entité.
+
+### Scope suggéré
+
+Aucun changement de data model (les tables projects/clients/stakeholders existent). Une tâche 6 dans le prompt Dwight (entity_suggestions, même contrat que profile_suggestions), un endpoint POST de création + re-routage, les cartes suggestion dans l'UI du report. Le monde clos reste la règle pour les TAGS ; seule la SUGGESTION peut sortir du roster.
+
+### Questions à résoudre
+
+1. Anti-bruit : suggérer dès la première occurrence, ou seulement quand l'entité revient (2+ segments / 2+ notes) ?
+2. Le rabattement observé (Matthaeus → Tables mairie à 0.7) : faut-il aussi durcir le prompt pour qu'une entité non nommée ne reçoive AUCUN tag entité plutôt qu'un tag plausible à confidence moyenne ?
+3. Type ambigu (projet ou client ?) : Dwight propose le type avec sa confidence, le manager corrige au clic.
+
+---
+
+## Écran de revue des ingestions
+
+**Catégorie** : Tell Dwight / Ingestion / UI
+**Priorité** : V1.x (petit, découvert avec le owner le 2026-07-09)
+**Origine** : premier run GDrive réel — l'ingestion crée entrées et segments proposés, mais l'UI n'a aucun écran pour les relire : la validation n'est accessible que par API.
+
+### Description
+
+Une vue "à valider" (badge sur l'onglet Dwight ?) listant les segments proposés en attente, groupés par entrée, avec les mêmes cartes validate/reject/rework que le flux de capture. Sans elle, l'ingestion Drive est une impasse UX : les documents entrent, rien ne les présente au manager.
+
+### Questions à résoudre
+
+1. Où : onglet dédié, ou état de repos de l'écran Dwight (symétrique de Pam's Front Page) ?
+2. Le bouton "Pull Drive" lui-même n'existe pas dans l'UI (POST manuel aujourd'hui) : même écran ?
 
 ---
 
