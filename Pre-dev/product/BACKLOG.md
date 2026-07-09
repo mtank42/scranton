@@ -27,6 +27,27 @@ Aucun changement de data model (les tables projects/clients/stakeholders existen
 
 ---
 
+## Catalogue documentaire — "retrouver le plan de marquage livré"
+
+**Catégorie** : Ask Pam / Ingestion / V2
+**Priorité** : V2 (périmètre à acter — demande owner, 2026-07-09)
+**Origine** : scénario onboarding ("un collaborateur débarque sur Matthaeus et demande le statut ET les docs de levée"). Ancré dans les stories : Helio semaine 5 (Lucas débarque, rien n'est documenté nulle part) et "la couche de sens au-dessus du chaos" (storytelling §Helio). Le data model l'anticipait : `source_type` = deliverable / quote / purchase_order, `origin_ref` conserve le pointeur source.
+
+### Description
+
+Deux étages, PAS de doc-RAG plein texte :
+1. **Sources cliquables** (V1.x, trivial) : les sources de Pam exposent l'`origin_ref` des segments ingérés — chaque fait pointe vers son document Drive.
+2. **Catalogue par entité** (V2) : à l'ingestion, TOUS les fichiers du dossier (PDF, decks, compta inclus) sont catalogués en métadonnées seules (nom, type, date, lien) et routés vers projets/clients comme des segments. Pam répond alors "statut + les 4 documents liés (liens)". Scranton indexe l'EXISTENCE des documents, jamais leur contenu : la couche de sens, pas la GED. Cohérent souveraineté (les docs restent dans leur source).
+
+### Questions à résoudre
+
+1. Indexer le CONTENU des documents (vrai doc-RAG, "que dit le deck sur la dilution ?") : volontairement HORS de cette entrée — changement de nature du produit (contourne la porte de validation, indexe de la compta sensible, concurrence NotebookLM). À ne rouvrir que si le terrain le réclame.
+2. Le catalogue passe-t-il par la validation manager (cohérence invariant) ou entre-t-il directement (ce sont des métadonnées, pas du contenu humain) ?
+3. Schéma : nouvelle table `documents` → session data model dédiée obligatoire.
+4. Lien avec Transfer to Philly cas 2 : l'onboarding entrant et la passation sortante consomment le même catalogue.
+
+---
+
 ## Écran de revue des ingestions
 
 **Catégorie** : Tell Dwight / Ingestion / UI
