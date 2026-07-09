@@ -43,6 +43,8 @@ class Settings:
     # selected provider; empty keeps the provider's own default. The A/B
     # lever of the tuning pass: swap models from .env, never from code.
     llm_model: str = ""
+    # Local Ollama endpoint (LLM_PROVIDER=ollama): the max-sovereignty path.
+    ollama_base_url: str = "http://localhost:11434"
 
 
 def get_settings() -> Settings:
@@ -70,4 +72,5 @@ def get_settings() -> Settings:
         ),
         gdrive_folder_id=os.getenv("GDRIVE_FOLDER_ID", ""),
         llm_model=os.getenv("LLM_MODEL", ""),
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
     )

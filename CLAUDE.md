@@ -75,7 +75,7 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 
 ## The seams
 
-`LLMProvider` (mistral/gemini) · `IngestionSource` (local/gdrive) ·
+`LLMProvider` (mistral/gemini/ollama) · `IngestionSource` (local/gdrive) ·
 `VectorStore` (chroma) · `Transcriber` (V2 voice) · `Exporter`
 (md/html) · `characters` config map (agent registry + IP-safe rebrand).
 Services are pure logic and take seams via `api/deps.py`; adapters do the
@@ -151,7 +151,12 @@ Philly** (dossier + selective disclosure + signable fiche + the
    confidence scale + hard cap in the Dwight prompt, TWSS duration now
    reading-time based. A/B verdict: small stays acceptable; medium is
    measurably better on confidence calibration and segmentation
-   (`LLM_MODEL=mistral-medium-latest` to switch, owner's call).
+   (`LLM_MODEL=mistral-medium-latest` to switch, owner's call - taken:
+   medium is active in the owner's .env). Local sovereignty path probed
+   (2026-07-09): `OllamaProvider` ships behind the seam, but mistral 7B
+   on the owner's M4 16GB is below the bar (broken routing, 88s/note,
+   ignores the language pin) - self-hosting waits for a bigger local
+   model, it is a V2 topic, not a regression to chase.
 2. **GDrive end-to-end run**: wired and tested on mocks, needs the
    owner's one-time OAuth setup (`docs/google_drive_ingestion.md`).
 3. Backlog candidates: Pam's Front Page, mood-adaptive TWSS, festive

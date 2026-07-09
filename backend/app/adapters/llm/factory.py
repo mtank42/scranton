@@ -3,6 +3,7 @@
 from backend.app.adapters.llm.base import LLMProvider
 from backend.app.adapters.llm.gemini import GeminiProvider
 from backend.app.adapters.llm.mistral import MistralProvider
+from backend.app.adapters.llm.ollama import OllamaProvider
 from backend.app.config import Settings
 
 
@@ -20,6 +21,9 @@ def build_llm(settings: Settings) -> LLMProvider:
         return MistralProvider(api_key=settings.mistral_api_key, **extra)
     if settings.llm_provider == "gemini":
         return GeminiProvider(api_key=settings.gemini_api_key, **extra)
+    if settings.llm_provider == "ollama":
+        return OllamaProvider(base_url=settings.ollama_base_url, **extra)
     raise ValueError(
-        f"Unknown LLM_PROVIDER {settings.llm_provider!r}: expected 'mistral' or 'gemini'."
+        f"Unknown LLM_PROVIDER {settings.llm_provider!r}: "
+        "expected 'mistral', 'gemini' or 'ollama'."
     )

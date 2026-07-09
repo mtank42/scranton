@@ -5,6 +5,7 @@ import pytest
 from backend.app.adapters.llm.factory import build_llm
 from backend.app.adapters.llm.gemini import GeminiProvider
 from backend.app.adapters.llm.mistral import MistralProvider
+from backend.app.adapters.llm.ollama import OllamaProvider
 from backend.app.config import Settings
 
 
@@ -31,6 +32,14 @@ def test_mistral_is_selected_from_config():
 def test_gemini_is_selected_from_config():
     """LLM_PROVIDER=gemini yields the Gemini fallback implementation."""
     assert isinstance(build_llm(make_settings("gemini")), GeminiProvider)
+
+
+def test_ollama_is_selected_from_config():
+    """LLM_PROVIDER=ollama yields the local open-weights implementation."""
+    provider = build_llm(make_settings("ollama"))
+    assert isinstance(provider, OllamaProvider)
+    assert provider.base_url == "http://localhost:11434"
+    assert provider.default_model == "mistral"
 
 
 def test_model_override_reaches_the_provider():
