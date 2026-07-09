@@ -429,16 +429,21 @@ let twssTimer = null;
 
 function twss(options = {}) {
   const overlay = document.getElementById("twss");
-  document.getElementById("twss-title").textContent =
-    options.title || "THAT'S WHAT SHE SAID";
-  document.getElementById("twss-quote").textContent =
+  const title = options.title || "THAT'S WHAT SHE SAID";
+  const quote =
     options.quote || TWSS_QUOTES[Math.floor(Math.random() * TWSS_QUOTES.length)];
+  document.getElementById("twss-title").textContent = title;
+  document.getElementById("twss-quote").textContent = quote;
   document.getElementById("twss-sig").textContent =
     options.signature || "- Michael Scott, probably";
   document.getElementById("twss-card").classList.toggle("mayor", Boolean(options.mayor));
   overlay.hidden = false;
   clearTimeout(twssTimer);
-  twssTimer = setTimeout(() => { overlay.hidden = true; }, options.duration || 3200);
+  // Reading time, not a fixed beat (tuning pass): a comfortable pace
+  // over the whole card, floored at 4s. A click still closes it early.
+  const words = `${title} ${quote}`.trim().split(/\s+/).length;
+  const duration = options.duration || Math.max(4000, 1800 + words * 330);
+  twssTimer = setTimeout(() => { overlay.hidden = true; }, duration);
 }
 
 /* --- Maire de Scranton (birthday ritual) --- */
@@ -464,7 +469,6 @@ async function loadMayor() {
           title: "MAIRE DE SCRANTON",
           quote: `${mayor.full_name} runs this town today. Their day, their rules.`,
           signature: "- By order of the Office of the Mayor",
-          duration: 5200,
         }),
       900
     );

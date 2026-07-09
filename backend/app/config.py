@@ -39,6 +39,10 @@ class Settings:
     google_client_secrets: str
     google_token_file: str
     gdrive_folder_id: str
+    # Optional chat-model override (e.g. mistral-medium-latest) for the
+    # selected provider; empty keeps the provider's own default. The A/B
+    # lever of the tuning pass: swap models from .env, never from code.
+    llm_model: str = ""
 
 
 def get_settings() -> Settings:
@@ -65,4 +69,5 @@ def get_settings() -> Settings:
             "GOOGLE_TOKEN_FILE", str(REPO_ROOT / "data" / "google_token.json")
         ),
         gdrive_folder_id=os.getenv("GDRIVE_FOLDER_ID", ""),
+        llm_model=os.getenv("LLM_MODEL", ""),
     )

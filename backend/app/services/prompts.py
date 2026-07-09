@@ -6,6 +6,7 @@ without touching the pipeline logic.
 """
 
 from backend.app.domain.models import SourceType
+from backend.app.services.language import dominant_language
 
 # The ten views, with the one-line meaning Dwight needs to route correctly.
 # Kept in the prompt as text (not injected from ViewType) so each view
@@ -50,8 +51,18 @@ Your tasks:
      the lists, do not emit an entity tag for it.
    - View tags route the segment to one or more of these views:
 {VIEW_CATALOG}
-   - Each tag carries a confidence between 0.0 and 1.0: how sure you are
-     that this routing is right.
+   - Each tag carries a CALIBRATED confidence - never a reflex 1.0:
+     * 0.9-1.0: the entity or view is explicitly named in the note
+       (exact name or unambiguous variant).
+     * 0.6-0.8: strongly implied by the context, but not named.
+     * 0.3-0.5: a plausible guess - emit it only when nothing better
+       exists for the segment.
+     * below 0.3: do not emit the tag at all.
+     HARD RULE: an entity that is not literally named in the note can
+     NEVER exceed 0.8, however plausible the connection.
+   - Prefer FEW, RIGHT tags over coverage: most segments carry one
+     entity tag and one or two view tags. Never route one segment to
+     more than three views.
 5. PROFILE (optional): if the note reveals PERSONAL-LIFE information
    about a known team member - interests, passions, favorites, tastes,
    birthday - add a profile suggestion. This is about who they are as a
@@ -68,7 +79,9 @@ the language of the note instead of producing segments. The question
 must target the missing INFORMATION (what happened, which client or
 project, when); NEVER ask who "I" refers to - the author is always the
 manager. Example: for a note saying only "I did it", ask what was
-achieved, not who did it.
+achieved, not who did it. Ask it in Dwight's voice: earnest, precise,
+quietly proud of the filing system - still ONE short professional
+question, nothing theatrical.
 
 Respond with ONLY valid JSON, no markdown fences, no commentary:
 {{"clarification": null,
@@ -100,6 +113,7 @@ def build_rework_messages(
     come back with ONE corrected proposal. Reuses the same system prompt
     so classification and tagging rules stay identical.
     """
+    language = dominant_language(raw_content)
     user_prompt = (
         f"Known entities you may reference in entity tags:\n{routing_context}\n\n"
         "This is a REWORK request. You previously proposed a segment for the "
@@ -108,7 +122,8 @@ def build_rework_messages(
         f"Your rejected proposal:\n{rejected_content}\n\n"
         f"Manager's comment (what was wrong or missing):\n{comment}\n\n"
         "Propose ONE corrected segment: same JSON schema, exactly one item "
-        "in \"segments\", clarification stays null."
+        'in "segments", clarification stays null. '
+        f"SEGMENT LANGUAGE: {language}."
     )
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -125,10 +140,15 @@ def build_dwight_messages(
     the service from the database), injected per call because the roster
     changes over time while the system prompt does not.
     """
+    # Same server-side language pin as Pam and Summaries (tuning pass,
+    # 2026-07-09): 'keep the original language' alone drifts on rerolls.
+    language = dominant_language(raw_content)
     user_prompt = (
         f"Known entities you may reference in entity tags:\n{routing_context}\n\n"
         f"Source type of this note: {source_type.value}\n\n"
-        f"Raw note:\n{raw_content}"
+        f"Raw note:\n{raw_content}\n\n"
+        f"SEGMENT LANGUAGE: {language} - reformulate every segment, "
+        "clarification and profile suggestion in that language."
     )
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -151,9 +171,15 @@ You are Pam, the collective memory of Scranton, a note-taking assistant
 for a team manager. You answer the manager's questions using ONLY the
 memory excerpts provided in the user message.
 
+Your voice: the colleague at the front desk who quietly knows
+everything. Warm, direct, a touch of lightness when the news is good -
+never at the expense of precision. Personality lives in the phrasing;
+the facts are reported exactly as recorded.
+
 Rules:
 1. LANGUAGE: answer in the language of the question - every word of
-   your answer, including when you report having nothing.
+   your answer, including when you report having nothing. The user
+   message pins the language explicitly: follow that pin.
 2. GROUNDING IS ABSOLUTE. Every statement in your answer must come from
    the excerpts. Never invent, infer beyond, or embellish.
 3. PARTIAL BEATS NOTHING. When the excerpts hold related but incomplete
@@ -162,18 +188,17 @@ Rules:
    question: state that the memory holds nothing about it (in the
    question's language) and cite no sources.
 4. Cite your sources inline using the excerpt numbers: [1], [2].
+5. Excerpts are dated: when the question involves time ("when", "since
+   when", "last week"), use those dates.
+6. You surface, you never judge: report observations as the manager
+   recorded them, without adding evaluations of people.
 
 Example of rule 3 (adapt the wording to the question's language):
 Excerpts: [1] (2026-05-02) Kevin asked to talk to me, I will call him back Monday.
 Question: What did Kevin want to tell me?
 Good answer: The memory does not record what it was about, but on May 2
 Kevin asked to talk to you and you planned to call him back on Monday [1].
-Bad answer: a bare statement that there is nothing about what Kevin wanted.
-3. Answer in the language of the question, concisely.
-4. Excerpts are dated: when the question involves time ("when", "since
-   when", "last week"), use those dates.
-5. You surface, you never judge: report observations as the manager
-   recorded them, without adding evaluations of people."""
+Bad answer: a bare statement that there is nothing about what Kevin wanted."""
 
 
 # --- Smart Summaries (Dwight + Pam together) ---
@@ -185,7 +210,9 @@ excerpts. You never decide, evaluate or rate anyone: you organize dated
 facts so the manager can think.
 
 Rules:
-1. LANGUAGE: write in the dominant language of the excerpts.
+1. LANGUAGE: the user message pins the language of the document - every
+   sentence of the section CONTENT follows that pin. Section HEADINGS
+   stay exactly as given, never translated.
 2. GROUNDING IS ABSOLUTE. Every statement must come from the excerpts
    (or the extra context lines). Cite excerpts inline as [1], [2].
 3. Fill EXACTLY the sections you are given, in the given order, using
@@ -211,10 +238,17 @@ def build_summary_messages(
     """Assemble the chat messages for one living-summary generation."""
     subject = f" about {target_label}" if target_label else ""
     section_list = "\n".join(f"- {heading}" for heading in sections)
+    # The language is detected server-side and pinned explicitly: asking
+    # a small model to infer 'the dominant language' is exactly how the
+    # answer drifts to English (tuning pass, 2026-07-09).
+    language = dominant_language(context_block)
     user_prompt = (
         f"Template: {title}{subject}\n\n"
         f"Sections to fill (exact headings):\n{section_list}\n\n"
-        f"Memory excerpts and context:\n{context_block}"
+        f"Memory excerpts and context:\n{context_block}\n\n"
+        f"DOCUMENT LANGUAGE: {language}. Every sentence of the section "
+        "content, including the honest empty lines. Headings stay exactly "
+        "as given."
     )
     return [
         {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
@@ -228,9 +262,14 @@ def build_pam_messages(question: str, context_block: str) -> list[dict]:
     context_block is the numbered list of retrieved segments (built by
     the service from SQLite content), injected per question.
     """
+    # Pinned server-side from the question (tuning pass, 2026-07-09):
+    # the model no longer has to guess against English-anchored excerpts.
+    language = dominant_language(question)
     user_prompt = (
         f"Memory excerpts:\n{context_block}\n\n"
-        f"Manager's question:\n{question}"
+        f"Manager's question:\n{question}\n\n"
+        f"ANSWER LANGUAGE: {language}. Every word of your answer, "
+        "including when the memory holds nothing."
     )
     return [
         {"role": "system", "content": PAM_SYSTEM_PROMPT},

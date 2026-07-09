@@ -102,10 +102,15 @@ I/O. The lifespan hook (`main.py`) builds shared adapters once onto
   `addEventListener` - it accumulates) and lose their `placeholder`
   class on first render (done in `show()`); author `display` on a
   `[hidden]` element defeats it - restate `#x[hidden] {display:none}`.
-- **mistral-small is over-confident**: emits `confidence: 1.0`
-  everywhere, invents birth years (guarded by year-erasure), and
-  sometimes answers in the wrong language. These belong to the deferred
-  tuning pass, not to per-feature fixes.
+- **Answer language is PINNED server-side** (tuning pass 2026-07-09):
+  `services/language.py` detects French/English and injects an explicit
+  language line into every Dwight/Pam/Summary user message. Never rely
+  on "answer in the language of X" prompt wording alone - it drifts on
+  rerolls. mistral-small still cannot calibrate confidence finely
+  (narrow 0.8-0.9 band; medium spreads 0.7-1.0 and is stable); it also
+  invents birth years (guarded by year-erasure).
+- **`LLM_MODEL` in .env overrides the chat model** (e.g.
+  `mistral-medium-latest`) without touching code - the A/B lever.
 - Dev DB may hold ad-hoc test rows (e.g. Kevin/Thomas birthdays set
   during verification). Run the seed with `--reset` for a clean demo.
 
@@ -140,10 +145,13 @@ Philly** (dossier + selective disclosure + signable fiche + the
 `handover_validations` consent trail, data model session held
 2026-07-08) are done and pushed. Remaining:
 
-1. **Tuning pass (assigned to Opus/owner, not to be re-litigated here)**:
-   agent relevance is weak, tone too neutral, the TWSS window is too
-   short to read, and summary answer-language isn't always honored. This
-   is a deliberate later pass, not a set of per-feature bugs.
+1. **Tuning pass DONE (2026-07-09, session with the owner)**: language
+   pinned server-side (`services/language.py`), light personas for Pam
+   and Dwight's clarifications (grounding untouched), calibrated
+   confidence scale + hard cap in the Dwight prompt, TWSS duration now
+   reading-time based. A/B verdict: small stays acceptable; medium is
+   measurably better on confidence calibration and segmentation
+   (`LLM_MODEL=mistral-medium-latest` to switch, owner's call).
 2. **GDrive end-to-end run**: wired and tested on mocks, needs the
    owner's one-time OAuth setup (`docs/google_drive_ingestion.md`).
 3. Backlog candidates: Pam's Front Page, mood-adaptive TWSS, festive

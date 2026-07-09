@@ -13,10 +13,13 @@ def build_llm(settings: Settings) -> LLMProvider:
     default: a typo in .env should be caught at startup, not at the first
     model call in the middle of a capture.
     """
+    # LLM_MODEL overrides the provider's default chat model when set:
+    # the A/B lever of the tuning pass lives in .env, not in code.
+    extra = {"default_model": settings.llm_model} if settings.llm_model else {}
     if settings.llm_provider == "mistral":
-        return MistralProvider(api_key=settings.mistral_api_key)
+        return MistralProvider(api_key=settings.mistral_api_key, **extra)
     if settings.llm_provider == "gemini":
-        return GeminiProvider(api_key=settings.gemini_api_key)
+        return GeminiProvider(api_key=settings.gemini_api_key, **extra)
     raise ValueError(
         f"Unknown LLM_PROVIDER {settings.llm_provider!r}: expected 'mistral' or 'gemini'."
     )

@@ -8,7 +8,7 @@ from backend.app.adapters.llm.mistral import MistralProvider
 from backend.app.config import Settings
 
 
-def make_settings(provider: str) -> Settings:
+def make_settings(provider: str, llm_model: str = "") -> Settings:
     """Minimal settings object for factory tests."""
     return Settings(
         llm_provider=provider,
@@ -19,6 +19,7 @@ def make_settings(provider: str) -> Settings:
         google_client_secrets="unused",
         google_token_file="unused",
         gdrive_folder_id="",
+        llm_model=llm_model,
     )
 
 
@@ -30,6 +31,14 @@ def test_mistral_is_selected_from_config():
 def test_gemini_is_selected_from_config():
     """LLM_PROVIDER=gemini yields the Gemini fallback implementation."""
     assert isinstance(build_llm(make_settings("gemini")), GeminiProvider)
+
+
+def test_model_override_reaches_the_provider():
+    """LLM_MODEL swaps the chat model from .env: the tuning A/B lever."""
+    provider = build_llm(make_settings("mistral", llm_model="mistral-medium-latest"))
+    assert provider.default_model == "mistral-medium-latest"
+    # Empty override keeps the provider's own default.
+    assert build_llm(make_settings("mistral")).default_model == "mistral-small-latest"
 
 
 def test_unknown_provider_fails_loudly():

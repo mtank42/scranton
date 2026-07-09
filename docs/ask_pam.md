@@ -67,6 +67,22 @@ Flash only if measurably needed):
   example. Quoted English phrases in the prompt anchored the answer
   language; replacing them with descriptions restored French answers.
 
+## Tuning pass (2026-07-09)
+
+- **Answer language is now PINNED server-side**, not inferred: a tiny
+  dependency-free French/English detector (`services/language.py`) reads
+  the question and injects an explicit `ANSWER LANGUAGE:` line into the
+  user message. The rule-1 wording alone drifted on rerolls, especially
+  against the English worked example. Same pin for Dwight (segment
+  language) and Summaries (document language, headings untranslated).
+- **Voice**: Pam gained a light persona ("the colleague at the front
+  desk who quietly knows everything") - personality in the phrasing,
+  never in the facts; the grounding rules are untouched.
+- The duplicated rule numbering left over from the M2 edit (two rules
+  3 and 4 after the example) was cleaned up.
+- A/B small vs medium on the tuned prompts: both answer in French
+  reliably now; escalation stays unnecessary for Pam.
+
 ## Testing
 
 - `pytest` - offline. PamService runs against `ScriptedLLMProvider` +
