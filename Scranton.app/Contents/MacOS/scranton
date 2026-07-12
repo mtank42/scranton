@@ -13,7 +13,13 @@ URL="http://127.0.0.1:${PORT}"
 # Reuse a running server: two instances on one SQLite file would be rude.
 if ! curl -s --max-time 1 "${URL}/api/v1/health" > /dev/null; then
   cd "$REPO"
-  nohup "$REPO/.venv/bin/uvicorn" backend.app.main:app --port "$PORT" \
+  # /usr/bin/arch -arm64: the venv wheels are arm64 but the framework
+  # Python is universal, so it inherits the launcher's architecture.
+  # LaunchServices sometimes runs script bundles under Rosetta (seen
+  # 2026-07-12: pydantic_core dlopen 'have arm64, need x86_64'); forcing
+  # the slice here makes the launch context irrelevant.
+  nohup /usr/bin/arch -arm64 "$REPO/.venv/bin/python" -m uvicorn \
+    backend.app.main:app --port "$PORT" \
     >> "$REPO/data/scranton_server.log" 2>&1 &
   # Give the server up to 15 seconds to answer the liveness probe.
   for _ in $(seq 1 30); do

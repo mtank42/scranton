@@ -36,9 +36,12 @@ mkdir -p "$QA_DIR"
 
 source .venv/bin/activate
 
+# Same arm64 forcing as Scranton.app: the framework Python is universal
+# and would follow a Rosetta terminal into x86_64, where the arm64
+# wheels of the venv cannot load.
 echo ""
 echo "1/2 Semis du jeu de démo Dunder Mifflin (quelques secondes)..."
-python -m backend.app.db.seed --reset
+/usr/bin/arch -arm64 .venv/bin/python -m backend.app.db.seed --reset
 
 echo ""
 echo "2/2 Démarrage du serveur QA sur le port $PORT..."
@@ -53,4 +56,4 @@ if [ -z "$QA_NO_OPEN" ]; then
   ( sleep 2; open "http://localhost:$PORT/qa.html" ) &
 fi
 
-exec uvicorn backend.app.main:app --port $PORT
+exec /usr/bin/arch -arm64 .venv/bin/python -m uvicorn backend.app.main:app --port $PORT
