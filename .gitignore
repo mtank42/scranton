@@ -26,6 +26,9 @@ venv/
 # ChromaDB local store
 data/chroma/
 
+# Throwaway QA environment (rebuilt at every launch of "Scranton QA.command")
+data/qa/
+
 # Google OAuth material (client secrets + cached token) - never committed
 data/*.json
 
@@ -58,3 +61,7 @@ secrets.json
 
 # Claude Code local settings
 .claude/
+
+# Data backups (real data, never committed)
+data/*.bak*
+data/*.bak-*/

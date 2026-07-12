@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scranton — Checklist QA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;700;900&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    :root {
+      --black: #0a0a0a; --yellow: #F5C518; --cyan: #00D4FF; --white: #F0EDE8;
+      --grey: #242424; --midgrey: #aaa; --green: #00C853; --red: #E63946;
+      --sans: "IBM Plex Sans", sans-serif; --mono: "IBM Plex Mono", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--black); color: var(--white); font-family: var(--sans);
+           font-weight: 300; max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+    header { position: sticky; top: 0; background: var(--black); padding: 20px 0 14px;
+             border-bottom: 1px solid var(--grey); z-index: 10; }
+    h1 { font-weight: 900; font-size: 22px; }
+    h1 span { color: var(--yellow); }
+    .sub { color: var(--midgrey); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    .progress { font-family: var(--mono); font-size: 13px; color: var(--cyan); }
+    button, .btn { font-family: var(--mono); font-size: 12px; padding: 7px 14px;
+      background: transparent; color: var(--white); border: 1px solid var(--grey);
+      border-radius: 6px; cursor: pointer; }
+    button:hover { border-color: var(--yellow); }
+    .btn-primary { background: var(--yellow); color: var(--black); border: none; font-weight: 700; }
+    section { margin-top: 34px; }
+    h2 { font-family: var(--mono); font-size: 13px; letter-spacing: 1.5px;
+         text-transform: uppercase; color: var(--yellow); border-bottom: 1px solid var(--grey);
+         padding-bottom: 6px; margin-bottom: 6px; }
+    .section-note { font-size: 13px; color: var(--midgrey); margin: 6px 0 10px; line-height: 1.55; }
+    .item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 8px;
+            border-radius: 8px; }
+    .item:hover { background: #151515; }
+    .item input[type=checkbox] { margin-top: 4px; width: 17px; height: 17px;
+      accent-color: var(--green); flex: none; cursor: pointer; }
+    .item label { cursor: pointer; line-height: 1.55; font-size: 14.5px; }
+    .item .expected { display: block; color: var(--midgrey); font-size: 13px; margin-top: 2px; }
+    .item .expected strong { color: var(--cyan); font-weight: 400; }
+    .item.done label { opacity: 0.45; text-decoration: line-through; }
+    .snippet { background: #141414; border: 1px dashed var(--grey); border-radius: 8px;
+               padding: 10px 12px; margin: 8px 0 8px 29px; display: flex; gap: 12px;
+               align-items: flex-start; }
+    .snippet p { font-family: var(--mono); font-size: 12.5px; color: var(--white);
+                 line-height: 1.6; flex: 1; white-space: pre-wrap; }
+    .snippet button { flex: none; }
+    .snippet button.copied { border-color: var(--green); color: var(--green); }
+    textarea.notes { width: 100%; background: #141414; color: var(--white);
+      border: 1px solid var(--grey); border-radius: 8px; padding: 10px 12px;
+      font-family: var(--sans); font-size: 13.5px; margin-top: 10px; min-height: 44px; resize: vertical; }
+    .gdrive-result { font-family: var(--mono); font-size: 12px; color: var(--cyan);
+                     margin: 8px 0 0 29px; white-space: pre-wrap; }
+    .optional { color: var(--midgrey); font-weight: 400; text-transform: none; letter-spacing: 0; }
+    footer { margin-top: 50px; color: var(--midgrey); font-size: 12.5px; line-height: 1.6;
+             border-top: 1px solid var(--grey); padding-top: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SCRANTON<span>_</span> Checklist QA</h1>
+    <p class="sub">Environnement jetable : la base et la mémoire de ce test sont recréées à
+      chaque lancement, <strong>vos données réelles ne sont jamais touchées</strong>.
+      Faites chaque action dans l'app, cochez si le résultat correspond à l'attendu.
+      Un écart = décochez et notez-le dans la zone de remarques de la section.</p>
+    <div class="toolbar">
+      <span class="progress" id="progress"></span>
+      <a class="btn btn-primary" href="/" target="_blank" rel="noopener">Ouvrir l'app</a>
+      <button id="export">Copier le rapport</button>
+      <button id="reset">Tout réinitialiser</button>
+    </div>
+  </header>
+
+  <main id="main"></main>
+
+  <footer>
+    Règle d'or pour les sorties du modèle : un écart <em>ponctuel</em> de formulation n'est
+    pas un bug (c'est de l'échantillonnage) ; un écart <em>répétable</em> (2 fois sur 3) ou une
+    violation d'invariant (langue, faits inventés, année d'anniversaire, note/score sur une
+    personne) en est toujours un. Fermez la fenêtre Terminal pour arrêter le test.
+  </footer>
+
+<script>
+/* Data-driven checklist. Each item: [id, action, expected].
+ * Snippets: {copy: "text"} rendered as a copy-paste block. */
+const SECTIONS = [
+  {
+    id: "dwight",
+    title: "1. Tell Dwight — la capture",
+    note: "Tout se passe dans l'onglet Tell Dwight. Copiez les notes ci-dessous telles quelles.",
+    flow: [
+      { copy: "Réunion du matin : Lackawanna County Schools confirme 40 caisses de plus sur le contrat cardstock Q3, livraison avancée au 5 septembre. J'ai promis un devis révisé à Stone & Son pour vendredi. Ryan s'est endormi en réunion, il a l'air épuisé depuis deux semaines, ça m'inquiète. Kelly a organisé une super fête pour l'anniversaire de Phyllis, l'ambiance était excellente." },
+      ["d1", "Soumettre la note ci-dessus.", "4 segments environ, un sujet chacun, tous <strong>en français</strong>, rien d'inventé"],
+      ["d2", "Regarder les pastilles cold/warm.", "Lackawanna et le devis = <strong>cold</strong> ; Ryan = <strong>warm</strong> avec sensibilité élevée (4-5)"],
+      ["d3", "Regarder les tags.", "Le devis porte <strong>view:commitment</strong> ; Lackawanna routé vers le client et le projet Q3"],
+      ["d4", "Regarder les confidences (survoler les chips).", "<strong>Variées</strong> : entités nommées vers 0.9-1.0, déductions à 0.8 ou moins, jamais tout à 1.0"],
+      ["d5", "NE PAS tout valider : validez Lackawanna et le devis, <strong>rejetez</strong> la fête de Phyllis (Forget it), <strong>laissez Ryan tel quel</strong>.", "On s'en sert à la section 2"],
+      { copy: "bon ben c'est réglé finalement" },
+      ["d6", "Soumettre la note vague ci-dessus.", "UNE question de clarification, en français, qui demande <strong>quoi</strong> (jamais « qui êtes-vous »), ton Dwight (zélé, précis)"],
+      ["d7", "Répondre à sa question dans le fil (ex : « le litige de facturation Stone & Son est réglé »).", "Des segments sont produits à partir de votre réponse"],
+      { copy: "En discutant avec Oscar j'ai appris que son anniversaire est le 12 mars et qu'il fait du triathlon le week-end." },
+      ["d8", "Soumettre la note ci-dessus.", "Une <strong>suggestion de profil</strong> pour Oscar : jour + mois, <strong>aucune année nulle part</strong> ; « Add to profile » l'ajoute, elle apparaît dans Team"]
+    ]
+  },
+  {
+    id: "gate",
+    title: "2. La porte de validation — LE test",
+    note: "L'invariant fondateur : rien n'entre dans la mémoire sans votre validation. On utilise les segments de la section 1.",
+    flow: [
+      { copy: "Qui a organisé la fête d'anniversaire de Phyllis ?" },
+      ["g1", "Poser la question ci-dessus à Ask Pam (segment REJETÉ en 1).", "Pam dit que la mémoire n'a <strong>rien</strong> là-dessus, aucune source (le rejeté n'existe pas pour elle)"],
+      { copy: "Comment va Ryan en ce moment ?" },
+      ["g2", "Poser la question ci-dessus (segment resté PROPOSÉ en 1).", "Même chose : <strong>rien en mémoire</strong> (un segment non validé n'existe pas pour Pam)"],
+      ["g3", "Retourner dans Tell Dwight, valider maintenant le segment Ryan, reposer la question.", "Cette fois Pam <strong>répond</strong>, avec la source datée"]
+    ]
+  },
+  {
+    id: "pam",
+    title: "3. Ask Pam — la mémoire interrogeable",
+    flow: [
+      { copy: "Qu'est-ce que Lackawanna nous a confirmé pour le Q3 ?" },
+      ["p1", "Question française ci-dessus.", "Réponse <strong>en français</strong>, fait exact, citation [n], sources datées dessous"],
+      { copy: "What did we promise to Stone & Son?" },
+      ["p2", "La même chose en anglais.", "Réponse <strong>en anglais</strong> (la langue suit la question, pas la mémoire)"],
+      { copy: "Pourquoi Ryan est-il épuisé ?" },
+      ["p3", "Question dont la mémoire n'a qu'une partie.", "Pam rapporte ce qui EST là (il semble épuisé depuis 2 semaines) puis dit que la <strong>cause n'est pas enregistrée</strong> — jamais un « rien » sec"],
+      { copy: "Que sait-on de la Michael Scott Paper Company ?" },
+      ["p4", "Question totalement hors mémoire.", "Le dit honnêtement, <strong>zéro source citée</strong>, aucune invention"],
+      ["p5", "Relire les réponses de Pam.", "Ton chaleureux et direct, mais <strong>jamais</strong> au détriment de l'exactitude"]
+    ]
+  },
+  {
+    id: "mood",
+    title: "4. Pretzel Day + That's What She Said",
+    flow: [
+      ["m1", "Onglet Pretzel Day : faire un check-in (n'importe quel niveau, avec une note).", "Enregistré + la carte TWSS s'affiche, <strong>lisible en entier</strong> avant de disparaître (un clic la ferme aussi)"],
+      ["m2", "Retour Tell Dwight : soumettre une note courte et décider TOUS ses segments.", "À la fin : TWSS s'affiche <strong>une seule fois</strong> pour tout le report (le check-in du jour est déjà fait, pas de panneau humeur)"],
+      ["m3", "Demain ou après un relancement : finir le premier report du jour.", "Le <strong>panneau humeur inline</strong> apparaît d'abord ; « Rather not say » ne stocke rien"]
+    ]
+  },
+  {
+    id: "toby",
+    title: "5. Meet Toby — la santé d'équipe",
+    flow: [
+      ["t1", "Ouvrir Meet Toby.", "Courbe de tendance d'équipe + timeline par personne, tout est <strong>daté et factuel</strong>"],
+      ["t2", "Regarder les signaux.", "Ryan : humeur en déclin / humeur basse / observation sensible. Darryl : <strong>silence</strong> (pas de check-in récent)"],
+      ["t3", "Chercher un score, une note, un classement de personne.", "<strong>Il n'y en a aucun</strong>, nulle part — c'est le north star du produit"]
+    ]
+  },
+  {
+    id: "team",
+    title: "6. Team, profils, Maire de Scranton",
+    flow: [
+      ["e1", "Onglet Team : modifier le profil d'un membre, sauvegarder, recharger la page.", "Le texte est conservé"],
+      ["e2", "Regarder les champs anniversaire.", "Sélecteurs <strong>jour + mois seulement</strong> — aucune année visible où que ce soit dans l'app"],
+      ["e3", "Mettre l'anniversaire de Stanley à AUJOURD'HUI, sauvegarder, recharger la page.", "Bannière <strong>MAIRE DE SCRANTON</strong> dans la sidebar + badge sur sa carte + célébration plein écran (une fois par chargement)"],
+      ["e4", "Mettre l'anniversaire d'Oscar dans 3 jours, recharger.", "Rappel « upcoming » avec son profil en inspiration pour préparer quelque chose"]
+    ]
+  },
+  {
+    id: "summaries",
+    title: "7. Smart Summaries — les documents vivants",
+    flow: [
+      ["s1", "Générer la fiche membre de Ryan.", "Sections remplies avec citations [n], sources exhaustives listées dessous, titres de sections inchangés"],
+      ["s2", "Générer un template sans matière (ex : fiche d'un client sans historique).", "Une ligne honnête « rien d'enregistré », <strong>jamais du remplissage</strong>"],
+      ["s3", "Générer l'annual review de Ryan.", "De la <strong>matière à discussion</strong> (faits datés, questions à aborder) — jamais un verdict ou une évaluation"],
+      ["s4", "Vérifier la langue d'un résumé.", "Contenu dans la langue dominante des extraits cités ; titres de sections tels quels"]
+    ]
+  },
+  {
+    id: "angela",
+    title: "8. Send Angela — l'export",
+    flow: [
+      ["a1", "Sous un résumé généré : télécharger le .md.", "Le fichier contient <strong>exactement</strong> le résumé affiché, sources incluses"],
+      ["a2", "Télécharger le .html et l'ouvrir.", "Page autonome, propre à l'impression (Cmd+P)"]
+    ]
+  },
+  {
+    id: "philly",
+    title: "9. Transfer to Philly — la passation",
+    note: "Sur la carte de Ryan (il a des observations warm sensibles : le cas intéressant).",
+    flow: [
+      ["h1", "Cliquer « Transfer to Philly » sur la carte Ryan.", "Panneau : le cold voyage en bloc ; le warm est listé <strong>par sensibilité croissante</strong>, cases décochées par défaut"],
+      ["h2", "Cocher UNE observation warm, « Start handover », puis « Preview fiche ».", "La fiche montre le warm choisi ; le reste = <strong>un COMPTE d'observations retenues</strong>, jamais leur contenu"],
+      ["h3", "Chercher dans la fiche : profil personnel, anniversaire, humeurs.", "<strong>Absents</strong> — les données du membre ne sont jamais dans une passation"],
+      ["h4", "« Reviewed together », puis tenter de repérer les cases warm.", "La sélection est <strong>gelée</strong> (plus modifiable) : le membre a relu CETTE sélection"],
+      ["h5", "Taper les deux noms, « Sign both ».", "Hash d'intégrité affiché + fiche signée téléchargeable avec les <strong>noms saisis</strong> (plus de lignes vides)"],
+      ["h6", "Télécharger la fiche signée, puis regarder le statut.", "Toujours « signed » : <strong>télécharger n'est pas transmettre</strong> ; seul « Mark as transmitted » clôt"],
+      ["h7", "Après transmission : rouvrir le panneau et re-cliquer Start avec une sélection.", "Un nouveau cycle démarre proprement (un seul handover ouvert à la fois)"]
+    ]
+  },
+  {
+    id: "gdrive",
+    title: "10. Google Drive <span class=\"optional\">(optionnel — utilise votre vrai Drive)</span>",
+    note: "Ce test lit votre dossier Drive configuré et fait travailler Dwight sur son contenu. Les segments arrivent dans CETTE base jetable.",
+    flow: [
+      { gdrive: true },
+      ["v1", "Cliquer le bouton ci-dessus.", "Résultat : documents comptés, entrées créées, 0 failure (les PDF/images sont ignorés sans erreur)"],
+      ["v2", "Poser à Pam une question sur ces documents SANS avoir validé quoi que ce soit.", "<strong>Rien en mémoire</strong> — l'ingestion propose, elle n'impose jamais (l'écran de revue des ingestions est au backlog)"]
+    ]
+  }
+];
+
+const STORE_KEY = "scranton-qa-v1";
+const state = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));
+
+function esc(text) {
+  const div = document.createElement("div");
+  div.textContent = text ?? "";
+  return div.innerHTML;
+}
+
+function render() {
+  const main = document.getElementById("main");
+  main.innerHTML = SECTIONS.map((section) => `
+    <section id="sec-${section.id}">
+      <h2>${section.title}</h2>
+      ${section.note ? `<p class="section-note">${section.note}</p>` : ""}
+      ${section.flow.map((step) => {
+        if (Array.isArray(step)) {
+          const [id, action, expected] = step;
+          const done = state[id] ? "done" : "";
+          return `
+            <div class="item ${done}">
+              <input type="checkbox" id="${id}" ${state[id] ? "checked" : ""} />
+              <label for="${id}">${action}
+                <span class="expected">Attendu : ${expected}</span>
+              </label>
+            </div>`;
+        }
+        if (step.copy) {
+          return `
+            <div class="snippet">
+              <p>${esc(step.copy)}</p>
+              <button data-copy="${esc(step.copy)}">Copier</button>
+            </div>`;
+        }
+        if (step.gdrive) {
+          return `
+            <div class="snippet">
+              <p>POST /api/v1/ingest/gdrive : lance l'ingestion du dossier Drive configuré.</p>
+              <button id="gdrive-run">Lancer l'ingestion</button>
+            </div>
+            <div class="gdrive-result" id="gdrive-result"></div>`;
+        }
+        return "";
+      }).join("")}
+      <textarea class="notes" data-section="${section.id}"
+        placeholder="Remarques / bugs sur cette section (conservés localement)"
+      >${esc(state["notes-" + section.id] || "")}</textarea>
+    </section>`).join("");
+  updateProgress();
+}
+
+function items() {
+  return SECTIONS.flatMap((s) => s.flow.filter(Array.isArray));
+}
+
+function updateProgress() {
+  const all = items();
+  const done = all.filter(([id]) => state[id]).length;
+  document.getElementById("progress").textContent = `${done}/${all.length} OK`;
+}
+
+document.getElementById("main").addEventListener("change", (event) => {
+  const target = event.target;
+  if (target.matches("input[type=checkbox]")) {
+    state[target.id] = target.checked;
+    target.closest(".item").classList.toggle("done", target.checked);
+    save();
+    updateProgress();
+  }
+});
+
+document.getElementById("main").addEventListener("input", (event) => {
+  if (event.target.matches("textarea.notes")) {
+    state["notes-" + event.target.dataset.section] = event.target.value;
+    save();
+  }
+});
+
+document.getElementById("main").addEventListener("click", async (event) => {
+  const target = event.target;
+  if (target.matches("[data-copy]")) {
+    await navigator.clipboard.writeText(target.dataset.copy);
+    target.textContent = "Copié !";
+    target.classList.add("copied");
+    setTimeout(() => { target.textContent = "Copier"; target.classList.remove("copied"); }, 1500);
+  }
+  if (target.id === "gdrive-run") {
+    target.disabled = true;
+    const box = document.getElementById("gdrive-result");
+    box.textContent = "Ingestion en cours (Dwight lit vos documents)...";
+    try {
+      const response = await fetch("/api/v1/ingest/gdrive", { method: "POST" });
+      const body = await response.json();
+      box.textContent = response.ok
+        ? JSON.stringify(body, null, 2)
+        : `Erreur ${response.status} : ${body.detail || ""}`;
+    } catch (error) {
+      box.textContent = `Erreur : ${error.message}`;
+    } finally {
+      target.disabled = false;
+    }
+  }
+});
+
+document.getElementById("export").addEventListener("click", async (event) => {
+  const lines = [`# Rapport QA Scranton — ${new Date().toLocaleString()}`, ""];
+  const all = items();
+  const done = all.filter(([id]) => state[id]).length;
+  lines.push(`Résultat : ${done}/${all.length} OK`, "");
+  for (const section of SECTIONS) {
+    const rows = section.flow.filter(Array.isArray);
+    lines.push(`## ${section.title.replace(/<[^>]*>/g, "")}`);
+    for (const [id, action] of rows) {
+      lines.push(`- [${state[id] ? "x" : " "}] ${action.replace(/<[^>]*>/g, "")}`);
+    }
+    const notes = (state["notes-" + section.id] || "").trim();
+    if (notes) lines.push(`> Remarques : ${notes}`);
+    lines.push("");
+  }
+  await navigator.clipboard.writeText(lines.join("\n"));
+  event.target.textContent = "Rapport copié !";
+  setTimeout(() => { event.target.textContent = "Copier le rapport"; }, 2000);
+});
+
+document.getElementById("reset").addEventListener("click", () => {
+  if (!confirm("Effacer toutes les cases cochées et les remarques ?")) return;
+  localStorage.removeItem(STORE_KEY);
+  Object.keys(state).forEach((key) => delete state[key]);
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

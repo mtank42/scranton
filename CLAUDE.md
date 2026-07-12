@@ -122,6 +122,8 @@ pytest                                          # offline suite (no key needed)
 pytest -m integration                           # real Mistral (needs MISTRAL_API_KEY)
 uvicorn backend.app.main:app --reload --port 8001   # 8000 is another project
 python -m backend.app.db.seed --reset           # Dunder Mifflin demo dataset
+open "Scranton QA.command"                      # owner QA: throwaway env (data/qa/)
+                                                # on :8010 + /qa.html checklist
 ```
 
 Tests never hit the network: `tests/conftest.py` provides
