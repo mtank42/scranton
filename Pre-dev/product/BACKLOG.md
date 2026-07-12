@@ -1,7 +1,28 @@
 # Scranton — Backlog
 > Features identifiées avant le go, hors roadmap POC initiale.
 > Chaque entrée inclut : description, scope suggéré, et questions à résoudre pour le data model.
-> Last updated: 2026-07-09 — ajout "Dwight propose de nouvelles entités" + "Écran de revue des ingestions" (test GDrive réel avec le owner)
+> Last updated: 2026-07-12 — mise en cohérence avec le RECADRAGE (voir ci-dessous) lors de la passation Fable → Opus
+
+---
+
+## ⚠️ Recadrage 2026-07-12 — impact sur ce backlog
+
+Le recadrage (`RECADRAGE_2026-07-12.md`, qui PRIME) change le cadre de
+plusieurs entrées ci-dessous. Les notes **[RECADRAGE]** dans chaque
+entrée font foi. En résumé :
+
+- **Pam's Front Page** → l'écran Ask Pam n'existe plus ; l'idée vit
+  désormais dans le **Dashboard manager** de la maquette.
+- **Écran de revue des ingestions** → plus d'onglet Dwight ; à repenser
+  dans la nouvelle architecture (badge sur l'action flottante ?).
+- **Profil humain** → la saisie par le manager est ABOLIE ; le membre
+  déclare lui-même via Pretzel Day ("About me - shared on purpose").
+- **TWSS** → retour owner ajouté : "beaucoup plus drôles et visuels" (V2/V3).
+- Les retours QA déjà en cours d'exécution (tags lisibles, confidence
+  visible, box d'input sous les propositions) sont dans le RECADRAGE,
+  pas ici : ce sont des corrections, pas des features.
+- En attente de décision owner (hors backlog) : la **CI GitHub Actions**
+  (`docs/qa_protocol.md` §3).
 
 ---
 
@@ -56,7 +77,11 @@ Deux étages, PAS de doc-RAG plein texte :
 
 ### Description
 
-Une vue "à valider" (badge sur l'onglet Dwight ?) listant les segments proposés en attente, groupés par entrée, avec les mêmes cartes validate/reject/rework que le flux de capture. Sans elle, l'ingestion Drive est une impasse UX : les documents entrent, rien ne les présente au manager.
+Une vue "à valider" listant les segments proposés en attente, groupés par entrée, avec les mêmes cartes validate/reject/rework que le flux de capture. Sans elle, l'ingestion Drive est une impasse UX : les documents entrent, rien ne les présente au manager.
+
+> **[RECADRAGE 2026-07-12]** Plus d'onglet Dwight : penser plutôt un
+> badge/compteur sur l'action flottante "+ Tell Dwight" qui ouvre la
+> file des propositions en attente (capture ET ingestion, même flux).
 
 ### Questions à résoudre
 
@@ -75,6 +100,10 @@ Une vue "à valider" (badge sur l'onglet Dwight ?) listant les segments proposé
 
 La récompense s'adapte à l'humeur déclarée du jour : pas de blague vaseuse à quelqu'un qui va mal (plutôt un gif de chat mignon), un but de foot légendaire pour quelqu'un en super forme. Les citations Michael Scott restent le mode par défaut quand l'humeur est neutre ou inconnue.
 
+> **[RECADRAGE 2026-07-12]** Retour owner ajouté au périmètre : les TWSS
+> doivent devenir "beaucoup plus drôles et visuels" (V2/V3) — pas
+> seulement adaptatifs. Le texte seul ne suffit pas.
+
 ### Questions à résoudre
 
 1. Sourcing des assets (gifs/vidéos) : bibliothèque locale (poids du repo ?) vs API externe (Giphy = tracker, contraire à l'esprit) vs sélection statique embarquée.
@@ -87,6 +116,11 @@ La récompense s'adapte à l'humeur déclarée du jour : pas de blague vaseuse �
 **Catégorie** : Ask Pam / UI / Proactivité
 **Priorité** : V1 (candidate)
 **Origine** : feedback démo MLP (juillet 2026) — "tant qu'il n'y a pas de question, le panel sources est inutile, voire incongru"
+
+> **[RECADRAGE 2026-07-12]** L'écran Ask Pam n'existe plus (Pam est une
+> action flottante). L'idée reste valable mais son lieu naturel est
+> désormais le **Dashboard de la vue manager** (maquette) : les "news"
+> y complètent le moodboard et l'avancement projets. À re-cadrer là.
 
 ### Description
 
@@ -112,7 +146,16 @@ Scranton capte la couche professionnelle. Mais le lien entre équipiers se crée
 
 ### Profil humain — "ce qu'ils aiment"
 
-Chaque team member a un profil personnel en plus de son profil professionnel. Données déclarées par le manager (observées en 1:1, en conversation) ou saisies par le membre lui-même en V2.
+> **[RECADRAGE 2026-07-12 — le paragraphe ci-dessous est OBSOLÈTE sur un
+> point capital]** : la saisie par le manager est ABOLIE (verdict QA du
+> owner : "c'est l'opposé absolu de l'esprit du service"). Le membre
+> déclare lui-même ce qu'il partage, via son espace Pretzel Day
+> ("About me - shared on purpose", voir la maquette), avec la mention
+> explicite que c'est visible du manager seul. Les suggestions Dwight
+> ne valent que sur les propos du membre LUI-MÊME. Le manager consulte
+> (dans Toby), il ne saisit jamais.
+
+Chaque team member a un profil personnel en plus de son profil professionnel. ~~Données déclarées par le manager (observées en 1:1, en conversation)~~ Saisies par le membre lui-même.
 
 Exemples : né le 11 février, fan de New Order, obsédé par la période Madchester, Moebius, les oursons en guimauve.
 
@@ -204,8 +247,19 @@ Si le manager est sans réseau sur le chantier, la note doit pouvoir être enreg
 ## Transfer to Philly
 
 **Catégorie** : Transitions / Handover
-**Priorité** : V1 (cas 1) — V2 (cas 2 + interopérabilité)
+**Priorité** : ~~V1 (cas 1)~~ **V2/V3 (owner, recadrage 2026-07-12)** — cas 2 + interopérabilité ensuite
 **Naming** : final, dans l'univers Dunder Mifflin (Scranton → Philadelphia, même État)
+
+> **[RECADRAGE 2026-07-12]** Le moteur du cas 1 est CONSTRUIT et testé
+> (dossier, divulgation sélective, fiche signable, table
+> `handover_validations` — voir `docs/transfer_to_philly.md`) : il ne se
+> jette pas, il attend. Sa surface quitte la carte Team (supprimée) et
+> rejoindra **Michael's Desk** — ce que cette entrée disait déjà
+> ("le manager demande à Michael une fiche", cas 2 "depuis Michael's
+> Desk"). Le owner a resséquencé : la passation au nouveau manager est
+> son seul but, elle arrive en V2/V3 avec Send Angela. Les questions
+> data model 1 (cold/warm natif) et la traçabilité de validation sont
+> résolues depuis.
 
 ### Description
 
