@@ -118,6 +118,11 @@ I/O. The lifespan hook (`main.py`) builds shared adapters once onto
   `mistral-medium-latest`) without touching code - the A/B lever.
 - Dev DB may hold ad-hoc test rows (e.g. Kevin/Thomas birthdays set
   during verification). Run the seed with `--reset` for a clean demo.
+- **The framework Python is universal (arm64+x86_64), the venv wheels
+  are arm64-only**: a Rosetta launch context kills the server at import
+  time (pydantic_core dlopen). Both launchers force the slice via
+  `/usr/bin/arch -arm64 <venv-python> -m ...` - never remove it, and
+  spawn long-lived processes the same way.
 
 ## Commands
 
@@ -152,7 +157,17 @@ does not — the owner does not recognize his product. Everything to
 execute is in `Pre-dev/product/RECADRAGE_2026-07-12.md` (5 role-based
 views, Summaries become Pam response templates, Team view dies,
 Pretzel Day becomes each member's own space, per-proxy data entry
-abolished). Start there.
+abolished). Start there. The visual brief is the clickable mockup
+`Pre-dev/product/MAQUETTE_2026-07-12.html`, reviewed by the owner the
+same evening ("ça ressemble déjà un peu plus à l'idée que je m'en
+faisais" - direction validated at draft level, not pixel-perfect; the
+yellow ANNOTATION boxes mark the design decisions it embodies).
+
+**Succession (2026-07-12)**: Fable's access ended that evening; the
+owner explicitly passed the baton to Opus. The former "pure Fable
+repo" rule is lifted - build ON this base (clean through `b307cfc`),
+do not rebuild it. Exchanges with the owner stay in French; he is a
+product manager learning Python, so keep explaining the why.
 
 History: MVP + MLP shipped; V1 was feature-complete before the
 recadrage: **human profile**, **Maire de Scranton**, **Smart

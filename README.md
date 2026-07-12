@@ -51,9 +51,24 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 
 ## Status
 
-Pre-alpha. **MLP code-complete (M3)**: the full demo loop runs in the browser — capture and validate with Tell Dwight, query the memory with Ask Pam, daily Pretzel Day check-ins, team trends and weak signals in Meet Toby, a That's What She Said reward on every completion. Seeded Dunder Mifflin dataset with golden anti-regression queries (5/5 against the real provider). Google Drive ingestion is wired and tested on mocks; its end-to-end run needs the one-time OAuth setup ([docs/google_drive_ingestion.md](docs/google_drive_ingestion.md)).
+Pre-alpha. **V1 feature-complete, and mid-realignment — on purpose.**
 
-V1 nearly complete: **human profile**, **Maire de Scranton**, **Smart Summaries**, **Send Angela** and the **Transfer to Philly core** (dossier, selective disclosure, signable fiche) shipped. Remaining: the `handover_validations` data model session and the tuning pass (agent relevance, tone, reward pacing).
+The engine shipped: the full loop runs in the browser (Tell Dwight capture
+and validation, Ask Pam grounded answers, Pretzel Day, Meet Toby, Smart
+Summaries, Send Angela, the complete Transfer to Philly consent trail with
+its `handover_validations` audit table), Google Drive ingestion works end to
+end, the tuning pass landed (server-side language pinning, calibrated
+confidence, reading-time rewards), and 119 tests keep it honest.
+
+Then the owner ran the first real QA pass (via the one-click QA launcher)
+and rendered the verdict every honest POC needs: **the engine holds, the
+screen architecture does not.** The app had drifted into one-tab-per-agent;
+the pitch deck describes a role-based OS where the agents are ever-present
+actions. The full realignment is specified in
+[Pre-dev/product/RECADRAGE_2026-07-12.md](Pre-dev/product/RECADRAGE_2026-07-12.md)
+and made visible in a clickable, owner-validated mockup
+([Pre-dev/product/MAQUETTE_2026-07-12.html](Pre-dev/product/MAQUETTE_2026-07-12.html)).
+Rebuilding the surface on the untouched engine is the next milestone.
 
 ---
 
@@ -63,6 +78,10 @@ V1 nearly complete: **human profile**, **Maire de Scranton**, **Smart Summaries*
 to the Dock). It starts the local server if needed, reuses it otherwise, and
 opens the app at `http://127.0.0.1:8001`. The bundle resolves paths relative
 to itself: keep it inside the repository, do not copy it to /Applications.
+
+**Owner QA**: double-click `Scranton QA.command` — it boots a throwaway
+environment under `data/qa/` (your real data is never touched), reseeds the
+demo dataset, and opens an interactive checklist at `localhost:8010/qa.html`.
 
 ```bash
 python3.12 -m venv .venv
