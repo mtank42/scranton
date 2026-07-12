@@ -50,30 +50,65 @@ The character features (Tell Dwight, Ask Pam, Meet Toby, Send Angela, ...) are *
 
 ---
 
-## 3. Features — nomenclature (The Office universe)
+## 3. Features — nomenclature and screen architecture (The Office universe)
 
 All feature names are final. Do not rename.
+
+> **Aligned 2026-07-13 on the owner's recadrage
+> (`RECADRAGE_2026-07-12.md`), which prevails if this section drifts
+> again.** The UX source of truth is the pitch deck
+> (`Pre-dev/pitch/scranton_slides_v6.html`, slide 08): ONE OS with
+> role-based views. This section is an inventory, not a mockup — when
+> in doubt, slides first.
+
+### Screen architecture — 5 role-based views (closed list, owner 2026-07-12)
+
+Scranton is one app with views per ROLE, never one tab per agent.
+Dwight, Pam and Jim are omnipresent *actions* (+, ?, ~), not screens.
+The visual brief is the owner-reviewed mockup
+(`Pre-dev/product/MAQUETTE_2026-07-12.html`).
+
+| View | Role | What it is |
+|---|---|---|
+| **Tell Dwight** | everyone | The capture. After each note the input box drops BELOW Dwight's proposals ("Anything else to tell Dwight?") and stays readable. |
+| **Pretzel Day** | team member | Each member's PRIVATE space: own mood check-in (Flow→Danger palette, 6 levels) AND what they choose to share about themselves (birthday, tastes...). Explicit wording: shared with the manager, and him alone, to help him keep the team feeling good. Stands in for the settings panel until one exists. |
+| **Ask Pam** | everyone | The queryable memory, everywhere — not isolated. Plain-language queries; serves Smart Summary formats as response templates when the question calls for one ("the info on Stone & Son" → Client format). Additions/removals in a summary go through Dwight, because the manager decides. |
+| **Michael's Desk** | manager | 1:1 and meeting management: "the agenda for the next 1:1 with Ryan" or "for the next team meeting" → proposed here in the Meeting format. Will natively carry Transfer to Philly (transition-proof, slide 07) — the handover is V2/V3 and attached HERE. |
+| **Meet Toby** | manager | Team health. Per member: the signals THEY VERBALIZED (dated, quoted check-in notes and warm segments), never just dots with a thousand possible causes. Also displays what each member declared via Pretzel Day (birthday, tastes): access because knowingly given, never editable by the manager. Access ≠ ownership. |
+
+**Gone (recadrage 2026-07-12):** the Smart Summaries screen (absorbed
+by Pam and Michael's Desk) · the Team view · proxy data entry (the
+manager never types someone else's mood or personal data; the POC
+assumes multi-role on one machine) · cryptic tags (human labels,
+resolved names, visible confidence everywhere).
+
+### Feature glossary
 
 | Feature name | Category | Description |
 |---|---|---|
 | **Tell Dwight** | Core / Input | Free-text universal input. Routes notes to correct destinations simultaneously. Asks follow-up questions if vague. Corrects tone and spelling. |
 | **Ask Pam** | Memory / RAG | Collective memory, plain-language queries. Pam clarifies before answering. Drafts on demand. Text or voice output. Nothing ever lost. |
-| **Whisper Jim** | Ephemeral chat | 1:1 and group chat, ephemeral by default. No AI, no indexing. "Pam needs to know this?" — unanimous vote triggers Invite Dwight. |
-| **Pretzel Day** | Daily mood check-in | 30-second check-in. Flow→Danger palette (6 levels). Manager sees team trends. Remote, hybrid, on-site. |
-| **Michael's Desk** | People Management | AI-assisted 1:1 management. Auto-extracted actions and commitments. Archived and searchable. Natively transition-proof via Transfer to Philly. |
-| **Transfer to Philly** | Transitions / Handover | Structured handover when a team member moves or a manager is replaced. Cold data (facts) + warm data (manager observations), employee-validated, GDPR-compliant. Angela sends to next manager's Scranton. See BACKLOG.md for full spec. |
-| **Meet Toby** | Dashboard / Equity | Aggregated team health: weak signals, mood trends, equity flags (pay, tasks, promotions). Manager-only visibility. |
-| **Send Angela** | Export / Reporting | One-click export by project, member, or client. No retyping. Angela delivers, no questions asked. |
+| **Whisper Jim** | Ephemeral chat | 1:1 and group chat, ephemeral by default. No AI, no indexing. "Pam needs to know this?" — unanimous vote triggers Invite Dwight. V2. |
+| **Pretzel Day** | Daily mood check-in + self-declared profile | 30-second check-in, member-owned. Manager sees team trends via Meet Toby, never individual entry screens. Remote, hybrid, on-site. |
+| **Michael's Desk** | People Management | AI-assisted 1:1 and meeting management. Auto-extracted actions and commitments. Archived and searchable. Natively transition-proof via Transfer to Philly. |
+| **Transfer to Philly** | Transitions / Handover | Structured handover with ONE purpose: pass the team to the next manager. Cold data (facts) + warm data (manager observations), employee-validated, GDPR-compliant, verbatim. Angela sends to next manager's Scranton. V2/V3, surfaced in Michael's Desk. Engine built (consent trail, signable fiche); see BACKLOG.md. |
+| **Meet Toby** | Dashboard / Equity | Team health from verbalized signals, mood trends, equity flags (pay, tasks, promotions). Manager-only visibility. Never scores a person. |
+| **Send Angela** | Export / Reporting | One-click export by project, member, or client. No retyping. Angela delivers, no questions asked. V2. |
 | **That's What She Said** | Reward | Visual reward + random Michael Scott quote on task completion. Customisable per user. |
 
 ### Smart Summaries (powered by Dwight + Pam together)
-6 living templates, auto-fed by Tell Dwight, queryable via Ask Pam:
-1. Team Member File
-2. Project File
-3. Client File
+
+NOT a screen. 6 living response formats, auto-fed by Tell Dwight,
+served by Ask Pam when the question calls for one (Meeting format
+also surfaces in Michael's Desk). Edits go through Dwight — the
+manager decides. **The word "file" is banned from the product
+vocabulary** (it means nothing to users); they are formats:
+1. Team Member
+2. Project
+3. Client
 4. Team Radar (manager 360°)
 5. Meeting Agenda + CR
-6. Annual Review
+6. Annual Review (material for discussion, never a verdict)
 
 ### Reserved for fictitious users in mockups only
 Ryan, Oscar, Kelly, Phyllis, Jan, Stanley, Kevin, Meredith, Creed, Darryl, Andy
