@@ -1,10 +1,15 @@
 # CLAUDE.md — maintainer guide for Scranton
 
-> Loaded every session. High-signal only. The *plan* lives in
-> `Pre-dev/product/PRODUCT_ROADMAP.md`; the *architecture and data model*
-> in `Pre-dev/product/SCRANTON_CONTEXT.md`; per-feature detail in
-> `docs/<feature>.md`. This file is the operating manual: rules, invariants,
-> gotchas, commands.
+> Loaded every session. High-signal only. **READ FIRST:
+> `Pre-dev/product/RECADRAGE_2026-07-12.md`** — the owner's product
+> realignment (QA verdict): it OVERRIDES SCRANTON_CONTEXT §3 and the
+> current UI. The UX source of truth is the pitch deck
+> (`Pre-dev/pitch/scranton_slides_v6.html`), not the distilled feature
+> lists — that chain broke once, do not let it break again. The *plan*
+> lives in `Pre-dev/product/PRODUCT_ROADMAP.md`; the *architecture and
+> data model* in `Pre-dev/product/SCRANTON_CONTEXT.md`; per-feature
+> detail in `docs/<feature>.md`. This file is the operating manual:
+> rules, invariants, gotchas, commands.
 
 ## What Scranton is
 
@@ -141,11 +146,20 @@ Dock launcher (must stay in the repo).
 
 ## Current state (July 2026)
 
-MVP + MLP shipped; **V1 feature-complete**: **human profile**, **Maire
-de Scranton**, **Smart Summaries**, **Send Angela**, and **Transfer to
-Philly** (dossier + selective disclosure + signable fiche + the
-`handover_validations` consent trail, data model session held
-2026-07-08) are done and pushed. Remaining:
+**PRODUCT RECADRAGE PENDING — do not build features on the current UI.**
+First QA pass (2026-07-12): the engine holds, the screen architecture
+does not — the owner does not recognize his product. Everything to
+execute is in `Pre-dev/product/RECADRAGE_2026-07-12.md` (5 role-based
+views, Summaries become Pam response templates, Team view dies,
+Pretzel Day becomes each member's own space, per-proxy data entry
+abolished). Start there.
+
+History: MVP + MLP shipped; V1 was feature-complete before the
+recadrage: **human profile**, **Maire de Scranton**, **Smart
+Summaries**, **Send Angela**, and **Transfer to Philly** (dossier +
+selective disclosure + signable fiche + the `handover_validations`
+consent trail, data model session held 2026-07-08) - the engines stay,
+their surfaces move per the recadrage. Also noteworthy:
 
 1. **Tuning pass DONE (2026-07-09, session with the owner)**: language
    pinned server-side (`services/language.py`), light personas for Pam
