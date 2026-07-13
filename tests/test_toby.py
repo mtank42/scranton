@@ -183,3 +183,68 @@ def test_api_overview_shape(app, client):
     body = response.json()
     assert body["window_days"] == 14
     assert set(body) >= {"team_trend", "members", "signals", "generated_at"}
+
+def test_voiced_carries_notes_and_validated_warm_quotes(session_factory):
+    """The drill-down (recadrage): dated quotes, newest first, gate held."""
+    member_id = seed_member(session_factory, "Ryan")
+    with session_factory() as session:
+        session.add(
+            MoodCheckin(
+                team_member_id=member_id,
+                mood_level=MoodLevel.STUCK,
+                note="Long week. Sleeping badly.",
+                created_at=utc_naive(2),
+            )
+        )
+        session.add(
+            MoodCheckin(
+                team_member_id=member_id,
+                mood_level=MoodLevel.PRESS,
+                note=None,  # no words: nothing to quote
+                created_at=utc_naive(1),
+            )
+        )
+        entry = Entry(raw_content="raw", source_type=SourceType.NOTE)
+        session.add(entry)
+        session.flush()
+        validated = EntrySegment(
+            entry_id=entry.id,
+            content="Seemed on edge, cut Thomas off twice.",
+            segment_order=0,
+            data_type=DataType.WARM,
+            sensitivity_level=3,
+            validation_status=ValidationStatus.VALIDATED,
+            created_at=utc_naive(5),
+        )
+        proposed = EntrySegment(
+            entry_id=entry.id,
+            content="Proposed observation, never validated.",
+            segment_order=1,
+            data_type=DataType.WARM,
+            sensitivity_level=3,
+            created_at=utc_naive(4),
+        )
+        session.add_all([validated, proposed])
+        session.flush()
+        for segment in (validated, proposed):
+            session.add(
+                SegmentTag(
+                    segment_id=segment.id,
+                    entity_type=EntityType.TEAM_MEMBER,
+                    entity_id=member_id,
+                    proposed_by=ProposedBy.DWIGHT,
+                    confidence=0.9,
+                )
+            )
+        session.commit()
+
+    overview = TobyService(session_factory).overview(days=30)
+    ryan = next(m for m in overview.members if m.team_member_id == member_id)
+
+    assert [(v.kind, v.text) for v in ryan.voiced] == [
+        ("checkin_note", "Long week. Sleeping badly."),
+        ("warm_segment", "Seemed on edge, cut Thomas off twice."),
+    ]
+    assert ryan.voiced[1].sensitivity_level == 3
+    # The note travels on the timeline point too.
+    assert [p.note for p in ryan.checkins] == ["Long week. Sleeping badly.", None]

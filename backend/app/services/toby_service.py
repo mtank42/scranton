@@ -39,6 +39,7 @@ from backend.app.domain.schemas import (
     TobyMemberOverview,
     TobyOverview,
     TobySignal,
+    VoicedItem,
 )
 from backend.app.services.mood_service import utc_cutoff
 
@@ -73,8 +74,13 @@ class TobyService:
             for checkin in checkins:
                 by_member[checkin.team_member_id].append(checkin)
 
+            warm_by_member = self._warm_segments(session, days)
             member_overviews = [
-                self._member_overview(member, by_member.get(member.id, []))
+                self._member_overview(
+                    member,
+                    by_member.get(member.id, []),
+                    warm_by_member.get(member.id, []),
+                )
                 for member in members
             ]
             signals = self._collect_signals(session, members, by_member, days)
@@ -90,11 +96,58 @@ class TobyService:
     # --- building blocks ---
 
     @staticmethod
+    def _warm_segments(session: Session, days: int) -> dict[int, list[EntrySegment]]:
+        """Validated warm observations per member, one query for the team.
+
+        Only VALIDATED enters (the single gate); deduplicated per member
+        because a segment can carry several tags to the same person.
+        """
+        rows = session.execute(
+            select(SegmentTag.entity_id, EntrySegment)
+            .join(EntrySegment, SegmentTag.segment_id == EntrySegment.id)
+            .where(
+                SegmentTag.entity_type == EntityType.TEAM_MEMBER,
+                EntrySegment.data_type == DataType.WARM,
+                EntrySegment.validation_status == ValidationStatus.VALIDATED,
+                EntrySegment.created_at >= utc_cutoff(days),
+            )
+        ).all()
+        by_member: dict[int, list[EntrySegment]] = defaultdict(list)
+        seen: set[tuple[int, int]] = set()
+        for member_id, segment in rows:
+            if member_id is None or (member_id, segment.id) in seen:
+                continue
+            seen.add((member_id, segment.id))
+            by_member[member_id].append(segment)
+        return by_member
+
+    @staticmethod
     def _member_overview(
-        member: TeamMember, checkins: list[MoodCheckin]
+        member: TeamMember,
+        checkins: list[MoodCheckin],
+        warm_segments: list[EntrySegment],
     ) -> TobyMemberOverview:
-        """One member's timeline: raw dated facts, chronological."""
+        """One member's timeline: raw dated facts, chronological.
+
+        voiced carries what the person (or the manager's validated
+        observation) actually SAID, newest first - the drill-down the
+        recadrage asked for, instead of dots with a thousand causes.
+        """
         latest = checkins[-1] if checkins else None
+        voiced = [
+            VoicedItem(at=checkin.created_at, text=checkin.note, kind="checkin_note")
+            for checkin in checkins
+            if checkin.note
+        ] + [
+            VoicedItem(
+                at=segment.created_at,
+                text=segment.content,
+                kind="warm_segment",
+                sensitivity_level=segment.sensitivity_level,
+            )
+            for segment in warm_segments
+        ]
+        voiced.sort(key=lambda item: item.at, reverse=True)
         return TobyMemberOverview(
             team_member_id=member.id,
             full_name=member.full_name,
@@ -102,9 +155,14 @@ class TobyService:
             latest_mood=latest.mood_level if latest else None,
             latest_checkin_at=latest.created_at if latest else None,
             checkins=[
-                MemberMoodPoint(at=checkin.created_at, mood_level=checkin.mood_level)
+                MemberMoodPoint(
+                    at=checkin.created_at,
+                    mood_level=checkin.mood_level,
+                    note=checkin.note,
+                )
                 for checkin in checkins
             ],
+            voiced=voiced,
         )
 
     @staticmethod

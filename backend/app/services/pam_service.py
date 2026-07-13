@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.adapters.llm.base import LLMProvider
 from backend.app.adapters.vectorstore.base import Hit, VectorStore
-from backend.app.domain.models import EntrySegment
+from backend.app.domain.models import Client, EntrySegment, Project, TeamMember
 from backend.app.domain.schemas import PamAnswer, PamSource
 from backend.app.services.prompts import build_pam_messages
 
@@ -26,6 +26,24 @@ from backend.app.services.prompts import build_pam_messages
 # paying for a model call just to say "no memory". English on purpose:
 # UI text is English (SCRANTON_CONTEXT section 8).
 NO_MEMORY_ANSWER = "Pam has no validated memory matching this question yet."
+
+# Broad-intent markers, French and English (the owner's two working
+# languages - same closed-set philosophy as the language pin). A broad
+# question about ONE known entity is served as a summary template.
+BROAD_INTENT_MARKERS = (
+    "infos sur", "info sur", "le point sur", "point sur", "statut",
+    "tout sur", "tout savoir", "ou en est", "où en est", "où on en est",
+    "la fiche", "brief", "résume", "resume-moi", "résumé de",
+    "status", "everything on", "everything about", "catch me up",
+    "full picture", "update on", "where do we stand", "sum up",
+)
+
+# Entity kind -> the template that IS the answer for a broad question.
+TEMPLATE_BY_KIND = {
+    "team_member": "team_member_file",
+    "project": "project_file",
+    "client": "client_file",
+}
 
 
 class PamService:
@@ -36,11 +54,15 @@ class PamService:
         llm: LLMProvider,
         session_factory: sessionmaker[Session],
         vector_store: VectorStore,
+        summary_service=None,
     ) -> None:
-        """Wire the three seams the pipeline needs."""
+        """Wire the seams. summary_service powers the template answers
+        (recadrage 2026-07-12); without it Pam is plain Q&A, which keeps
+        older tests and callers valid."""
         self.llm = llm
         self.session_factory = session_factory
         self.vector_store = vector_store
+        self.summary_service = summary_service
 
     def query(self, question: str, *, filters: dict | None = None, k: int = 8) -> PamAnswer:
         """Answer a plain-language question over the validated memory.
@@ -49,6 +71,10 @@ class PamService:
         minimal) but the seam accepts it so entity- or view-scoped
         queries plug in without a signature change.
         """
+        served = self._serve_template(question)
+        if served is not None:
+            return served
+
         embedding = self.llm.embed([question])[0]
         hits = self.vector_store.query(embedding, filters=filters, k=k)
         if not hits:
@@ -68,6 +94,52 @@ class PamService:
         )
         answer = self.llm.complete(build_pam_messages(question, context_block))
         return PamAnswer(answer=answer, sources=sources)
+
+    def _serve_template(self, question: str) -> PamAnswer | None:
+        """Summaries are Pam RESPONSE TEMPLATES (recadrage 2026-07-12).
+
+        Deterministic closed-world router, no LLM: when the question
+        names exactly ONE known entity AND asks for the broad picture,
+        Pam serves the matching living template instead of top-k Q&A.
+        Anything else (precise question, zero or several entities) falls
+        through to the grounded RAG path. The clarify-before-answering
+        Pam of slide 05 is the V2 upgrade, tracked in the recadrage.
+        """
+        if self.summary_service is None:
+            return None
+        lowered = question.lower()
+        if not any(marker in lowered for marker in BROAD_INTENT_MARKERS):
+            return None
+
+        matches: list[tuple[str, int, str]] = []
+        with self.session_factory() as session:
+            for kind, model in (
+                ("team_member", TeamMember),
+                ("project", Project),
+                ("client", Client),
+            ):
+                for row in session.scalars(select(model)):
+                    name = getattr(row, "full_name", None) or row.name
+                    if name and name.lower() in lowered:
+                        matches.append((kind, row.id, name))
+        if len(matches) != 1:
+            return None
+
+        kind, target_id, name = matches[0]
+        try:
+            summary = self.summary_service.generate(TEMPLATE_BY_KIND[kind], target_id)
+        except Exception:
+            # A template hiccup must never block an answer: the grounded
+            # Q&A path is always there as the fallback.
+            return None
+        return PamAnswer(
+            answer=(
+                f"Here is the full picture on {name} - "
+                "assembled from everything validated."
+            ),
+            sources=summary.sources,
+            summary=summary,
+        )
 
     @staticmethod
     def _load_sources(session: Session, hits: list[Hit]) -> list[PamSource]:

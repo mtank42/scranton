@@ -31,12 +31,17 @@ def get_dwight_service(request: Request) -> DwightService:
 
 
 def get_pam_service(request: Request) -> PamService:
-    """Build a PamService wired to the app-level adapters."""
+    """Build a PamService wired to the app-level adapters.
+
+    The summary engine rides along: summaries are Pam response templates
+    (recadrage 2026-07-12), served when a question calls for one.
+    """
     state = request.app.state
     return PamService(
         llm=state.llm,
         session_factory=state.session_factory,
         vector_store=state.vector_store,
+        summary_service=get_summary_service(request),
     )
 
 

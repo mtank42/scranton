@@ -63,7 +63,7 @@ def test_empty_memory_is_an_honest_200(app, client):
     override_service(app, hits=[], completions=[])
     response = client.post("/api/v1/pam/query", json={"question": "Anything on Bergerac?"})
     assert response.status_code == 200
-    assert response.json() == {"answer": NO_MEMORY_ANSWER, "sources": []}
+    assert response.json() == {"answer": NO_MEMORY_ANSWER, "sources": [], "summary": None}
 
 
 def test_empty_question_is_rejected_by_validation(client):

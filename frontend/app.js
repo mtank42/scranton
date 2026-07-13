@@ -509,6 +509,28 @@ function sourceRow(source, index) {
     </div>`;
 }
 
+/* A summary served AS the answer (recadrage): Pam understood that the
+ * question called for the full picture of one entity. */
+function pamSummaryCard(summary) {
+  const label = [summary.title, summary.target_label].filter(Boolean).join(" - ");
+  const sections = summary.sections
+    .map(
+      (section) =>
+        `<p class="summary-heading">${esc(section.heading)}</p>
+         <p class="summary-text">${esc(section.content).replace(/\n/g, "<br />")}</p>`
+    )
+    .join("");
+  return `
+    <div class="pam-template">
+      <p class="tpl-label">${esc(label.toUpperCase())}</p>
+      ${sections}
+      <div class="card-actions">
+        <button class="btn btn-primary" data-open-dwight
+          title="Additions and removals go through Dwight: you decide.">Adjust with Dwight</button>
+      </div>
+    </div>`;
+}
+
 async function submitPam(event) {
   event.preventDefault();
   const input = document.getElementById("pam-input");
@@ -522,11 +544,12 @@ async function submitPam(event) {
       method: "POST",
       body: JSON.stringify({ question: input.value }),
     });
+    const template = result.summary ? pamSummaryCard(result.summary) : "";
     const sources = result.sources.length
       ? `<p class="sources-title">Sources</p>` + result.sources.map(sourceRow).join("")
       : "";
     document.getElementById("pam-wait").outerHTML =
-      `<div class="answer-card">${esc(result.answer)}</div>${sources}`;
+      `<div class="answer-card">${esc(result.answer)}</div>${template}${sources}`;
     input.value = "";
     input.placeholder = "Anything else to ask Pam?";
     thread.lastElementChild.scrollIntoView({ block: "nearest" });
@@ -730,15 +753,50 @@ function trendChart(points) {
     </div>`;
 }
 
-function memberRow(member) {
+/* The drill-down (recadrage): what each person actually SAID, dated
+ * and quoted - never just dots with a thousand possible causes. */
+function voicedRow(item) {
+  const kind = item.kind === "checkin_note" ? "check-in" : "observation";
+  const sensitivity = item.sensitivity_level ? sensitivityDots(item.sensitivity_level) : "";
   return `
-    <div class="member-row">
-      <div class="member-id">
-        <strong>${esc(member.full_name)}</strong>
-        <span class="member-role">${esc(member.role || "")}</span>
+    <div class="voiced">
+      <span class="vd">${item.at.slice(0, 10)}</span>
+      <span class="vq">"${esc(item.text)}"</span>
+      <span class="chip">${kind}</span>${sensitivity}
+    </div>`;
+}
+
+/* What the member chose to declare in their Pretzel Day space: the
+ * manager READS it here, never edits it. Access, not ownership. */
+function declaredChips(memberId) {
+  const member = state.members.find((m) => m.id === memberId);
+  const chips = [];
+  if (member?.birthday) chips.push(`birthday: ${formatBirthday(member.birthday)}`);
+  if (member?.personal_profile) {
+    chips.push(member.personal_profile.split("\n")[0].slice(0, 70));
+  }
+  if (!chips.length) {
+    return `<div class="declared"><span>has shared nothing - that's their right</span></div>`;
+  }
+  return `<div class="declared">${chips.map((chip) => `<span>${esc(chip)}</span>`).join("")}</div>`;
+}
+
+function tobyMemberCard(member) {
+  const voiced = member.voiced.length
+    ? member.voiced.map(voicedRow).join("")
+    : `<p class="silent-line">Nothing verbalized in the window - sometimes the silence is the signal.</p>`;
+  return `
+    <div class="card toby-member">
+      <div class="member-row">
+        <div class="member-id">
+          <strong>${esc(member.full_name)}</strong>
+          <span class="member-role">${esc(member.role || "")}</span>
+        </div>
+        <div class="dots">${moodDots(member.checkins)}</div>
+        ${moodChip(member.latest_mood)}
       </div>
-      <div class="dots">${moodDots(member.checkins)}</div>
-      ${moodChip(member.latest_mood)}
+      ${voiced}
+      ${declaredChips(member.team_member_id)}
     </div>`;
 }
 
@@ -753,8 +811,8 @@ async function loadToby() {
     `<p class="sources-title">Weak signals</p>${signals}
      <p class="sources-title">Team mood - last ${overview.window_days} days</p>
      ${trendChart(overview.team_trend)}
-     <p class="sources-title">Members</p>
-     ${overview.members.map(memberRow).join("")}`
+     <p class="sources-title">Member by member - in their words</p>
+     ${overview.members.map(tobyMemberCard).join("")}`
   );
 }
 
@@ -1046,6 +1104,9 @@ async function init() {
   bindOverlays();
   bindDwightOverlay();
   document.getElementById("pam-form").addEventListener("submit", submitPam);
+  document.getElementById("pam-thread").addEventListener("click", (event) => {
+    if (event.target.matches("[data-open-dwight]")) openOverlay("dwight-overlay");
+  });
   document.getElementById("twss").addEventListener("click", (event) => {
     event.currentTarget.hidden = true;
   });

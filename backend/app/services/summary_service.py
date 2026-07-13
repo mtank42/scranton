@@ -94,7 +94,9 @@ TEMPLATES: dict[str, SummaryTemplate] = {
     for template in (
         SummaryTemplate(
             id="team_member_file",
-            title="Team Member File",
+            # 'file' is banned from the UI vocabulary (owner, recadrage
+            # 2026-07-12); ids stay technical identifiers, titles are UI.
+            title="Team Member",
             description="Skills, history, observations and signals for one member.",
             target="team_member",
             sections=(
@@ -109,7 +111,7 @@ TEMPLATES: dict[str, SummaryTemplate] = {
         ),
         SummaryTemplate(
             id="project_file",
-            title="Project File",
+            title="Project",
             description="Decisions, deliverables, people and open points of a project.",
             target="project",
             sections=(
@@ -122,7 +124,7 @@ TEMPLATES: dict[str, SummaryTemplate] = {
         ),
         SummaryTemplate(
             id="client_file",
-            title="Client File",
+            title="Client",
             description="Relationship history, preferences, commitments and activity.",
             target="client",
             sections=(

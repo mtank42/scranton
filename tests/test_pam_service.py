@@ -107,3 +107,126 @@ def test_missing_segments_are_skipped_but_valid_ones_survive(session_factory):
     result = service.query("What did Kevin want?")
 
     assert [source.segment_id for source in result.sources] == [warm_id]
+
+# --- Summary templates as Pam answers (recadrage 2026-07-12) ---
+
+
+class StubSummaryService:
+    """Records what Pam asked for and returns a canned SummaryResponse."""
+
+    def __init__(self, fail=False):
+        self.fail = fail
+        self.calls = []
+
+    def generate(self, template_id, target_id=None):
+        from datetime import datetime, timezone
+
+        from backend.app.domain.schemas import SummaryResponse, SummarySection
+
+        self.calls.append((template_id, target_id))
+        if self.fail:
+            raise RuntimeError("template hiccup")
+        return SummaryResponse(
+            template_id=template_id,
+            title="Client",
+            target_label="Stone & Son",
+            generated_at=datetime.now(timezone.utc),
+            window_days=None,
+            sections=[SummarySection(heading="Commitments", content="A quote by Friday.")],
+            sources=[],
+        )
+
+
+def seed_entities(session_factory):
+    """One member, one project, one client for the closed-world router."""
+    from backend.app.domain.models import Client, Project, TeamMember
+
+    with session_factory() as session:
+        member = TeamMember(full_name="Kevin")
+        project = Project(name="Tables mairie")
+        client = Client(name="Stone & Son")
+        session.add_all([member, project, client])
+        session.commit()
+        return member.id, project.id, client.id
+
+
+def test_broad_question_on_one_entity_serves_the_template(session_factory):
+    """'Le point sur <client>' answers with the Client template, no RAG."""
+    _, _, client_id = seed_entities(session_factory)
+    service, llm, store = make_service(session_factory, hits=[], completions=[])
+    stub = StubSummaryService()
+    service.summary_service = stub
+
+    answer = service.query("Fais-moi le point sur Stone & Son")
+
+    assert stub.calls == [("client_file", client_id)]
+    assert answer.summary is not None
+    assert answer.summary.template_id == "client_file"
+    assert "Stone & Son" in answer.answer
+    # The template path never touches the index or the chat model.
+    assert store.query_calls == []
+    assert llm.complete_calls == []
+    assert llm.embed_calls == []
+
+
+def test_member_and_project_route_to_their_templates(session_factory):
+    """The router picks the template matching the entity kind."""
+    member_id, project_id, _ = seed_entities(session_factory)
+    service, _, _ = make_service(session_factory, hits=[], completions=[])
+    stub = StubSummaryService()
+    service.summary_service = stub
+
+    service.query("Tout savoir sur Kevin")
+    service.query("Where do we stand on Tables mairie?")
+
+    assert stub.calls == [
+        ("team_member_file", member_id),
+        ("project_file", project_id),
+    ]
+
+
+def test_precise_question_stays_on_the_rag_path(session_factory):
+    """Naming an entity without broad intent keeps the grounded Q&A."""
+    seed_entities(session_factory)
+    warm_id, _ = seed_segments(session_factory)
+    service, llm, store = make_service(
+        session_factory,
+        hits=[hit(warm_id, 0.9)],
+        completions=["Kevin asked to talk [1]."],
+    )
+    service.summary_service = StubSummaryService()
+
+    answer = service.query("Quand est-ce que Kevin a demandé à me parler ?")
+
+    assert answer.summary is None
+    assert store.query_calls  # retrieval ran: the RAG path answered
+
+
+def test_ambiguous_or_unknown_entities_fall_back_to_rag(session_factory):
+    """Two names (or none) in a broad question: no template guessing."""
+    seed_entities(session_factory)
+    service, _, store = make_service(
+        session_factory, hits=[], completions=[]
+    )
+    stub = StubSummaryService()
+    service.summary_service = stub
+
+    two = service.query("Le point sur Kevin et Stone & Son")
+    none = service.query("Le point sur la Michael Scott Paper Company")
+
+    assert stub.calls == []
+    assert two.summary is None and none.summary is None
+    assert len(store.query_calls) == 2  # both went to retrieval
+
+
+def test_template_failure_falls_back_to_rag(session_factory):
+    """A template hiccup must never block an answer."""
+    seed_entities(session_factory)
+    service, _, store = make_service(session_factory, hits=[], completions=[])
+    service.summary_service = StubSummaryService(fail=True)
+
+    answer = service.query("Le point sur Stone & Son")
+
+    assert answer.summary is None
+    assert answer.answer == NO_MEMORY_ANSWER  # empty index: honest empty
+    assert len(store.query_calls) == 1

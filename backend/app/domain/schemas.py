@@ -220,6 +220,12 @@ class PamAnswer(BaseModel):
 
     answer: str
     sources: list[PamSource] = []
+    # Recadrage 2026-07-12: summaries are Pam RESPONSE TEMPLATES. When
+    # the question asks for the broad picture of one known entity, Pam
+    # serves the matching template here. None on the plain Q&A path.
+    # (Forward reference: SummaryResponse is defined below; the model is
+    # rebuilt right after it.)
+    summary: "SummaryResponse | None" = None
 
 
 # --- Pretzel Day (mood) API surface ---
@@ -268,6 +274,22 @@ class MemberMoodPoint(BaseModel):
 
     at: datetime
     mood_level: MoodLevel
+    # The member's own words, when they left any (recadrage 2026-07-12:
+    # Toby surfaces what people VERBALIZED, not just colored dots).
+    note: str | None = None
+
+
+class VoicedItem(BaseModel):
+    """One thing a member actually said, dated and quoted.
+
+    Either their own check-in note or a validated warm observation
+    about them. Material for a conversation - never a verdict.
+    """
+
+    at: datetime
+    text: str
+    kind: Literal["checkin_note", "warm_segment"]
+    sensitivity_level: int | None = None
 
 
 class TobySignal(BaseModel):
@@ -294,6 +316,9 @@ class TobyMemberOverview(BaseModel):
     latest_mood: MoodLevel | None
     latest_checkin_at: datetime | None
     checkins: list[MemberMoodPoint]
+    # What they verbalized in the window, newest first: check-in notes
+    # and validated warm observations (recadrage 2026-07-12 drill-down).
+    voiced: list[VoicedItem] = []
 
 
 class TobyOverview(BaseModel):
@@ -416,6 +441,11 @@ class SummaryResponse(BaseModel):
     window_days: int | None
     sections: list[SummarySection]
     sources: list[PamSource]
+
+
+# PamAnswer.summary forward-references SummaryResponse (defined above):
+# resolve it now that both classes exist.
+PamAnswer.model_rebuild()
 
 
 # --- Transfer to Philly (handover) API surface ---
