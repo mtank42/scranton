@@ -13,30 +13,75 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <aside class="sidebar">
+  <!-- One OS, role-based views (recadrage 2026-07-12, slide 08):
+       the agents are omnipresent ACTIONS at the bottom, never tabs. -->
+  <header class="topbar">
     <div class="logo">SCRANTON<span class="logo-dot">_</span></div>
-    <nav id="nav" class="nav"></nav>
-    <div id="mayor-banner" class="mayor-banner" hidden></div>
-    <p class="tagline">One smart notepad.<br />Zero bureaucracy.<br />100% team.</p>
-  </aside>
+    <div class="role-switch" id="role-switch">
+      <button data-role="manager" class="active">Manager</button>
+      <button data-role="member">Team member</button>
+    </div>
+    <!-- Multi-role on one machine (POC): the member picks WHO THEY ARE,
+         then acts only for themselves. Never proxy data entry. -->
+    <select id="identity" class="identity" hidden></select>
+  </header>
 
-  <main class="main">
-    <!-- Tell Dwight: capture -->
-    <section id="view-dwight" class="view">
-      <header class="view-header">
-        <img id="dwight-avatar" class="avatar" alt="" />
+  <main class="os-window">
+    <div class="pbar">
+      <span class="pdot y"></span><span class="pdot c"></span><span class="pdot g"></span>
+      <span class="ptitle" id="window-title">SCRANTON</span>
+    </div>
+    <nav class="viewnav" id="viewnav"></nav>
+    <div class="pbody">
+      <!-- Manager views -->
+      <section id="view-dashboard" class="view">
+        <div id="mayor-banner" class="mayor-banner" hidden></div>
+        <div id="dashboard-body" class="placeholder">Loading</div>
+      </section>
+      <section id="view-desk" class="view" hidden>
+        <header class="view-header slim">
+          <img id="desk-avatar" class="avatar avatar-small" alt="" />
+          <p class="view-sub">1:1s and meetings. Pam gathers, you decide - adjustments go through Dwight.</p>
+        </header>
+        <div id="desk-body" class="placeholder">Loading</div>
+      </section>
+      <section id="view-toby" class="view" hidden>
+        <header class="view-header slim">
+          <img id="toby-avatar" class="avatar avatar-small" alt="" />
+          <p class="view-sub">Team health, from what each person chose to say. Facts and quotes, never scores.</p>
+        </header>
+        <div id="toby-body" class="placeholder">Loading</div>
+      </section>
+
+      <!-- Team member views -->
+      <section id="view-myboard" class="view" hidden>
+        <div id="myboard-body" class="placeholder">Loading</div>
+      </section>
+      <section id="view-pretzel" class="view" hidden>
+        <div id="pretzel-body" class="placeholder">Loading</div>
+      </section>
+    </div>
+  </main>
+
+  <!-- The agents: everywhere, for both roles -->
+  <div class="action-bar" id="action-bar"></div>
+
+  <!-- Tell Dwight: capture overlay. Proposals pile up ABOVE, the input
+       stays BELOW and follows the conversation (recadrage). -->
+  <div class="overlay" id="dwight-overlay" hidden>
+    <div class="sheet">
+      <div class="sheet-head">
+        <img id="dwight-avatar" class="avatar avatar-small" alt="" />
         <div>
-          <h1 id="dwight-title"></h1>
+          <h2 id="dwight-title"></h2>
           <p class="view-sub">Type anything. Dwight structures it silently; you decide what enters the memory.</p>
         </div>
-      </header>
-      <form id="dwight-form" class="capture-form">
-        <textarea
-          id="dwight-input"
-          rows="5"
-          placeholder="Messy note, meeting scraps, a promise made in a hallway..."
-          required
-        ></textarea>
+        <button class="btn btn-ghost sheet-close" data-close>Close</button>
+      </div>
+      <div id="dwight-result"></div>
+      <form id="dwight-form" class="capture-form sheet-form">
+        <textarea id="dwight-input" rows="3" required
+          placeholder="Messy note, meeting scraps, a promise made in a hallway..."></textarea>
         <div class="form-row">
           <select id="dwight-source">
             <option value="note" selected>note</option>
@@ -47,84 +92,29 @@
           <button type="submit" class="btn btn-primary" id="dwight-submit">Tell Dwight</button>
         </div>
       </form>
-      <div id="dwight-result"></div>
-    </section>
+    </div>
+  </div>
 
-    <!-- Ask Pam: memory -->
-    <section id="view-pam" class="view" hidden>
-      <header class="view-header">
-        <img id="pam-avatar" class="avatar" alt="" />
+  <!-- Ask Pam: memory overlay, thread style -->
+  <div class="overlay" id="pam-overlay" hidden>
+    <div class="sheet">
+      <div class="sheet-head">
+        <img id="pam-avatar" class="avatar avatar-small" alt="" />
         <div>
-          <h1 id="pam-title"></h1>
-          <p class="view-sub">Plain-language questions over everything you validated. Grounded answers, sources included.</p>
+          <h2 id="pam-title"></h2>
+          <p class="view-sub">Plain-language questions over everything validated. Grounded answers, sources included.</p>
         </div>
-      </header>
-      <form id="pam-form" class="capture-form">
+        <button class="btn btn-ghost sheet-close" data-close>Close</button>
+      </div>
+      <div id="pam-thread"></div>
+      <form id="pam-form" class="capture-form sheet-form">
         <div class="form-row">
-          <input
-            id="pam-input"
-            type="text"
-            placeholder="What did we promise to Stone &amp; Son?"
-            required
-          />
+          <input id="pam-input" type="text" placeholder="What did we promise to Stone &amp; Son?" required />
           <button type="submit" class="btn btn-primary" id="pam-submit">Ask Pam</button>
         </div>
       </form>
-      <div id="pam-result"></div>
-    </section>
-
-    <!-- Pretzel Day: mood check-in (M3.4) -->
-    <section id="view-mood" class="view" hidden>
-      <header class="view-header">
-        <div class="avatar avatar-palette" aria-hidden="true"></div>
-        <div>
-          <h1>Pretzel Day</h1>
-          <p class="view-sub">The 30-second check-in. Six levels, one optional note.</p>
-        </div>
-      </header>
-      <div id="mood-body" class="placeholder">Loading</div>
-    </section>
-
-    <!-- Meet Toby: team health (M3.4) -->
-    <section id="view-toby" class="view" hidden>
-      <header class="view-header">
-        <img id="toby-avatar" class="avatar" alt="" />
-        <div>
-          <h1 id="toby-title"></h1>
-          <p class="view-sub">Mood trends and weak signals. Facts, never scores.</p>
-        </div>
-      </header>
-      <div id="toby-body" class="placeholder">Loading</div>
-    </section>
-
-    <!-- Smart Summaries: the six living templates (V1.3) -->
-    <section id="view-summaries" class="view" hidden>
-      <header class="view-header">
-        <div class="avatar-duo" aria-hidden="true">
-          <img id="duo-dwight" class="avatar avatar-small" alt="" />
-          <img id="duo-pam" class="avatar avatar-small" alt="" />
-        </div>
-        <div>
-          <h1>Smart Summaries</h1>
-          <p class="view-sub">Living documents, assembled from the validated memory on demand. Never stored, never stale.</p>
-        </div>
-      </header>
-      <div id="summaries-controls" class="capture-form"></div>
-      <div id="summaries-result"></div>
-    </section>
-
-    <!-- Team: roster + human profile (V1.1) -->
-    <section id="view-team" class="view" hidden>
-      <header class="view-header">
-        <div class="avatar avatar-team" aria-hidden="true"></div>
-        <div>
-          <h1>Team</h1>
-          <p class="view-sub">The human profile belongs to each team member. You record it on their behalf, for now.</p>
-        </div>
-      </header>
-      <div id="team-body" class="placeholder">Loading</div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <!-- That's What She Said: completion reward overlay (also hosts the
        Maire de Scranton celebration, same stage different show) -->
