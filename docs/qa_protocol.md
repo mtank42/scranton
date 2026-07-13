@@ -37,14 +37,25 @@ résultat attendu. Les notes de test sont fournies avec un bouton
 conservées localement d'une session à l'autre ; **Copier le rapport**
 génère un compte rendu prêt à coller pour la session de correction.
 
-Elle couvre : la capture Dwight (langue, cold/warm, sensibilité,
-commitment, confidences calibrées, clarification, profil sans année),
-**la porte de validation** (le test le plus important : Pam ignore tout
-segment non validé), Ask Pam (grounding, langues, partial-beats-nothing,
-hors mémoire honnête), Pretzel Day + les règles TWSS, Meet Toby (signaux,
-jamais de score), Team/profils/Maire, Smart Summaries, Send Angela, le
-cycle complet Transfer to Philly (sélection, gel, signatures, hash,
-download ≠ transmission), et l'ingestion Drive (optionnelle).
+Elle couvre le produit RECADRÉ (2026-07-13) : le shell OS à deux rôles
+(vues manager / vues équipier, identité, agents en boutons flottants),
+la capture Dwight en overlay (langue, cold/warm, tags humains avec
+confiance en toutes lettres, saisie qui suit la conversation,
+clarification, suggestion de profil sans année), **la porte de
+validation** (le test le plus important : Pam ignore tout segment non
+validé), Ask Pam en Q&A ET en templates servis (question large sur une
+entité → carte template ; ambiguë ou précise → Q&A ; langue de la
+question), l'espace équipier (check-in pour soi, About me consenti,
+étanchéité entre identités), le Dashboard + Maire, Michael's Desk
+(agenda, brief 1:1, annual review = matière jamais verdict, exports),
+Meet Toby en citations (les mots des gens, infos déclarées en lecture
+seule, silence comme signal), **les checks négatifs** (vues Team et
+Summaries disparues, saisie par procuration impossible, « file » et
+tags cryptiques absents), et l'ingestion Drive (optionnelle).
+
+Nota : le cycle Transfer to Philly ne fait plus partie de la passe
+courante — son moteur reste testé par la suite automatisée, sa surface
+revient en V2/V3 dans Michael's Desk (recadrage).
 
 Règle d'or pour juger une sortie du modèle : un écart **ponctuel** de
 formulation n'est pas un bug (échantillonnage) ; un écart **répétable**

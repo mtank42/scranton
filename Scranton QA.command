@@ -28,7 +28,10 @@ echo " (vos données réelles ne sont PAS touchées)"
 echo "==============================================="
 
 # A previous QA session may still hold the port: stop it quietly.
-lsof -ti tcp:$PORT | xargs kill 2>/dev/null || true
+# -nP skips name resolution (plain lsof can take 25s+); LISTEN-only
+# matters: without it, lsof also lists CLIENT sockets to the port,
+# and the kill would take down the user's browser.
+lsof -nP -tiTCP:$PORT -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null || true
 sleep 1
 
 rm -rf "$QA_DIR"
