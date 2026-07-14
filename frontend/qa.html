@@ -116,7 +116,7 @@ const SECTIONS = [
       { copy: "bon ben c'est réglé finalement" },
       ["d5", "Envoyer la note vague ci-dessus.", "UNE question de clarification en français, ton Dwight ; votre réponse dans le fil produit des segments"],
       { copy: "En discutant avec Oscar j'ai appris que son anniversaire est le 12 mars et qu'il adore le triathlon." },
-      ["d6", "Envoyer la note ci-dessus, puis « Add to profile ».", "Suggestion de profil pour Oscar : <strong>jour + mois, aucune année</strong> ; l'ajout apparaîtra dans Toby (infos déclarées)"]
+      ["d6", "Envoyer la note ci-dessus.", "Dwight <strong>ignore silencieusement</strong> l'info perso (aucune suggestion, aucun segment dessus) : ces données se déclarent dans Pretzel Day, par Oscar lui-même"]
     ]
   },
   {
@@ -138,7 +138,7 @@ const SECTIONS = [
       { copy: "Fais-moi le point sur Prince Family Paper" },
       ["p1", "Question LARGE nommant UN client.", "Pam sert une <strong>carte template CLIENT - PRINCE FAMILY PAPER</strong> : sections, sources, bouton « Adjust with Dwight ». Le mot « file » n'apparaît nulle part"],
       { copy: "Tout savoir sur Ryan" },
-      ["p2", "Question large nommant UN membre.", "Carte template <strong>TEAM MEMBER - RYAN</strong>"],
+      ["p2", "Question large nommant UN MEMBRE de l'équipe.", "<strong>PAS de template</strong> et pas de warm : les infos sur les personnes sont chez Toby et Michael's Desk. Pam reste sur le Q&A, cold uniquement"],
       ["p3", "Cliquer « Adjust with Dwight » sous une carte.", "Le panneau Dwight s'ouvre : les retouches passent par lui, c'est vous qui décidez"],
       { copy: "Le point sur Ryan et Kelly" },
       ["p4", "Question large mais AMBIGUË (deux noms).", "Pas de template deviné : réponse Q&A classique (la clarification fine, c'est la V2)"],
@@ -210,7 +210,7 @@ const SECTIONS = [
   }
 ];
 
-const STORE_KEY = "scranton-qa-v2";
+const STORE_KEY = "scranton-qa-v3";
 const state = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
 const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));
 
