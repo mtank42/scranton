@@ -1,5 +1,12 @@
 # Recadrage produit — 2026-07-12 (session QA avec le owner)
 
+> **STATUT : EXÉCUTÉ EN ENTIER le 2026-07-13** (étape 1 : `16f591d` ;
+> étapes 2-3-6 : `c5f9a22` ; étapes 4-5 : `b0ae921`), puis validé par
+> la première QA owner du produit recadré le 2026-07-14 (35/37, lot A
+> de correctifs : `27dea70` — dont la règle « Pam cold-only, l'humain
+> vit chez Toby et Michael's Desk », désormais invariant dans
+> CLAUDE.md). Ce document reste la référence produit des 5 vues.
+
 > **Ce document prime sur SCRANTON_CONTEXT §3 et sur l'UI construite.**
 > Il capture, dans les mots du owner, le produit tel que les slides
 > (`Pre-dev/pitch/scranton_slides_v6.html`) le décrivaient déjà et tel

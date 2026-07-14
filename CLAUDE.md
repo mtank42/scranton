@@ -1,15 +1,15 @@
 # CLAUDE.md — maintainer guide for Scranton
 
-> Loaded every session. High-signal only. **READ FIRST:
-> `Pre-dev/product/RECADRAGE_2026-07-12.md`** — the owner's product
-> realignment (QA verdict): it OVERRIDES SCRANTON_CONTEXT §3 and the
-> current UI. The UX source of truth is the pitch deck
-> (`Pre-dev/pitch/scranton_slides_v6.html`), not the distilled feature
-> lists — that chain broke once, do not let it break again. The *plan*
-> lives in `Pre-dev/product/PRODUCT_ROADMAP.md`; the *architecture and
-> data model* in `Pre-dev/product/SCRANTON_CONTEXT.md`; per-feature
-> detail in `docs/<feature>.md`. This file is the operating manual:
-> rules, invariants, gotchas, commands.
+> Loaded every session. High-signal only. The product definition is
+> `Pre-dev/product/RECADRAGE_2026-07-12.md` (**executed in full,
+> 2026-07-13** - the app now matches it) with the owner-validated
+> mockup `Pre-dev/product/MAQUETTE_2026-07-12.html`. The UX source of
+> truth is the pitch deck (`Pre-dev/pitch/scranton_slides_v6.html`),
+> not the distilled feature lists — that chain broke once, do not let
+> it break again. The *plan* lives in `Pre-dev/product/PRODUCT_ROADMAP.md`;
+> the *architecture and data model* in `Pre-dev/product/SCRANTON_CONTEXT.md`;
+> per-feature detail in `docs/<feature>.md`. This file is the operating
+> manual: rules, invariants, gotchas, commands.
 
 ## What Scranton is
 
@@ -67,7 +67,15 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 - **People are never scored** (the north star). `MOOD_INDEX` indexes the
   mood, never the person. Team-level averages are fine; ranking or rating
   a human is off-thesis. Toby signals and the annual-review template are
-  *material for discussion*, never verdicts.
+  *material for discussion*, never verdicts. Generated documents describe
+  moods in WORDS - never an average or index that reads like a score.
+- **People information never flows through Pam** (owner, QA 2026-07-14).
+  Pam's Q&A retrieval is COLD-ONLY (`data_type` filter) and her template
+  router serves clients/projects only, generated `cold_only=True`. The
+  warm layer lives in Meet Toby and Michael's Desk briefs (manager-only
+  surfaces, full warm+cold mix). Personal-life data is member-DECLARED
+  through their own Pretzel Day space: Dwight silently drops such info
+  from manager notes (prompt rule 5), no suggestion flow.
 - **Structured LLM calls go through `services/llm_json.complete_validated`**
   (parse tolerant of ```json fences, Pydantic validate, one retry). Used
   by Dwight and Summaries. Don't re-roll a bespoke parser.
@@ -151,23 +159,29 @@ Dock launcher (must stay in the repo).
 
 ## Current state (July 2026)
 
-**PRODUCT RECADRAGE PENDING — do not build features on the current UI.**
-First QA pass (2026-07-12): the engine holds, the screen architecture
-does not — the owner does not recognize his product. Everything to
-execute is in `Pre-dev/product/RECADRAGE_2026-07-12.md` (5 role-based
-views, Summaries become Pam response templates, Team view dies,
-Pretzel Day becomes each member's own space, per-proxy data entry
-abolished). Start there. The visual brief is the clickable mockup
-`Pre-dev/product/MAQUETTE_2026-07-12.html`, reviewed by the owner the
-same evening ("ça ressemble déjà un peu plus à l'idée que je m'en
-faisais" - direction validated at draft level, not pixel-perfect; the
-yellow ANNOTATION boxes mark the design decisions it embodies).
+**RECADRAGE EXECUTED IN FULL (2026-07-13) and first owner QA passed
+(2026-07-14, 35/37 + lot A of 10 fixes shipped).** The app IS the
+recadrage now: one OS, two roles (manager: Dashboard / Michael's Desk /
+Meet Toby; member: My board / Pretzel Day + identity picker), Dwight
+and Pam as floating overlay actions, Pam serving Client/Project
+templates on broad questions, Toby speaking in dated quotes, human
+tags with spelled-out confidence. Build on this UI.
 
-**Succession (2026-07-12)**: Fable's access ended that evening; the
-owner explicitly passed the baton to Opus. The former "pure Fable
-repo" rule is lifted - build ON this base (clean through `b307cfc`),
-do not rebuild it. Exchanges with the owner stay in French; he is a
-product manager learning Python, so keep explaining the why.
+**NEXT BIG SESSION (owner arbitration, 2026-07-14): document editing
+via Dwight** - generated documents (Desk agendas/briefs, Pam template
+cards) are read-only and the owner calls the Desk "unusable" without
+the final human touch. Scoped entry with the 3 open questions in
+BACKLOG.md ("Édition des documents via Dwight"). Related open items:
+useful export formats (product session), 'Brief me' vs 'Annual review'
+outputs too similar (retest on richer data), celebrations overhaul
+(TWSS felt as "nuisance", Maire popin "sinistre" - backlog).
+
+**Succession (2026-07-12)**: the owner passed the baton from Fable to
+Opus; the former "pure Fable repo" rule is lifted - build ON this
+base, do not rebuild it. The six-hats working method applies (PM /
+architect / designer / developer / QA / Fabrice the field tester -
+see the memory files). Exchanges with the owner stay in French; he is
+a product manager learning Python, so keep explaining the why.
 
 History: MVP + MLP shipped; V1 was feature-complete before the
 recadrage: **human profile**, **Maire de Scranton**, **Smart
