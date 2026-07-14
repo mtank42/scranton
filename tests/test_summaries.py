@@ -125,7 +125,7 @@ def test_member_file_gathers_segments_profile_and_moods(session_factory):
     prompt = llm.complete_calls[0][-1]["content"]
     assert "[1]" in prompt and "asked to talk" in prompt
     assert "member-owned human profile" in prompt and "New Order" in prompt
-    assert "mood data" in prompt and "press" in prompt
+    assert "mood check-ins" in prompt and "press" in prompt
 
 
 def test_empty_memory_yields_an_honest_file_without_a_model_call(session_factory):
@@ -190,7 +190,7 @@ def test_team_radar_grounds_on_warm_segments_and_moods(session_factory):
 
     assert [source.content for source in result.sources] == ["Sonia seems exhausted."]
     prompt = llm.complete_calls[0][-1]["content"]
-    assert "mood data" in prompt and "stuck" in prompt
+    assert "mood check-ins" in prompt and "stuck" in prompt
 
 
 def test_error_contract(session_factory):
@@ -227,3 +227,27 @@ def test_catalog_and_generate_endpoints(app, client):
         client.get("/api/v1/summaries/team_member_file", params={"target_id": 99}).status_code
         == 404
     )
+
+def test_cold_only_gathering_excludes_warm(session_factory):
+    """The Pam privacy rule (owner, QA 2026-07-14): cold_only templates
+    never carry warm segments; the default (Desk) path keeps the mix."""
+    answer = json.dumps({"sections": [
+        {"heading": heading, "content": "ok"}
+        for heading in TEMPLATES["client_file"].sections
+    ]})
+    with session_factory() as session:
+        client = Client(name="Stone & Son")
+        session.add(client)
+        session.flush()
+        add_segment(session, content="Quote promised for Friday.", client_id=client.id)
+        add_segment(session, content="The contact seemed upset about delays.",
+                    warm=True, client_id=client.id)
+        client_id = client.id
+        session.commit()
+    service, _ = make_service(session_factory, [answer, answer])
+
+    full = service.generate("client_file", client_id)
+    cold = service.generate("client_file", client_id, cold_only=True)
+
+    assert any(s.data_type.value == "warm" for s in full.sources)
+    assert cold.sources and all(s.data_type.value == "cold" for s in cold.sources)

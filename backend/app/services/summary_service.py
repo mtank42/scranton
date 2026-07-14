@@ -226,15 +226,27 @@ class SummaryService:
 
     # --- generation ---
 
-    def generate(self, template_id: str, target_id: int | None = None) -> SummaryResponse:
-        """Build one living summary from the validated memory."""
+    def generate(
+        self,
+        template_id: str,
+        target_id: int | None = None,
+        *,
+        cold_only: bool = False,
+    ) -> SummaryResponse:
+        """Build one living summary from the validated memory.
+
+        cold_only is the Pam privacy rule (owner, QA 2026-07-14): when
+        Pam serves a template, warm observations stay out - the human
+        layer belongs to Meet Toby and Michael's Desk, manager-only.
+        Desk-generated documents keep the full warm+cold mix.
+        """
         template = TEMPLATES.get(template_id)
         if template is None:
             raise UnknownTemplateError(f"No summary template named {template_id!r}.")
 
         with self.session_factory() as session:
             target_label = self._resolve_target(session, template, target_id)
-            segments = self._gather(session, template, target_id)
+            segments = self._gather(session, template, target_id, cold_only)
             sources = [
                 PamSource(
                     segment_id=segment.id,
@@ -304,7 +316,10 @@ class SummaryService:
 
     @staticmethod
     def _gather(
-        session: Session, template: SummaryTemplate, target_id: int | None
+        session: Session,
+        template: SummaryTemplate,
+        target_id: int | None,
+        cold_only: bool = False,
     ) -> list[EntrySegment]:
         """Exhaustive, chronological, validated-only segment collection."""
         query = (
@@ -313,6 +328,8 @@ class SummaryService:
             .where(EntrySegment.validation_status == ValidationStatus.VALIDATED)
             .distinct()
         )
+        if cold_only:
+            query = query.where(EntrySegment.data_type == DataType.COLD)
         if template.views:
             query = query.where(SegmentTag.view_type.in_(template.views))
         elif template.target is not None:
@@ -359,12 +376,17 @@ class SummaryService:
                 query = query.where(MoodCheckin.team_member_id == target_id)
             checkins = session.scalars(query).all()
             if checkins:
-                indexes = [MOOD_INDEX[checkin.mood_level] for checkin in checkins]
-                path = " -> ".join(checkin.mood_level.value for checkin in checkins[-6:])
+                # Words, never a number: an averaged index reads like a
+                # person's score in the output (owner, QA 2026-07-14).
+                recent = ", ".join(
+                    f"{checkin.mood_level.value} on {checkin.created_at:%b %d}"
+                    for checkin in checkins[-6:]
+                )
                 lines.append(
-                    f"(mood data, last {window} days: {len(checkins)} check-ins, "
-                    f"average palette index {sum(indexes) / len(indexes):.1f}/5, "
-                    f"recent path: {path})"
+                    f"(mood check-ins, last {window} days, oldest to newest: "
+                    f"{recent}. Describe this in plain words; never output "
+                    "an average, an index or any number that could read "
+                    "like a score of the person.)"
                 )
         return lines
 

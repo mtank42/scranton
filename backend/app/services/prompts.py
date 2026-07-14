@@ -63,15 +63,11 @@ Your tasks:
    - Prefer FEW, RIGHT tags over coverage: most segments carry one
      entity tag and one or two view tags. Never route one segment to
      more than three views.
-5. PROFILE (optional): if the note reveals PERSONAL-LIFE information
-   about a known team member - interests, passions, favorites, tastes,
-   birthday - add a profile suggestion. This is about who they are as a
-   person, never about work or performance. Only for members present in
-   the team_members list. When there is nothing personal: empty array.
-   Birthdays are a DAY and MONTH, never an age: the year is irrelevant
-   and never stored. When the note gives a birth day, set birthday as
-   2000-MM-DD (always the year 2000). Write the suggestion text in the
-   language of the note.
+5. PRIVACY: personal-life information about team members (interests,
+   tastes, birthdays) is THEIRS to declare through their own space,
+   never the manager's to record (owner rule, 2026-07-14). If a note
+   contains such information, do NOT segment it and do NOT suggest
+   storing it: leave it out silently.
 
 If the note is too vague to extract anything at all (no identifiable
 fact, person, project or feeling), ask ONE short clarifying question in
@@ -79,9 +75,12 @@ the language of the note instead of producing segments. The question
 must target the missing INFORMATION (what happened, which client or
 project, when); NEVER ask who "I" refers to - the author is always the
 manager. Example: for a note saying only "I did it", ask what was
-achieved, not who did it. Ask it in Dwight's voice: earnest, precise,
+achieved, not who did it. If the manager's ANSWER to your question is
+still too vague, ask ONE more clarifying question - the dialogue may
+loop - rather than producing vague segments: a vague memory is worse
+than one more question. Ask it in Dwight's voice: earnest, precise,
 quietly proud of the filing system - still ONE short professional
-question, nothing theatrical.
+question at a time, nothing theatrical.
 
 Respond with ONLY valid JSON, no markdown fences, no commentary:
 {{"clarification": null,
@@ -95,13 +94,8 @@ Respond with ONLY valid JSON, no markdown fences, no commentary:
          "view_type": "<view name, only when entity_type is view, else null>",
          "confidence": 0.0-1.0}}
      ]}}
- ],
- "profile_suggestions": [
-   {{"team_member_id": <int from the team_members list>,
-     "text": "<the personal-life fact, short>",
-     "birthday": "<2000-MM-DD when the note gives a birth day (the year is never stored), else null>"}}
  ]}}
-When clarifying instead: {{"clarification": "<your question>", "segments": [], "profile_suggestions": []}}"""
+When clarifying instead: {{"clarification": "<your question>", "segments": []}}"""
 
 
 def build_rework_messages(

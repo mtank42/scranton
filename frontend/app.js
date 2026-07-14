@@ -19,7 +19,6 @@ const state = {
   members: [],
   labels: { team_member: {}, project: {}, client: {} },
   entryId: null, // the entry currently discussed in the Dwight overlay
-  suggestions: [],
   mayorOverview: null,
   celebrated: false, // Maire celebration: once per page load
 };
@@ -271,7 +270,9 @@ function renderSegments(segments) {
   );
 }
 
-/* --- profile suggestions (member-owned data, manager only relays) --- */
+/* Profile data is member-owned and member-DECLARED (owner, QA
+ * 2026-07-14): the manager-side suggestion flow is gone. Members
+ * declare through their own Pretzel Day space, and only there. */
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -284,55 +285,6 @@ function formatBirthday(iso) {
   if (!iso) return "";
   const [, month, day] = iso.split("-");
   return `${MONTHS[Number(month) - 1]} ${Number(day)}`;
-}
-
-function suggestionCard(suggestion, index) {
-  const birthday = suggestion.birthday
-    ? `<span class="chip profile">birthday: ${esc(formatBirthday(suggestion.birthday))}</span>`
-    : "";
-  return `
-    <article class="card profile-suggestion" id="suggestion-${index}">
-      <p class="card-content">For <strong>${esc(suggestion.member_name)}</strong>: ${esc(suggestion.text)}</p>
-      <div class="card-meta">
-        <span class="chip profile">personal - member-owned</span>
-        ${birthday}
-      </div>
-      <div class="card-actions">
-        <button class="btn btn-validate" data-profile-add="${index}">Add to profile</button>
-        <button class="btn btn-ghost" data-profile-dismiss="${index}">Dismiss</button>
-      </div>
-    </article>`;
-}
-
-function renderSuggestions(suggestions) {
-  state.suggestions = suggestions || [];
-  if (!state.suggestions.length) return "";
-  return (
-    `<p class="sources-title">Profile suggestions - their data, your call</p>` +
-    state.suggestions.map(suggestionCard).join("")
-  );
-}
-
-async function addSuggestionToProfile(index) {
-  const suggestion = state.suggestions[index];
-  const members = await api("/team/members");
-  const member = members.find((m) => m.id === suggestion.team_member_id);
-  if (!member) throw new Error("Member not found.");
-  // Append, never overwrite: the profile grows one observed fact at a time.
-  const merged = member.personal_profile
-    ? `${member.personal_profile}\n${suggestion.text}`
-    : suggestion.text;
-  await api(`/team/members/${member.id}/profile`, {
-    method: "PUT",
-    body: JSON.stringify({
-      personal_profile: merged,
-      birthday: suggestion.birthday || member.birthday,
-    }),
-  });
-  const card = document.getElementById(`suggestion-${index}`);
-  card.classList.add("decided");
-  card.querySelector(".card-actions").outerHTML =
-    `<p class="thinking-none">Added to ${esc(suggestion.member_name)}'s profile.</p>`;
 }
 
 /* The capture overlay is a running feed: each note appends a report
@@ -348,12 +300,11 @@ async function submitDwight(event) {
     `<div class="report-block" data-open><p class="thinking">Dwight is structuring</p></div>`);
   const block = result.lastElementChild;
   try {
+    // source_type stays server-side vocabulary; the picker was UI
+    // friction (owner, QA 2026-07-14) - Dwight copes with what he gets.
     const answer = await api("/dwight/entries", {
       method: "POST",
-      body: JSON.stringify({
-        raw_content: input.value,
-        source_type: document.getElementById("dwight-source").value,
-      }),
+      body: JSON.stringify({ raw_content: input.value, source_type: "note" }),
     });
     state.entryId = answer.entry_id;
     if (answer.clarification) {
@@ -364,8 +315,7 @@ async function submitDwight(event) {
         </div>
         ${replyForm()}`;
     } else {
-      block.innerHTML =
-        renderSegments(answer.segments) + renderSuggestions(answer.profile_suggestions);
+      block.innerHTML = renderSegments(answer.segments);
     }
     input.value = "";
     input.placeholder = "Anything else to tell Dwight?";
@@ -395,10 +345,7 @@ async function sendReply(form) {
       thread.insertAdjacentHTML("beforeend", dwightBubble(result.clarification));
     } else {
       form.remove();
-      thread.insertAdjacentHTML(
-        "afterend",
-        renderSegments(result.segments) + renderSuggestions(result.profile_suggestions)
-      );
+      thread.insertAdjacentHTML("afterend", renderSegments(result.segments));
     }
   } catch (error) {
     thread.insertAdjacentHTML("beforeend", `<div class="error-banner">${esc(error.message)}</div>`);
@@ -474,19 +421,6 @@ function bindDwightOverlay() {
         alert(error.message);
       }
       return;
-    }
-    if (target.matches("[data-profile-add]")) {
-      target.disabled = true;
-      try {
-        await addSuggestionToProfile(Number(target.dataset.profileAdd));
-      } catch (error) {
-        target.disabled = false;
-        alert(error.message);
-      }
-      return;
-    }
-    if (target.matches("[data-profile-dismiss]")) {
-      document.getElementById(`suggestion-${target.dataset.profileDismiss}`).remove();
     }
   });
   document.getElementById("dwight-result").addEventListener("submit", async (event) => {
@@ -740,17 +674,25 @@ function signalCard(signal) {
 
 function trendChart(points) {
   if (!points.length) return `<p class="placeholder">No check-ins in the window yet.</p>`;
+  const columns = points
+    .map((point) => {
+      const height = Math.max(8, (point.average_mood_index / 5) * 100);
+      const day = point.day.slice(5).replace("-", "/");
+      return `<div class="trend-col" title="${point.day}: team average ${point.average_mood_index}/5 over ${point.checkins} check-in(s)">
+                <div class="trend-bar" style="height:${height}%"></div>
+                <span class="trend-day">${day}</span>
+              </div>`;
+    })
+    .join("");
+  // A readable scale (owner, QA 2026-07-14): axis ends labeled with the
+  // palette words, one column per day - averages of MOODS, never people.
   return `
-    <div class="trend">
-      ${points
-        .map((point) => {
-          const height = Math.max(8, (point.average_mood_index / 5) * 100);
-          return `<div class="trend-col" title="${point.day}: ${point.average_mood_index} (${point.checkins} check-ins)">
-                    <div class="trend-bar" style="height:${height}%"></div>
-                  </div>`;
-        })
-        .join("")}
-    </div>`;
+    <div class="trend-wrap">
+      <div class="trend-axis"><span>${moodDisplay("flow")}</span><span>${moodDisplay("danger")}</span></div>
+      <div class="trend">${columns}</div>
+    </div>
+    <p class="trend-caption">One bar per day: the average of that day's team check-ins,
+      from ${moodDisplay("danger")} (bottom) to ${moodDisplay("flow")} (top). Hover a bar for detail.</p>`;
 }
 
 /* The drill-down (recadrage): what each person actually SAID, dated
@@ -891,12 +833,14 @@ async function loadPretzel() {
            <button class="btn btn-primary" id="mood-submit" disabled>Check in</button>
            <span id="mood-feedback" class="thinking-none"></span>
          </div>
+         <p class="sources-title">My last 30 days - visible to you and your manager</p>
+         <div id="my-moods"><p class="thinking">Loading</p></div>
        </div>
        <div class="share-box">
          <h2>About me - shared on purpose</h2>
          <p class="who">Visible by your manager, and only them - so they can help
            the team feel good. Everything here is optional and stays yours.</p>
-         <label class="field-label">Birthday - day and month only, never the year</label>
+         <label class="field-label">Birthday - day and month. Your age is nobody's business here.</label>
          <div class="birthday-row">
            <select data-bd-day>${dayOptions}</select>
            <select data-bd-month>${monthOptions}</select>
@@ -922,6 +866,37 @@ async function loadPretzel() {
   };
   document.getElementById("mood-submit").onclick = submitMood;
   document.getElementById("share-save").onclick = saveShare;
+  loadMyMoodHistory();
+}
+
+/* The member's own history - their personal Toby (owner, QA 2026-07-14):
+ * a check-in must not vanish into a manager-only view. */
+async function loadMyMoodHistory() {
+  const container = document.getElementById("my-moods");
+  if (!container) return;
+  try {
+    const checkins = await api("/mood/checkins?days=30");
+    const mine = checkins
+      .filter((checkin) => checkin.team_member_id === state.selfId)
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    if (!mine.length) {
+      container.innerHTML = `<p class="silent-line">No check-ins yet - this stays yours to read.</p>`;
+      return;
+    }
+    container.innerHTML = mine
+      .slice(0, 14)
+      .map(
+        (checkin) => `
+        <div class="voiced">
+          <span class="vd">${checkin.created_at.slice(0, 10)}</span>
+          <span class="dot mood-${checkin.mood_level}"></span>
+          <span class="vq">${moodDisplay(checkin.mood_level)}${checkin.note ? ` - "${esc(checkin.note)}"` : ""}</span>
+        </div>`
+      )
+      .join("");
+  } catch (error) {
+    container.innerHTML = `<p class="silent-line">${esc(error.message)}</p>`;
+  }
 }
 
 async function submitMood() {
@@ -940,6 +915,7 @@ async function submitMood() {
     });
     document.getElementById("mood-feedback").textContent = "Recorded. Thanks for saying it.";
     document.getElementById("mood-note").value = "";
+    loadMyMoodHistory();
     twss();
   } catch (error) {
     document.getElementById("mood-feedback").textContent = error.message;
@@ -979,39 +955,27 @@ async function saveShare() {
 
 /* --- Maire de Scranton (birthday ritual, manager dashboard) --- */
 
+/* One Maire surface only (owner, QA 2026-07-14): the ritual card on
+ * the dashboard. The celebration still fires once per page load. */
 async function loadMayor() {
   try {
     state.mayorOverview = await api("/team/mayor");
   } catch {
     state.mayorOverview = { mayor: null, upcoming: [] };
   }
-  const banner = document.getElementById("mayor-banner");
-  const { mayor, upcoming } = state.mayorOverview;
-  if (mayor) {
-    banner.innerHTML =
-      `<span class="mayor-title">MAIRE DE SCRANTON</span>${esc(mayor.full_name)}, today`;
-    banner.hidden = false;
-    if (!state.celebrated) {
-      state.celebrated = true;
-      // The ritual fires on its own on the day: once per page load.
-      setTimeout(
-        () =>
-          twss({
-            mayor: true,
-            title: "MAIRE DE SCRANTON",
-            quote: `${mayor.full_name} runs this town today. Their day, their rules.`,
-            signature: "- By order of the Office of the Mayor",
-          }),
-        900
-      );
-    }
-  } else if (upcoming.length) {
-    const next = upcoming[0];
-    banner.innerHTML =
-      `<span class="mayor-title">UPCOMING</span>${esc(next.member.full_name)}'s birthday in ${next.in_days} day${next.in_days > 1 ? "s" : ""}`;
-    banner.hidden = false;
-  } else {
-    banner.hidden = true;
+  const { mayor } = state.mayorOverview;
+  if (mayor && !state.celebrated) {
+    state.celebrated = true;
+    setTimeout(
+      () =>
+        twss({
+          mayor: true,
+          title: "MAIRE DE SCRANTON",
+          quote: `${mayor.full_name} runs this town today. Their day, their rules.`,
+          signature: "- By order of the Office of the Mayor",
+        }),
+      900
+    );
   }
 }
 
@@ -1105,13 +1069,19 @@ async function init() {
   bindDwightOverlay();
   document.getElementById("pam-form").addEventListener("submit", submitPam);
   document.getElementById("pam-thread").addEventListener("click", (event) => {
-    if (event.target.matches("[data-open-dwight]")) openOverlay("dwight-overlay");
+    if (event.target.matches("[data-open-dwight]")) {
+      // One sheet at a time: Dwight was opening BEHIND Pam (QA 2026-07-14).
+      document.getElementById("pam-overlay").hidden = true;
+      openOverlay("dwight-overlay");
+    }
   });
   document.getElementById("twss").addEventListener("click", (event) => {
     event.currentTarget.hidden = true;
   });
+  // Mayor data first, so the dashboard's ritual card renders on the
+  // very first paint (the banner duplicate is gone).
+  await loadMayor();
   switchRole("manager");
-  loadMayor();
 }
 
 init();

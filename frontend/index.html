@@ -35,7 +35,6 @@
     <div class="pbody">
       <!-- Manager views -->
       <section id="view-dashboard" class="view">
-        <div id="mayor-banner" class="mayor-banner" hidden></div>
         <div id="dashboard-body" class="placeholder">Loading</div>
       </section>
       <section id="view-desk" class="view" hidden>
@@ -83,13 +82,8 @@
         <textarea id="dwight-input" rows="3" required
           placeholder="Messy note, meeting scraps, a promise made in a hallway..."></textarea>
         <div class="form-row">
-          <select id="dwight-source">
-            <option value="note" selected>note</option>
-            <option value="meeting_cr">meeting_cr</option>
-            <option value="chat">chat</option>
-            <option value="transcript">transcript</option>
-          </select>
           <button type="submit" class="btn btn-primary" id="dwight-submit">Tell Dwight</button>
+          <button type="button" class="btn btn-ghost" data-close>Done</button>
         </div>
       </form>
     </div>
@@ -111,6 +105,7 @@
         <div class="form-row">
           <input id="pam-input" type="text" placeholder="What did we promise to Stone &amp; Son?" required />
           <button type="submit" class="btn btn-primary" id="pam-submit">Ask Pam</button>
+          <button type="button" class="btn btn-ghost" data-close>Done</button>
         </div>
       </form>
     </div>

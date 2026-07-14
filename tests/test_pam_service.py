@@ -118,12 +118,12 @@ class StubSummaryService:
         self.fail = fail
         self.calls = []
 
-    def generate(self, template_id, target_id=None):
+    def generate(self, template_id, target_id=None, *, cold_only=False):
         from datetime import datetime, timezone
 
         from backend.app.domain.schemas import SummaryResponse, SummarySection
 
-        self.calls.append((template_id, target_id))
+        self.calls.append((template_id, target_id, cold_only))
         if self.fail:
             raise RuntimeError("template hiccup")
         return SummaryResponse(
@@ -159,7 +159,8 @@ def test_broad_question_on_one_entity_serves_the_template(session_factory):
 
     answer = service.query("Fais-moi le point sur Stone & Son")
 
-    assert stub.calls == [("client_file", client_id)]
+    # cold_only: Pam never surfaces the warm layer (owner, QA 2026-07-14).
+    assert stub.calls == [("client_file", client_id, True)]
     assert answer.summary is not None
     assert answer.summary.template_id == "client_file"
     assert "Stone & Son" in answer.answer
@@ -169,20 +170,33 @@ def test_broad_question_on_one_entity_serves_the_template(session_factory):
     assert llm.embed_calls == []
 
 
-def test_member_and_project_route_to_their_templates(session_factory):
-    """The router picks the template matching the entity kind."""
+def test_people_are_never_served_by_pam(session_factory):
+    """'Tout savoir sur Kevin' is Toby/Desk territory: RAG path, no template
+    (owner, QA 2026-07-14). Projects still get their template."""
     member_id, project_id, _ = seed_entities(session_factory)
-    service, _, _ = make_service(session_factory, hits=[], completions=[])
+    service, _, store = make_service(session_factory, hits=[], completions=[])
     stub = StubSummaryService()
     service.summary_service = stub
 
-    service.query("Tout savoir sur Kevin")
+    member_answer = service.query("Tout savoir sur Kevin")
     service.query("Where do we stand on Tables mairie?")
 
-    assert stub.calls == [
-        ("team_member_file", member_id),
-        ("project_file", project_id),
-    ]
+    assert member_answer.summary is None
+    assert stub.calls == [("project_file", project_id, True)]
+    assert len(store.query_calls) == 1  # only the member question hit retrieval
+
+
+def test_pam_retrieval_is_cold_only(session_factory):
+    """The Q&A path filters the index to cold segments: the warm layer
+    about people belongs to Toby and the Desk (owner, QA 2026-07-14)."""
+    warm_id, _ = seed_segments(session_factory)
+    service, _, store = make_service(
+        session_factory, hits=[hit(warm_id, 0.9)], completions=["ok [1]"]
+    )
+
+    service.query("Une question precise quelconque")
+
+    assert store.query_calls[0]["filters"] == {"data_type": "cold"}
 
 
 def test_precise_question_stays_on_the_rag_path(session_factory):
@@ -211,7 +225,7 @@ def test_ambiguous_or_unknown_entities_fall_back_to_rag(session_factory):
     stub = StubSummaryService()
     service.summary_service = stub
 
-    two = service.query("Le point sur Kevin et Stone & Son")
+    two = service.query("Le point sur Tables mairie et Stone & Son")
     none = service.query("Le point sur la Michael Scott Paper Company")
 
     assert stub.calls == []

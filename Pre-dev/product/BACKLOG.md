@@ -26,6 +26,35 @@ entrée font foi. En résumé :
 
 ---
 
+## Édition des documents via Dwight — la touche finale du manager
+
+**Catégorie** : Michael's Desk / Ask Pam / Dwight
+**Priorité** : **PROCHAINE GROSSE SESSION** (arbitrage owner, QA 2026-07-14 : « le manager n'a aucun moyen de modifier ce qu'il reçoit, c'est inutilisable »)
+**Origine** : première passe QA du produit recadré — les documents générés (agenda, brief 1:1, annual review, templates Pam) sont en lecture seule.
+
+### Description
+
+Le manager ajuste un document généré en dialoguant avec Dwight (« ajoute le point sur le devis, enlève la section 2, reformule l'intro ») et garde la touche finale. Concerne Michael's Desk ET le bouton « Adjust with Dwight » des cartes Pam. Inclut l'accordéon (replier une section traitée).
+
+### Questions à résoudre
+
+1. Le document édité est-il persisté (jusque-là les summaries sont vivants, jamais stockés) ou l'édition est-elle une passe de régénération contrainte ?
+2. Où passe la frontière Dwight/Pam : Pam agrège, Dwight édite — un seul appel LLM avec le doc + l'instruction ?
+3. Lien avec les exports utiles (autre remarque QA : .md/.html inutilisables) — l'édition doit déboucher sur un format actionnable, à cadrer ensemble.
+
+---
+
+## Refonte des célébrations — TWSS et Maire
+
+**Catégorie** : That's What She Said / Maire / Reward
+**Priorité** : V1.x (feedback QA owner, 2026-07-14 — verbatim : « pour l'instant c'est plus une nuisance qu'une récompense » ; le popin Maire est « sinistre et intrusif »)
+
+### Description
+
+Repenser fréquence, déclencheurs et forme : gamification (rareté, variété, montée en valeur), TWSS pas à chaque micro-action, célébration Maire discrète et festive plutôt qu'un overlay bloquant. Absorbe l'entrée « TWSS adaptatif à l'humeur » ci-dessous (l'adaptation à l'humeur devient un des leviers).
+
+---
+
 ## Dwight propose de nouvelles entités (projets, clients, stakeholders)
 
 **Catégorie** : Tell Dwight / Routage

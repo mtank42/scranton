@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.adapters.llm.base import LLMProvider
 from backend.app.adapters.vectorstore.base import Hit, VectorStore
-from backend.app.domain.models import Client, EntrySegment, Project, TeamMember
+from backend.app.domain.models import Client, EntrySegment, Project
 from backend.app.domain.schemas import PamAnswer, PamSource
 from backend.app.services.prompts import build_pam_messages
 
@@ -39,8 +39,10 @@ BROAD_INTENT_MARKERS = (
 )
 
 # Entity kind -> the template that IS the answer for a broad question.
+# NO team_member here (owner, QA 2026-07-14): people information is
+# Meet Toby's and Michael's Desk's job, manager-only. Pam never serves
+# a person's picture.
 TEMPLATE_BY_KIND = {
-    "team_member": "team_member_file",
     "project": "project_file",
     "client": "client_file",
 }
@@ -76,7 +78,12 @@ class PamService:
             return served
 
         embedding = self.llm.embed([question])[0]
-        hits = self.vector_store.query(embedding, filters=filters, k=k)
+        # Pam answers from the COLD layer only (owner, QA 2026-07-14):
+        # warm observations about people belong to Meet Toby and to the
+        # Desk briefs, manager-only. With roles in the UI, a member
+        # asking Pam must never surface a colleague's confidences.
+        cold_filters = {"data_type": "cold", **(filters or {})}
+        hits = self.vector_store.query(embedding, filters=cold_filters, k=k)
         if not hits:
             return PamAnswer(answer=NO_MEMORY_ANSWER, sources=[])
 
@@ -113,11 +120,7 @@ class PamService:
 
         matches: list[tuple[str, int, str]] = []
         with self.session_factory() as session:
-            for kind, model in (
-                ("team_member", TeamMember),
-                ("project", Project),
-                ("client", Client),
-            ):
+            for kind, model in (("project", Project), ("client", Client)):
                 for row in session.scalars(select(model)):
                     name = getattr(row, "full_name", None) or row.name
                     if name and name.lower() in lowered:
@@ -127,7 +130,9 @@ class PamService:
 
         kind, target_id, name = matches[0]
         try:
-            summary = self.summary_service.generate(TEMPLATE_BY_KIND[kind], target_id)
+            summary = self.summary_service.generate(
+                TEMPLATE_BY_KIND[kind], target_id, cold_only=True
+            )
         except Exception:
             # A template hiccup must never block an answer: the grounded
             # Q&A path is always there as the fallback.
