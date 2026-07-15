@@ -44,11 +44,55 @@ Le manager ajuste un document généré en dialoguant avec Dwight (« ajoute le 
 2. **« Edit with Dwight » est TOUJOURS accompagné d'un « Edit manually »** — le owner réalise que bien souvent la modif à la main est plus pratique. Les deux gestes, partout : Desk ET cartes Pam.
 3. **Le contexte voyage avec l'instruction** (QA 2 : « en l'état, il ne sert à rien s'il faut tout lui répéter ») — Dwight reçoit le document en cours d'ajustement, jamais une instruction nue.
 
-### Questions restantes
+### Use case d'ouverture de session (à jouer avant le schéma)
 
-1. Frontière Dwight/Pam côté implémentation : un seul appel LLM (doc + instruction → doc révisé) via `complete_validated` ?
-2. L'accordéon (replier une section traitée) : dans cette session ou avec les exports ?
-3. Lien avec l'entrée « Exports & partage » ci-dessous — l'édition doit déboucher sur un format actionnable.
+Le owner génère le brief 1:1 de Ryan sur le Desk. Il dit à Dwight
+« enlève le point sur les commissions, ajoute que le reporting Q3 est
+à jour » ; puis il corrige une tournure À LA MAIN ; il sauvegarde. Une
+semaine passe, trois nouveaux segments validés concernent Ryan. Il
+rouvre : que voit-il ? (LA tension de la session : le template vivant
+se recalcule, le document édité est un instantané figé — comment
+l'écart se montre-t-il, et comment se résorbe-t-il ?) Enfin il partage
+ou exporte le résultat.
+
+### Questions pour la session (data model comprise)
+
+1. **Data model (le créneau dédié, règle 2)** : la table des documents
+   édités — quoi persister (sections ? markdown ? sources ?), l'objet
+   d'origine (template + cible + date de génération), les horodatages
+   d'édition. Versions d'un même document édité : historique ou
+   dernier état seul ?
+2. **La tension vivant/figé** : la 1re édition fige (décision acquise).
+   Le document figé doit-il AFFICHER que la mémoire a bougé depuis
+   (« N segments validés depuis l'édition ») et offrir un
+   « régénérer » (qui perd ou re-applique les édits ?) — à trancher en
+   jouant le use case.
+3. **Un document édité entre-t-il au corpus de Darryl ?** (une ligne
+   `documents` avec source `scranton`, interrogeable par Pam et badgée
+   *document*). Convergence tentante — une seule notion de document
+   dans le produit — mais à arbitrer explicitement : elle ferait
+   entrer du contenu généré-par-LLM-puis-édité dans la mémoire de Pam.
+4. Frontière Dwight/Pam côté implémentation : un seul appel LLM
+   (doc + instruction → doc révisé) via `complete_validated` ?
+5. L'accordéon (replier une section traitée) : dans cette session ou
+   avec les exports ?
+6. Lien avec « Exports & partage » — l'édition doit déboucher sur un
+   format actionnable ; et **Oscar consommera ce moteur** sur les
+   fiches clients/projets (édition en contexte depuis le tableau de
+   bord) : concevoir l'API du moteur indépendante de la surface Desk.
+
+### Micro-sujets à traiter en ouverture de session (owner, 2026-07-15)
+
+1. **Volet Pam, l'historique** : les 5 dernières notes Dwight AU-DESSUS
+   des 5 derniers documents Darryl, avec un bouton « Afficher plus »
+   qui déplie 10 de plus, puis 10 de plus, etc. (constat de session
+   Darryl : cet historique de notes n'existait pas encore — le fil
+   Dwight est par session ; décision owner : on le construit).
+2. **Premier sync Darryl sur le Drive réel du owner** (OK owner, avec
+   sa réserve : « je ne suis pas une PME avec clients et projets » —
+   donc PAS un test du routage, qui enverra l'essentiel au bac ; c'est
+   un test des FORMATS réels, des familles de versions, de la tenue de
+   la sync à l'échelle, et du comportement du bac quand il est plein).
 
 ---
 
