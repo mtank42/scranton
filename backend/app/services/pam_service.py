@@ -1,11 +1,21 @@
 """Ask Pam: question -> retrieve -> grounded answer with sources.
 
+ONE Pam, TWO memories (owner arbitration, 2026-07-15): the human layer
+(validated segments) and Darryl's documentary corpus live in separate
+vector collections with different lifecycles, but a question queries
+both and the answer weaves them, sources badged 'team memory' or
+'document' with the clickable link back to the original.
+
 The retrieval contract is inherited from M1's design decisions:
-- Only VALIDATED segments live in the vector store, so nothing rejected
-  or merely proposed can ever surface in an answer. No status filter
-  needed here: validation already was the gate.
+- Only VALIDATED segments live in the segments store, so nothing
+  rejected or merely proposed can ever surface in an answer. On the
+  corpus side the gate is the sharing gesture itself: everything in
+  the collection is answerable by construction.
 - Chroma returns ids and scores only; the text of truth is re-read from
-  SQLite. If the two stores ever disagree, SQLite wins.
+  SQLite. If the two stores ever disagree, SQLite wins. The corpus
+  lifecycle rules (deleted documents are gone, older versions silent
+  unless every version is asked for) apply at that re-read, never in
+  the index - which is why the vectors' metadata can stay static.
 
 Noise control (owner QA, 2026-07-14: "de nombreuses sources non
 pertinentes apparaissent"): two filters keep the sources honest.
@@ -31,6 +41,8 @@ from backend.app.adapters.vectorstore.base import Hit, VectorStore
 from backend.app.domain.models import (
     Client,
     DataType,
+    Document,
+    DocumentChunk,
     EntityType,
     EntrySegment,
     Project,
@@ -39,6 +51,7 @@ from backend.app.domain.models import (
     ValidationStatus,
 )
 from backend.app.domain.schemas import PamAnswer, PamSource
+from backend.app.services.darryl_service import normalize_text
 from backend.app.services.prompts import build_pam_messages
 
 # Deterministic and free: when retrieval finds nothing there is no point
@@ -77,6 +90,14 @@ TEMPLATE_BY_KIND = {
 # Cap on the supporting excerpts of the deterministic two-member answer.
 SHARED_WORK_SOURCE_CAP = 6
 
+# Explicit all-versions intent (owner arbitration, 2026-07-15: latest
+# by default, ALL versions when asked). Closed-set markers, French and
+# English, like the broad-intent list above.
+VERSION_INTENT_MARKERS = (
+    "toutes les versions", "chaque version", "les versions",
+    "all versions", "every version", "each version", "version history",
+)
+
 
 class PamService:
     """Orchestrates the retrieval pipeline. Pure logic: all I/O behind seams."""
@@ -88,16 +109,20 @@ class PamService:
         vector_store: VectorStore,
         summary_service=None,
         min_score: float = 0.6,
+        doc_vector_store: VectorStore | None = None,
     ) -> None:
         """Wire the seams. summary_service powers the template answers
         (recadrage 2026-07-12); without it Pam is plain Q&A, which keeps
         older tests and callers valid. min_score is the retrieval floor
-        (settings.pam_min_score): hits below it are noise, not memory."""
+        (settings.pam_min_score): hits below it are noise, not memory.
+        doc_vector_store is the second memory (Darryl's corpus); None
+        keeps Pam single-memory, same backward-compatibility idea."""
         self.llm = llm
         self.session_factory = session_factory
         self.vector_store = vector_store
         self.summary_service = summary_service
         self.min_score = min_score
+        self.doc_vector_store = doc_vector_store
 
     def query(self, question: str, *, filters: dict | None = None, k: int = 8) -> PamAnswer:
         """Answer a plain-language question over the validated memory.
@@ -109,6 +134,9 @@ class PamService:
         served = self._serve_routed(question)
         if served is not None:
             return served
+        versions = self._serve_versions(question)
+        if versions is not None:
+            return versions
 
         embedding = self.llm.embed([question])[0]
         # Pam answers from the COLD layer only (owner, QA 2026-07-14):
@@ -116,25 +144,50 @@ class PamService:
         # Desk briefs, manager-only. With roles in the UI, a member
         # asking Pam must never surface a colleague's confidences.
         cold_filters = {"data_type": "cold", **(filters or {})}
-        hits = self.vector_store.query(embedding, filters=cold_filters, k=k)
-        hits = [hit for hit in hits if hit.score is None or hit.score >= self.min_score]
-        if not hits:
+        segment_hits = self._floored(
+            self.vector_store.query(embedding, filters=cold_filters, k=k)
+        )
+        # The second memory: the corpus is cold by construction, so no
+        # filter is needed - lifecycle rules apply at the SQLite re-read.
+        document_hits = (
+            self._floored(self.doc_vector_store.query(embedding, k=k))
+            if self.doc_vector_store is not None
+            else []
+        )
+        if not segment_hits and not document_hits:
             return PamAnswer(answer=NO_MEMORY_ANSWER, sources=[])
 
         with self.session_factory() as session:
-            sources = self._load_sources(session, hits)
+            sources = self._load_sources(session, segment_hits)
+            sources += self._load_document_sources(session, document_hits)
 
         if not sources:
-            # Hits pointed at segments SQLite no longer has: treat as empty
-            # rather than answering from ghost content.
+            # Hits pointed at rows SQLite no longer has (or at silenced
+            # versions): treat as empty rather than answering from ghosts.
             return PamAnswer(answer=NO_MEMORY_ANSWER, sources=[])
 
-        context_block = "\n".join(
-            f"[{source.ref}] ({source.created_at:%Y-%m-%d}) {source.content}"
-            for source in sources
-        )
+        # One weave: best excerpts first whatever their memory, capped at
+        # k, then numbered - the refs the citations will use.
+        sources.sort(key=lambda source: -(source.score or 0.0))
+        sources = sources[:k]
+        for ref, source in enumerate(sources, start=1):
+            source.ref = ref
+
+        context_block = "\n".join(self._context_line(source) for source in sources)
         answer = self.llm.complete(build_pam_messages(question, context_block))
         return PamAnswer(answer=answer, sources=self._cited_only(answer, sources))
+
+    def _floored(self, hits: list[Hit]) -> list[Hit]:
+        """Apply the retrieval floor: below min_score is noise, not memory."""
+        return [hit for hit in hits if hit.score is None or hit.score >= self.min_score]
+
+    @staticmethod
+    def _context_line(source: PamSource) -> str:
+        """One prompt line, labeled with the memory the excerpt came from."""
+        label = (
+            f"document: {source.title}" if source.kind == "document" else "team memory"
+        )
+        return f"[{source.ref}] ({source.created_at:%Y-%m-%d}) [{label}] {source.content}"
 
     @staticmethod
     def _cited_only(answer: str, sources: list[PamSource]) -> list[PamSource]:
@@ -148,7 +201,102 @@ class PamService:
         cited = {int(number) for number in re.findall(r"\[(\d+)\]", answer)}
         return [source for source in sources if source.ref in cited]
 
-    # --- deterministic routes (templates and people), no LLM ---
+    @staticmethod
+    def _load_document_sources(session: Session, hits: list[Hit]) -> list[PamSource]:
+        """Re-read hit chunks from SQLite, applying the corpus lifecycle.
+
+        This re-read is where the rules live (the index metadata stays
+        static): a chunk whose document is gone answers nothing, and an
+        older version stays silent - the latest of the family is the
+        one that speaks by default (owner arbitration, 2026-07-15).
+        """
+        chunks = session.scalars(
+            select(DocumentChunk).where(
+                DocumentChunk.id.in_([hit.segment_id for hit in hits])
+            )
+        ).all()
+        by_id = {chunk.id: chunk for chunk in chunks}
+        sources = []
+        for hit in hits:
+            chunk = by_id.get(hit.segment_id)
+            if chunk is None:
+                continue
+            document = chunk.document
+            if document is None or document.deleted_at is not None:
+                continue
+            if not document.is_latest:
+                continue
+            sources.append(
+                PamSource(
+                    kind="document",
+                    document_id=document.id,
+                    title=document.title,
+                    link=document.web_view_link,
+                    content=chunk.content,
+                    # Cold by construction; 1 is the objective floor.
+                    data_type=DataType.COLD,
+                    sensitivity_level=1,
+                    score=hit.score,
+                    created_at=document.modified_at or document.ingested_at,
+                )
+            )
+        return sources
+
+    # --- deterministic routes (templates, people, versions), no LLM ---
+
+    def _serve_versions(self, question: str) -> PamAnswer | None:
+        """List every version of a document family, on explicit demand.
+
+        Deterministic SQL, no LLM (owner arbitration, 2026-07-15: the
+        latest answers by default, but 'toutes les versions' means all
+        of them). The family is matched by its normalized key appearing
+        in the question; no match falls through to grounded RAG.
+        """
+        lowered = question.lower()
+        if not any(marker in lowered for marker in VERSION_INTENT_MARKERS):
+            return None
+        normalized_question = normalize_text(question)
+        with self.session_factory() as session:
+            documents = session.scalars(
+                select(Document).where(Document.deleted_at.is_(None))
+            ).all()
+        families: dict[str, list[Document]] = {}
+        for document in documents:
+            if document.family_key and document.family_key in normalized_question:
+                families.setdefault(document.family_key, []).append(document)
+        if not families:
+            return None
+
+        sources: list[PamSource] = []
+        parts: list[str] = []
+        for family_key, members in sorted(families.items()):
+            members.sort(
+                key=lambda doc: (doc.modified_at or doc.ingested_at), reverse=True
+            )
+            parts.append(
+                f"The archive holds {len(members)} version(s) of '{family_key}', "
+                "newest first - the latest is the one that answers by default."
+            )
+            for document in members:
+                sources.append(
+                    PamSource(
+                        ref=len(sources) + 1,
+                        kind="document",
+                        document_id=document.id,
+                        title=document.title,
+                        link=document.web_view_link,
+                        content=(
+                            f"{document.title} - folder: "
+                            f"{document.folder_path or 'shared root'}"
+                            + (" - current version" if document.is_latest else "")
+                        ),
+                        data_type=DataType.COLD,
+                        sensitivity_level=1,
+                        score=None,
+                        created_at=document.modified_at or document.ingested_at,
+                    )
+                )
+        return PamAnswer(answer=" ".join(parts), sources=sources)
 
     def _serve_routed(self, question: str) -> PamAnswer | None:
         """Route a broad question about known entities, closed-world.

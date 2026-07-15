@@ -47,6 +47,8 @@ def get_pam_service(request: Request) -> PamService:
         # The retrieval floor is configuration (PAM_MIN_SCORE), a tuning
         # lever like LLM_MODEL - never a constant buried in the service.
         min_score=get_settings().pam_min_score,
+        # The second memory: Darryl's documentary corpus (2026-07-15).
+        doc_vector_store=state.doc_vector_store,
     )
 
 

@@ -202,7 +202,7 @@ class PamQuery(BaseModel):
 
 
 class PamSource(BaseModel):
-    """One memory excerpt an answer is grounded in.
+    """One excerpt an answer is grounded in - from either memory.
 
     content is re-read from SQLite (the source of truth). score comes
     from the vector index (similarity, 1.0 is best); it is None when the
@@ -210,11 +210,20 @@ class PamSource(BaseModel):
     semantic search. ref is the excerpt number shared by the prompt and
     the [n] citations, so a filtered source list keeps honest numbering;
     None on paths that never cite (template gathering).
+
+    kind badges the two memories (owner arbitration, 2026-07-15):
+    'memory' is a validated team segment (segment_id/entry_id set),
+    'document' is a corpus chunk (document_id/title set, link when the
+    source has one - the clickable way back to the original).
     """
 
     ref: int | None = None
-    segment_id: int
-    entry_id: int
+    kind: Literal["memory", "document"] = "memory"
+    segment_id: int | None = None
+    entry_id: int | None = None
+    document_id: int | None = None
+    title: str | None = None
+    link: str | None = None
     content: str
     data_type: DataType
     sensitivity_level: int
