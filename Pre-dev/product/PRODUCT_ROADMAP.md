@@ -137,7 +137,7 @@ Darryl apporte). Interchangeable au choix du owner en début de session.
 | # | Chantier | Contenu | Effort |
 |---|---|---|---|
 | 3 | **Identité manager, admin & onboarding** | Le manager existe : admin, identité à part, crée les comptes, day-one de Scranton. Décisions prises : pas de mood tracking manager, éligible Maire, co-admin plus tard. Session data model. | M |
-| 4 | **Dwight propose de nouvelles entités** | Le cas Matthaeus : suggestion de création (projet/client/stakeholder) sur le modèle transitoire des profile_suggestions. Inclut la granularité du rejet en cours de dialogue (QA 2). | M |
+| 4 | **Oscar — tableau de bord des opérations & naissance des entités** (cadrage owner 2026-07-15, remplace « Dwight propose de nouvelles entités ») | Le manager gère les entités. Statuts **prospect** (template client) et **piste** (projets non signés) — une entité de plein droit dès la 1re mention, jamais de limbes ; Dwight drafte et route vers le manager. Nouvelle vue manager Oscar, 3 onglets : Clients / Projets / Prospects & pistes — tout voir, interroger Pam, éditer (main ou Dwight) en contexte, valider les drafts. Les équipiers voient leurs projets/clients sur leur board. Inclut la granularité du rejet (QA 2). Session data model requise (statuts sur clients/projects). Dossier : BACKLOG « Oscar ». | L |
 | 5 | **Exports & partage** | Formats utiles (à instruire sur cas réels), ODJ d'équipe sur le My board de chaque équipier + suggestions d'items, brief 1:1 partagé. Dépend de la persistance (chantier 2). | M |
 
 ### Niveau 3 — L'UTILE

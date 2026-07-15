@@ -70,10 +70,76 @@ Repenser fréquence, déclencheurs et forme : gamification (rareté, variété, 
 
 ---
 
-## Dwight propose de nouvelles entités (projets, clients, stakeholders)
+## Oscar — le tableau de bord des opérations & la naissance des entités
+
+**Catégorie** : Nouvelle vue manager / Tell Dwight / Routage / Data model
+**Priorité** : session dédiée avec data model (cadrage owner 2026-07-15, pendant la session Darryl) — après « Édition des documents » (l'édition livre le moteur « à la main ou avec Dwight, le contexte voyage » que la vue consomme)
+**Origine** : réflexion owner 2026-07-15 : « dans une entreprise, c'est au manager de gérer les nouveaux clients et projets ». Constat PM : le roster n'a AUCUN chemin de création aujourd'hui (le seed est le seul) — la douleur Matthaeus de la QA 2. Absorbe l'entrée « Dwight propose de nouvelles entités » ci-dessous.
+
+### Décisions owner (2026-07-15) — ne pas re-débattre
+
+1. **Le manager gère les entités.** Dwight continue de repérer les
+   nouveaux noms chez les collaborateurs, mais ça lance un workflow :
+   il rassemble ces infos en un draft et le route vers le manager.
+2. **Pas de limbes : un statut, pas un brouillon.** Un nouveau client
+   potentiel = une entité de plein droit sur le TEMPLATE CLIENT avec un
+   statut **prospect** ; idem pour les projets non signés / non validés
+   par le client : statut **piste**. Conséquence élégante (règle les
+   questions 1 et 2 de Fabrice d'un coup) : UNE ligne par nom (dédup
+   naturelle), les mentions s'accumulent en tags dessus dès le premier
+   jour, Pam est interrogeable dessus, et la « validation » est une
+   transition de statut (prospect → client) — rien à rétro-taguer.
+3. **La vue : Oscar, tableau de bord des opérations** (nouvelle vue
+   manager, le comptable qui tient les livres). **Trois onglets :
+   Clients / Projets / Prospects & pistes.** On y voit tout, on
+   interroge Pam depuis une fiche, on édite à la main ou avec Dwight
+   dans le contexte, on traite les drafts (éditer, valider, etc.).
+4. **Les équipiers voient sur leur board** la liste des projets sur
+   lesquels ils travaillent et les clients concernés (dérivable des
+   tags validés, même mécanique SQL que la réponse deux-équipiers de
+   Pam — pas de data model).
+5. **Templates à affiner plus tard** : jauges pour les projets vendus
+   en temps-homme (« on verra plus tard »). Garde-fou étoile polaire à
+   écrire le moment venu : jauges de consommation du PROJET, jamais un
+   taux par personne.
+
+### Questions pour la session (data model comprise)
+
+1. **Data model** : statut sur `clients` (prospect / actif) et
+   `projects` (piste / signé) — champ sur les tables validées, donc
+   session dédiée (règle 2). Les stakeholders suivent-ils ? Une
+   transition de statut est-elle datée/tracée (qui a validé, quand) ?
+2. **Le geste de création** : Dwight crée-t-il la ligne prospect en
+   SILENCE (façon Darryl : signal déterministe = nom explicitement
+   présenté comme nouveau ?) ou propose-t-il une carte transitoire que
+   le manager clique pour créer (façon profile_suggestions) ? Anti-
+   bruit hérité : créer dès la 1re occurrence ou à la récurrence ?
+   Le 3e onglet est le bac calme dans les deux cas — jamais de popin.
+3. **Monde clos élargi** : les prospects/pistes entrent-ils au roster
+   injecté à Dwight dès leur naissance (taguables, avec leur statut
+   visible dans le badge) ? C'est le sens de la décision 2 — à
+   confirmer côté prompt et UI des tags.
+4. **[QA 2, hérité]** Granularité du rejet en cours de dialogue
+   Dwight (« reprends à l'échange précédent ») — même session.
+5. **La vue** : 4e vue manager dans la nav (Oscar avec son avatar) —
+   cohérence avec le deck (les slides = boussole UX) à vérifier avant
+   maquette. « Interroger Pam depuis une fiche » = volet Pam pré-
+   contextualisé ?
+6. **Darryl s'y branche** : la fiche client/projet du tableau de bord
+   est la surface naturelle des documents routés (`document_tags`) —
+   les afficher dès la V1 de la vue ?
+
+---
+
+## ~~Dwight propose de nouvelles entités (projets, clients, stakeholders)~~
+
+> **[2026-07-15] ABSORBÉE par « Oscar — le tableau de bord des
+> opérations » ci-dessus** (le modèle carte transitoire est remplacé
+> par les statuts prospect/piste ; les questions anti-bruit et la
+> granularité du rejet y sont reprises). Conservée pour l'historique.
 
 **Catégorie** : Tell Dwight / Routage
-**Priorité** : V1.x (demande explicite du owner, 2026-07-09 — "quand il ne sait pas où ranger, il propose la création")
+**Priorité** : ~~V1.x~~ absorbée (demande explicite du owner, 2026-07-09 — "quand il ne sait pas où ranger, il propose la création")
 **Origine** : test GDrive réel — les notes mentionnaient le projet "Matthaeus", absent de la base ; le monde clos a rabattu les segments sur "Tables mairie" à 0.7-0.8 (mésattribution plausible mais fausse).
 
 ### Description
