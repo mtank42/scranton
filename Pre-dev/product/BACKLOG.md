@@ -165,6 +165,38 @@ six versions de `Rapport_SEO_final_V3_DEF(1).pdf`, les formats réels.
 5. Où vit la surface d'audit de Darryl (vue dédiée ? section du
    Dashboard ?) — absorbe l'entrée « Écran de revue des ingestions ».
 
+### Sources futures (owner, 2026-07-15 — hors session V1 de Darryl)
+
+Notion, Teams, Slack et **GMail** (« bourré d'infos primordiales ») =
+des adaptateurs sur le seam d'ingestion de Darryl, plus tard. ⚠️ Point
+PM à trancher le moment venu : la porte « ranger dans le dossier =
+valider » ne se transpose pas telle quelle au mail (une boîte mail est
+privée par nature, pas rangée). Il faudra un geste de consentement
+équivalent — par exemple un label « Scranton » posé sur un mail = le
+verser aux archives. Même philosophie, autre geste.
+
+---
+
+## Liens vers les outils de l'entreprise — sur le board de chacun
+
+**Catégorie** : My board / Dashboard / UI
+**Priorité** : L'UTILE (owner, 2026-07-15)
+
+### Description
+
+Les outils de l'entreprise (Notion, Slack, Teams, GMail...) en accès
+direct **sur le board de chaque membre de l'équipe, manager ou non**.
+Scranton assume son rôle d'OS : le point d'entrée de la journée, qui
+ouvre sur le reste. Simple : des liens configurables, pas d'intégration
+profonde (ça, c'est les connecteurs Darryl).
+
+### Questions à résoudre
+
+1. Qui configure la liste : l'admin pour toute l'équipe (cohérent avec
+   la session identité/onboarding), avec des ajouts perso par membre ?
+2. Côté manager : sur le Dashboard, ou sur un futur board manager
+   (dépend de la session identité) ?
+
 ---
 
 ## Catalogue documentaire — "retrouver le plan de marquage livré"

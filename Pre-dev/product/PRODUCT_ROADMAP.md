@@ -146,7 +146,8 @@ Darryl apporte). Interchangeable au choix du owner en début de session.
 |---|---|---|
 | 6 | Pam's Front Page → Dashboard news | Mesure d'importance à concevoir (jamais un classement de personnes). |
 | 7 | Retest « Brief me » vs « Annual review » | Petite passe QA sur le seed enrichi — se glisse n'importe quand. |
-| 8 | Connecteurs Notion / Teams | Des adaptateurs sur les seams de Darryl (« nous verrons ça plus tard », owner 2026-07-15). |
+| 8 | **Liens vers les outils de l'entreprise** | Notion, Slack, Teams, GMail... en accès direct **sur le board de chaque membre, manager ou non** (owner, 2026-07-15). Simple et configurable — Scranton assume d'être l'OS qui ouvre sur le reste. |
+| 8b | Connecteurs Darryl : Notion / Teams / Slack / **GMail** | Des adaptateurs sur les seams de Darryl (« nous verrons ça plus tard », owner 2026-07-15). GMail en tête de liste : « bourré d'infos primordiales » — mais le mail exige son propre geste de consentement (voir BACKLOG Darryl). |
 | 9 | Transfer to Philly (V2/V3) | Moteur construit et testé, surface à recréer dans Michael's Desk ; but = passation manager. |
 | 10 | Souveraineté locale + multi-user | Ollama attend un modèle local plus costaud ; auth réelle préparée par le chantier 3. V2. |
 | 11 | Capture vocale + Whisper Jim | V2 (transcription souveraine, PWA). |
