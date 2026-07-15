@@ -67,15 +67,20 @@ ou exporte le résultat.
    (« N segments validés depuis l'édition ») et offrir un
    « régénérer » (qui perd ou re-applique les édits ?) — à trancher en
    jouant le use case.
-3. **Un document édité entre-t-il au corpus de Darryl ?** (une ligne
-   `documents` avec source `scranton`, interrogeable par Pam et badgée
-   *document*). Convergence tentante — une seule notion de document
-   dans le produit — mais à arbitrer explicitement : elle ferait
-   entrer du contenu généré-par-LLM-puis-édité dans la mémoire de Pam.
-4. Frontière Dwight/Pam côté implémentation : un seul appel LLM
-   (doc + instruction → doc révisé) via `complete_validated` ?
-5. L'accordéon (replier une section traitée) : dans cette session ou
-   avec les exports ?
+3. ~~Un document édité entre-t-il au corpus de Darryl ?~~ **TRANCHÉ
+   (owner, 2026-07-15) : OUI** — une ligne `documents` avec source
+   `scranton`, interrogeable par Pam et badgée *document*. Une seule
+   notion de document dans le produit ; sauvegarder l'édition est le
+   geste humain qui vaut validation (même doctrine que le dossier
+   partagé).
+4. ~~Frontière Dwight/Pam côté implémentation~~ **TRANCHÉ (owner,
+   2026-07-15) : Dwight réviseur PUR** (« l'option B c'est du Dwight
+   qui se prend pour Pam ») — un seul appel LLM (doc + instruction →
+   doc révisé) via `complete_validated`, aucun accès mémoire. Le
+   contenu neuf vient de l'instruction du manager.
+5. ~~L'accordéon : dans cette session ou avec les exports ?~~
+   **TRANCHÉ (owner, 2026-07-15) : dans cette session si l'effort est
+   léger** (« quand tu peux, ça ne doit pas être un gros effort »).
 6. Lien avec « Exports & partage » — l'édition doit déboucher sur un
    format actionnable ; et **Oscar consommera ce moteur** sur les
    fiches clients/projets (édition en contexte depuis le tableau de
@@ -83,16 +88,22 @@ ou exporte le résultat.
 
 ### Micro-sujets à traiter en ouverture de session (owner, 2026-07-15)
 
-1. **Volet Pam, l'historique** : les 5 dernières notes Dwight AU-DESSUS
-   des 5 derniers documents Darryl, avec un bouton « Afficher plus »
-   qui déplie 10 de plus, puis 10 de plus, etc. (constat de session
-   Darryl : cet historique de notes n'existait pas encore — le fil
-   Dwight est par session ; décision owner : on le construit).
-2. **Premier sync Darryl sur le Drive réel du owner** (OK owner, avec
-   sa réserve : « je ne suis pas une PME avec clients et projets » —
-   donc PAS un test du routage, qui enverra l'essentiel au bac ; c'est
-   un test des FORMATS réels, des familles de versions, de la tenue de
-   la sync à l'échelle, et du comportement du bac quand il est plein).
+1. ~~**Volet Pam, l'historique**~~ **LIVRÉ (2026-07-15)** : les 5
+   dernières notes Dwight (extrait + compteur validés/total) au-dessus
+   des 5 derniers documents Darryl, un bouton « Show more » qui déplie
+   10 de plus sur CHAQUE mémoire, repli à 5 à la réouverture du volet.
+   Routes `GET /dwight/entries/recent` et offset sur
+   `/darryl/documents/recent`.
+2. **Premier sync Darryl sur le Drive réel du owner** — **TUYAU
+   VALIDÉ (2026-07-15)** : OAuth, export Google Docs, chunking,
+   embedding et bac fonctionnent de bout en bout sur le vrai Drive.
+   MAIS le dossier partagé ne contenait que 3 restes du test GDrive
+   (« Document sans titre » x3) : le test des formats réels attend que
+   le owner y dépose son vrai corpus. Constat concret déjà acquis :
+   trois fichiers au MÊME nom forment UNE famille de versions (2 des 3
+   réduits au silence en « older version ») — des homonymes qui ne
+   sont pas des versions seraient regroupés à tort ; à surveiller sur
+   le vrai corpus.
 
 ---
 
