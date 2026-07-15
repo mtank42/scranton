@@ -168,12 +168,14 @@ six versions de `Rapport_SEO_final_V3_DEF(1).pdf`, les formats réels.
 ### Sources futures (owner, 2026-07-15 — hors session V1 de Darryl)
 
 Notion, Teams, Slack et **GMail** (« bourré d'infos primordiales ») =
-des adaptateurs sur le seam d'ingestion de Darryl, plus tard. ⚠️ Point
-PM à trancher le moment venu : la porte « ranger dans le dossier =
-valider » ne se transpose pas telle quelle au mail (une boîte mail est
-privée par nature, pas rangée). Il faudra un geste de consentement
-équivalent — par exemple un label « Scranton » posé sur un mail = le
-verser aux archives. Même philosophie, autre geste.
+des adaptateurs sur le seam d'ingestion de Darryl, plus tard. Pour le
+mail, principe VALIDÉ par le owner (2026-07-15) : une boîte mail est
+privée par nature, la porte « ranger = valider » ne s'y transpose pas —
+donc **une fraction des mails, d'intérêt commun, validée par CHAQUE
+utilisateur** (manager ou équipier), est versée aux archives de Darryl.
+Geste candidat : un label « Scranton » posé sur le mail. Même
+philosophie que le dossier partagé, autre geste — et c'est le premier
+flux où les ÉQUIPIERS alimentent directement la mémoire documentaire.
 
 ---
 
