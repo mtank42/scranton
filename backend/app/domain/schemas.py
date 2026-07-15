@@ -15,6 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.domain.models import (
     DataType,
+    DocumentProposedBy,
+    DocumentStatus,
     EntityType,
     HandoverStatus,
     MoodLevel,
@@ -555,6 +557,88 @@ class HandoverValidationOut(BaseModel):
     reviewed_at: datetime | None
     validated_at: datetime | None
     sent_at: datetime | None
+
+
+# --- Darryl (documentary corpus) API surface ---
+
+
+class DarrylProposedTag(BaseModel):
+    """One routing tag proposed by Darryl's LLM fallback.
+
+    client / project only: documents feed the client and project files
+    (owner arbitration, 2026-07-15); people never route through the
+    corpus. entity_id is mandatory - there are no view tags here.
+    """
+
+    entity_type: Literal[EntityType.CLIENT, EntityType.PROJECT]
+    entity_id: int
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class DarrylRouting(BaseModel):
+    """The routing contract the fallback LLM must honor.
+
+    An empty tag list is a VALID answer: it sends the document to the
+    unclassified bin, which is Darryl doing his job (never a bet), not
+    a failure.
+    """
+
+    tags: list[DarrylProposedTag] = []
+
+
+class DocumentTagOut(BaseModel):
+    """One document routing tag as stored."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    entity_type: EntityType
+    entity_id: int
+    proposed_by: DocumentProposedBy
+    confidence: float
+
+
+class DocumentOut(BaseModel):
+    """One corpus document, routing included (the audit surface unit)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    mime_type: str
+    web_view_link: str | None
+    folder_path: str
+    modified_at: datetime | None
+    status: DocumentStatus
+    family_key: str
+    is_latest: bool
+    ingested_at: datetime
+    tags: list[DocumentTagOut]
+
+
+class DarrylSyncReport(BaseModel):
+    """Response for POST /api/v1/darryl/sync: what one pass did.
+
+    unclassified is the bin size AFTER the sync (not the delta): what
+    the manager may want to file, surfaced in the Pam overlay.
+    """
+
+    seen: int = 0
+    added: int = 0
+    updated: int = 0
+    removed: int = 0
+    unclassified: int = 0
+
+
+class DocumentClassify(BaseModel):
+    """Request body for POST /api/v1/darryl/documents/{id}/classify.
+
+    The manager filing (or re-filing) one document: a decision, so it
+    replaces Darryl's routing rather than piling on top of it.
+    """
+
+    entity_type: Literal[EntityType.CLIENT, EntityType.PROJECT]
+    entity_id: int
 
 
 # --- Ingestion API surface ---

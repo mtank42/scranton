@@ -7,9 +7,11 @@ swap any seam through app.dependency_overrides without patching.
 
 from fastapi import Request
 
+from backend.app.adapters.documents.factory import build_document_source
 from backend.app.adapters.ingestion.factory import build_ingestion_source
 from backend.app.config import get_settings
 from backend.app.services.angela_service import AngelaService
+from backend.app.services.darryl_service import DarrylService
 from backend.app.services.dwight_service import DwightService
 from backend.app.services.handover_service import HandoverService
 from backend.app.services.ingestion_service import IngestionService
@@ -58,6 +60,26 @@ def get_gdrive_ingestion_service(request: Request) -> IngestionService:
     return IngestionService(
         source=build_ingestion_source(get_settings(), kind="gdrive"),
         dwight=get_dwight_service(request),
+    )
+
+
+def get_darryl_service(request: Request) -> DarrylService:
+    """Build a DarrylService wired to the DOCUMENTS vector collection.
+
+    The source connector is built per request (constructors store
+    configuration only, no network): tests swap the whole service via
+    app.dependency_overrides, exactly like every other seam.
+    """
+    state = request.app.state
+    settings = get_settings()
+    return DarrylService(
+        source=build_document_source(settings),
+        llm=state.llm,
+        session_factory=state.session_factory,
+        vector_store=state.doc_vector_store,
+        # The routing floor is configuration (DARRYL_MIN_CONFIDENCE),
+        # a tuning lever like PAM_MIN_SCORE.
+        min_confidence=settings.darryl_min_confidence,
     )
 
 

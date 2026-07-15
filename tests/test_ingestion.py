@@ -5,7 +5,11 @@ import json
 import pytest
 
 from backend.app.adapters.ingestion.base import IngestionSource
-from backend.app.adapters.ingestion.gdrive import GDriveSource, MissingCredentialsError
+from backend.app.adapters.ingestion.gdrive import (
+    GDriveSource,
+    MissingCredentialsError,
+    load_credentials,
+)
 from backend.app.domain.models import Entry, SourceType
 from backend.app.domain.schemas import RawDoc
 from backend.app.services.dwight_service import DwightService
@@ -91,14 +95,16 @@ def test_gdrive_without_folder_id_fails_with_setup_pointer(tmp_path):
 
 
 def test_gdrive_without_secrets_points_to_the_setup_doc(tmp_path):
-    """No token, no secrets file: the error names the doc to read."""
-    source = GDriveSource(
-        client_secrets_file=str(tmp_path / "missing.json"),
-        token_file=str(tmp_path / "token.json"),
-        folder_id="folder-1",
-    )
+    """No token, no secrets file: the error names the doc to read.
+
+    load_credentials is the module-level function shared by the two
+    Drive connectors (Dwight-gate and Darryl) since the Darryl session.
+    """
     with pytest.raises(MissingCredentialsError, match="google_drive_ingestion"):
-        source._credentials()
+        load_credentials(
+            client_secrets_file=str(tmp_path / "missing.json"),
+            token_file=str(tmp_path / "token.json"),
+        )
 
 
 def test_ingestion_runs_every_document_through_dwight(session_factory):

@@ -164,6 +164,55 @@ RETRY_REMINDER = (
 )
 
 
+# --- Darryl (document routing fallback) ---
+
+DARRYL_SYSTEM_PROMPT = """\
+You are Darryl, the silent archivist of Scranton, a memory assistant
+for a team manager. You receive ONE document (its title, its folder
+path, an excerpt of its content) and the known clients and projects.
+Your only job: decide which client and/or project this document
+belongs to.
+
+Rules:
+1. CLOSED WORLD: use ONLY ids from the provided lists. A name that is
+   not in the lists does not exist for you.
+2. NEVER BET: when nothing matches clearly, return an empty tag list.
+   The document then goes to the unclassified bin, where the manager
+   can file it - that is you doing your job, not a failure. A wrong
+   silent filing is far worse than an honest empty answer.
+3. Confidence, calibrated: 0.9-1.0 when the client or project is
+   literally named in the title, path or excerpt; 0.75-0.85 when the
+   content is unmistakably about it without naming it; below that, do
+   not emit the tag.
+4. Most documents belong to ONE client and/or ONE project. Never emit
+   more than two tags.
+
+Respond with ONLY valid JSON, no markdown fences, no commentary:
+{"tags": [{"entity_type": "client" | "project", "entity_id": <int from the lists>, "confidence": 0.0-1.0}]}
+An empty answer is: {"tags": []}"""
+
+
+def build_darryl_messages(
+    title: str, folder_path: str, excerpt: str, roster_context: str
+) -> list[dict]:
+    """Assemble the chat messages for one document-routing fallback call.
+
+    Called only when the deterministic signals (folder path, file name
+    against the roster) found nothing: the LLM is Darryl's second
+    opinion, never his first move. No language pin: the answer is JSON.
+    """
+    user_prompt = (
+        f"Known clients and projects:\n{roster_context}\n\n"
+        f"Document title: {title}\n"
+        f"Folder path: {folder_path or '(shared root)'}\n\n"
+        f"Content excerpt:\n{excerpt or '(no extractable content)'}"
+    )
+    return [
+        {"role": "system", "content": DARRYL_SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]
+
+
 # --- Ask Pam ---
 
 PAM_SYSTEM_PROMPT = """\

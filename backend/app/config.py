@@ -49,6 +49,14 @@ class Settings:
     # top-k with no floor surfaced unrelated sources as noise). A tuning
     # lever like LLM_MODEL: adjust from .env, never from code.
     pam_min_score: float = 0.6
+    # Darryl's corpus connector: 'gdrive' (the shared folder) or 'local'
+    # (a directory on disk - the sovereign path, and the test workhorse).
+    darryl_source: str = "gdrive"
+    darryl_local_dir: str = ""
+    # Below this confidence Darryl files a document in the unclassified
+    # bin instead of betting (owner arbitration, 2026-07-15: silent
+    # routing when sure, never a plausible guess). A tuning lever.
+    darryl_min_confidence: float = 0.75
 
 
 def get_settings() -> Settings:
@@ -78,4 +86,7 @@ def get_settings() -> Settings:
         llm_model=os.getenv("LLM_MODEL", ""),
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         pam_min_score=float(os.getenv("PAM_MIN_SCORE", "0.6")),
+        darryl_source=os.getenv("DARRYL_SOURCE", "gdrive"),
+        darryl_local_dir=os.getenv("DARRYL_LOCAL_DIR", ""),
+        darryl_min_confidence=float(os.getenv("DARRYL_MIN_CONFIDENCE", "0.75")),
     )

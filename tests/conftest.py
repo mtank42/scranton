@@ -64,12 +64,17 @@ class FakeVectorStore(VectorStore):
     def __init__(self, hits: list[Hit] | None = None) -> None:
         """Optionally queue the hits every query will return."""
         self.upserted: list[SegmentVector] = []
+        self.deleted: list[int] = []
         self.hits = hits or []
         self.query_calls: list[dict] = []
 
     def upsert(self, segments: list[SegmentVector]) -> None:
         """Record what the pipeline tried to index."""
         self.upserted.extend(segments)
+
+    def delete(self, ids: list[int]) -> None:
+        """Record what the pipeline tried to remove from the index."""
+        self.deleted.extend(ids)
 
     def query(
         self, embedding: list[float], *, filters: dict | None = None, k: int = 8

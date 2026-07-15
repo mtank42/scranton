@@ -11,18 +11,20 @@ from backend.app.adapters.vectorstore.base import Hit, SegmentVector, VectorStor
 
 
 class ChromaStore(VectorStore):
-    """Local persistent Chroma index: one collection, one vector per segment."""
+    """Local persistent Chroma index: one collection, one vector per unit."""
 
-    COLLECTION_NAME = "segments"
-
-    def __init__(self, persist_dir: str) -> None:
+    def __init__(self, persist_dir: str, collection_name: str = "segments") -> None:
         """Store the target directory: the client itself is created lazily.
 
         persist_dir comes from settings (CHROMA_DIR): data location is
         configuration, never code. Lazy creation keeps app startup and
         offline tests fast: no disk activity until the first real call.
+        collection_name separates the two memories (owner arbitration,
+        2026-07-15): 'segments' for the human layer, 'documents' for
+        Darryl's corpus - different lifecycles, one query interface.
         """
         self.persist_dir = persist_dir
+        self.collection_name = collection_name
         self._collection: chromadb.Collection | None = None
 
     def _get_collection(self) -> chromadb.Collection:
@@ -35,7 +37,7 @@ class ChromaStore(VectorStore):
         if self._collection is None:
             client = chromadb.PersistentClient(path=self.persist_dir)
             self._collection = client.get_or_create_collection(
-                self.COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+                self.collection_name, metadata={"hnsw:space": "cosine"}
             )
         return self._collection
 
@@ -75,6 +77,12 @@ class ChromaStore(VectorStore):
                 results["ids"][0], results["distances"][0], results["metadatas"][0]
             )
         ]
+
+    def delete(self, ids: list[int]) -> None:
+        """Drop the given vectors; Chroma ignores ids it does not hold."""
+        if not ids:
+            return
+        self._get_collection().delete(ids=[str(unit_id) for unit_id in ids])
 
     @staticmethod
     def _to_where(filters: dict | None) -> dict | None:

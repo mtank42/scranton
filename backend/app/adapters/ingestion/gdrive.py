@@ -33,6 +33,33 @@ class MissingCredentialsError(Exception):
     """OAuth client secrets are not configured yet (see the setup doc)."""
 
 
+def load_credentials(client_secrets_file: str, token_file: str) -> Credentials:
+    """Load, refresh, or interactively obtain OAuth credentials.
+
+    The first run opens a browser for consent (installed-app flow)
+    and caches the token under data/. Subsequent runs refresh
+    silently. This is a local-first, single-user POC: a web-based
+    consent flow becomes necessary only with hosted multi-user (V2).
+    Shared by the Dwight-gate connector below and Darryl's document
+    connector (adapters/documents/gdrive.py): one consent, one token.
+    """
+    credentials = None
+    if Path(token_file).exists():
+        credentials = Credentials.from_authorized_user_file(token_file, SCOPES)
+    if credentials and credentials.expired and credentials.refresh_token:
+        credentials.refresh(Request())
+    elif not credentials or not credentials.valid:
+        if not Path(client_secrets_file).exists():
+            raise MissingCredentialsError(
+                f"Google OAuth client secrets not found at {client_secrets_file}. "
+                "See docs/google_drive_ingestion.md for the one-time setup."
+            )
+        flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file, SCOPES)
+        credentials = flow.run_local_server(port=0)
+    Path(token_file).write_text(credentials.to_json())
+    return credentials
+
+
 class GDriveSource(IngestionSource):
     """Pulls documents from a single Drive folder, normalized to RawDoc."""
 
@@ -42,35 +69,10 @@ class GDriveSource(IngestionSource):
         self.token_file = token_file
         self.folder_id = folder_id
 
-    # --- auth ---
-
-    def _credentials(self) -> Credentials:
-        """Load, refresh, or interactively obtain OAuth credentials.
-
-        The first run opens a browser for consent (installed-app flow)
-        and caches the token under data/. Subsequent runs refresh
-        silently. This is a local-first, single-user POC: a web-based
-        consent flow becomes necessary only with hosted multi-user (V2).
-        """
-        credentials = None
-        if Path(self.token_file).exists():
-            credentials = Credentials.from_authorized_user_file(self.token_file, SCOPES)
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        elif not credentials or not credentials.valid:
-            if not Path(self.client_secrets_file).exists():
-                raise MissingCredentialsError(
-                    f"Google OAuth client secrets not found at {self.client_secrets_file}. "
-                    "See docs/google_drive_ingestion.md for the one-time setup."
-                )
-            flow = InstalledAppFlow.from_client_secrets_file(self.client_secrets_file, SCOPES)
-            credentials = flow.run_local_server(port=0)
-        Path(self.token_file).write_text(credentials.to_json())
-        return credentials
-
     def _drive(self):
         """Build the Drive API client. Overridden with a fake in tests."""
-        return build("drive", "v3", credentials=self._credentials())
+        credentials = load_credentials(self.client_secrets_file, self.token_file)
+        return build("drive", "v3", credentials=credentials)
 
     # --- fetch ---
 

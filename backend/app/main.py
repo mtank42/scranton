@@ -14,6 +14,7 @@ from backend.app.adapters.vectorstore.chroma import ChromaStore
 from backend.app.api.v1 import (
     angela,
     config,
+    darryl,
     dwight,
     handover,
     health,
@@ -43,6 +44,11 @@ async def lifespan(app: FastAPI):
     app.state.session_factory = build_session_factory(engine)
     app.state.llm = build_llm(settings)
     app.state.vector_store = ChromaStore(persist_dir=settings.chroma_dir)
+    # The second memory (Darryl session, 2026-07-15): documents live in
+    # their own collection - different lifecycle, same query interface.
+    app.state.doc_vector_store = ChromaStore(
+        persist_dir=settings.chroma_dir, collection_name="documents"
+    )
     yield
     engine.dispose()
 
@@ -73,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(handover.router, prefix="/api/v1")
     app.include_router(config.router, prefix="/api/v1")
     app.include_router(ingest.router, prefix="/api/v1")
+    app.include_router(darryl.router, prefix="/api/v1")
     # The UI, served by the same process (no build tooling, no second
     # server). Mounted last: API routes always win over static files.
     app.mount(
