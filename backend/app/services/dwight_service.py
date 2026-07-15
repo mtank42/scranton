@@ -38,6 +38,7 @@ from backend.app.domain.schemas import (
     CaptureResponse,
     DwightProposal,
     EntryCreate,
+    EntryHistoryOut,
     ProposedSegment,
     SegmentOut,
 )
@@ -354,3 +355,37 @@ class DwightService:
                 )
             session.commit()
             return SegmentOut.model_validate(segment)
+
+    # --- history ---
+
+    def history(self, limit: int = 5, offset: int = 0) -> list[EntryHistoryOut]:
+        """Past notes, newest first: the Pam overlay history strip.
+
+        Until now the Dwight thread was per session (nothing survived a
+        reload); this is the durable trail the owner asked for
+        (2026-07-15). Counting segments in Python is fine at strip
+        scale: the page is 5 to 15 rows, each with a handful of
+        segments already loaded by the relationship.
+        """
+        with self.session_factory() as session:
+            entries = session.scalars(
+                select(Entry)
+                .order_by(Entry.created_at.desc(), Entry.id.desc())
+                .limit(limit)
+                .offset(offset)
+            ).all()
+            return [
+                EntryHistoryOut(
+                    id=entry.id,
+                    raw_content=entry.raw_content,
+                    source_type=entry.source_type,
+                    created_at=entry.created_at,
+                    segments_total=len(entry.segments),
+                    segments_validated=sum(
+                        1
+                        for segment in entry.segments
+                        if segment.validation_status == ValidationStatus.VALIDATED
+                    ),
+                )
+                for entry in entries
+            ]

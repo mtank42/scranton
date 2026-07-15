@@ -112,11 +112,16 @@ documentary memory directly.
 
 ## Surface (frontend, Pam overlay)
 
-The strip under the Pam sheet head: the five last ingested documents
-(routing badges, `older version` chip, link when there is one), the
-bin behind a one-line toggle, the one-click "file it" picker (closed
-world: known clients and projects), and the Sync button. Any strip
-error hides it and never blocks Pam.
+The strip under the Pam sheet head became the HISTORY strip (owner,
+2026-07-15): the five last Dwight notes (raw note snippet + a
+`validated/total` segment counter) ABOVE the five last ingested
+documents (routing badges, `older version` chip, link when there is
+one), the bin behind a one-line toggle, the one-click "file it" picker
+(closed world: known clients and projects), and the Sync button. One
+"Show more" button unfolds 10 more of EACH memory (endpoints
+`/dwight/entries/recent` and `/darryl/documents/recent`, limit +
+offset); reopening the overlay folds back to 5. Any strip error hides
+it and never blocks Pam.
 
 ## Demo
 

@@ -10,6 +10,7 @@ from backend.app.api.deps import get_dwight_service
 from backend.app.domain.schemas import (
     CaptureResponse,
     EntryCreate,
+    EntryHistoryOut,
     EntryReply,
     SegmentOut,
     SegmentRework,
@@ -42,6 +43,16 @@ def capture_entry(
     except DwightProcessingError as exc:
         # 502: the upstream model failed us, not the client.
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+@router.get("/entries/recent", response_model=list[EntryHistoryOut])
+def recent_entries(
+    limit: int = 5,
+    offset: int = 0,
+    service: DwightService = Depends(get_dwight_service),
+) -> list[EntryHistoryOut]:
+    """Past notes, newest first: the Pam overlay history strip."""
+    return service.history(limit=limit, offset=offset)
 
 
 @router.post("/entries/{entry_id}/reply", response_model=CaptureResponse)

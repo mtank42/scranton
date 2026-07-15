@@ -86,3 +86,30 @@ def test_validating_unknown_segment_returns_404(app, client):
     override_service(app, [])
     response = client.post("/api/v1/dwight/segments/999/validate", json={"status": "rejected"})
     assert response.status_code == 404
+
+
+def test_recent_entries_history(app, client):
+    """The history strip: newest first, counters, limit and offset."""
+    override_service(app, [TWO_SEGMENT_PROPOSAL, TWO_SEGMENT_PROPOSAL])
+    first = client.post(
+        "/api/v1/dwight/entries", json={"raw_content": "Older note about the tables."}
+    ).json()
+    second = client.post(
+        "/api/v1/dwight/entries", json={"raw_content": "Newer note about Kevin."}
+    ).json()
+    client.post(
+        f"/api/v1/dwight/segments/{second['segments'][0]['id']}/validate",
+        json={"status": "validated"},
+    )
+
+    history = client.get("/api/v1/dwight/entries/recent?limit=5").json()
+
+    assert [entry["id"] for entry in history] == [second["entry_id"], first["entry_id"]]
+    assert history[0]["raw_content"] == "Newer note about Kevin."
+    assert history[0]["segments_total"] == 2
+    assert history[0]["segments_validated"] == 1
+    assert history[1]["segments_validated"] == 0
+
+    # The 'Show more' path pages past the first screen.
+    paged = client.get("/api/v1/dwight/entries/recent?limit=5&offset=1").json()
+    assert [entry["id"] for entry in paged] == [first["entry_id"]]

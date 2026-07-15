@@ -456,7 +456,7 @@ class DarrylService:
             session.commit()
             return DocumentOut.model_validate(document)
 
-    def recent(self, limit: int = 5) -> list[DocumentOut]:
+    def recent(self, limit: int = 5, offset: int = 0) -> list[DocumentOut]:
         """The last ingested living documents: the Pam overlay strip."""
         with self.session_factory() as session:
             documents = session.scalars(
@@ -464,6 +464,7 @@ class DarrylService:
                 .where(Document.deleted_at.is_(None))
                 .order_by(Document.ingested_at.desc(), Document.id.desc())
                 .limit(limit)
+                .offset(offset)
             ).all()
             return [DocumentOut.model_validate(document) for document in documents]
 

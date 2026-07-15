@@ -167,10 +167,9 @@ function switchView(viewId) {
 function openOverlay(id) {
   const overlay = document.getElementById(id);
   overlay.hidden = false;
-  // Darryl's trail loads with the overlay: the archivist works in the
-  // shadows, Pam's sheet is where his work is surfaced (owner, session
-  // 2026-07-15).
-  if (id === "pam-overlay") loadPamArchive();
+  // The history strip loads with the overlay and reopens folded back
+  // to the last 5 of each memory (owner, 2026-07-15).
+  if (id === "pam-overlay") loadPamArchive(true);
   overlay.querySelector("textarea, input")?.focus();
 }
 
@@ -475,12 +474,36 @@ function sourceRow(source, index) {
     </div>`;
 }
 
-/* --- Darryl's archive strip (inside the Pam overlay) --- */
+/* --- The history strip (inside the Pam overlay) --- */
 
-/* The archivist has no view of his own (owner, 2026-07-15): his trail
- * is this strip - last filed documents, the unclassified bin, and the
- * manager's one-click corrections. Optional by design: any error hides
- * the strip and never blocks Pam. */
+/* Two memories, one strip (owner, 2026-07-15): the last Dwight notes
+ * ABOVE the last Darryl documents, plus the unclassified bin and the
+ * manager's one-click corrections. Opens on 5 of each; "Show more"
+ * unfolds 10 more of each. Optional by design: any error hides the
+ * strip and never blocks Pam. */
+
+const HISTORY_FIRST = 5;
+const HISTORY_STEP = 10;
+let historyDepth = { notes: HISTORY_FIRST, docs: HISTORY_FIRST };
+
+function snippet(text, max = 140) {
+  return text.length > max ? text.slice(0, max - 3).trimEnd() + "..." : text;
+}
+
+function noteRow(entry) {
+  const date = entry.created_at ? entry.created_at.slice(0, 10) : "";
+  // The counter says what became of the note without opening it: how
+  // many segments Dwight kept, how many the manager validated.
+  const kept = entry.segments_total === 0
+    ? `<span class="chip">no segments</span>`
+    : `<span class="chip">${entry.segments_validated}/${entry.segments_total} validated</span>`;
+  return `
+    <div class="doc-row">
+      <span class="source-text">${esc(snippet(entry.raw_content))}</span>
+      ${kept}
+      <span class="source-date">${date}</span>
+    </div>`;
+}
 
 function docBadges(doc) {
   if (doc.status === "unclassified") {
@@ -527,14 +550,20 @@ function classifyPicker(docId) {
     </span>`;
 }
 
-async function loadPamArchive() {
+async function loadPamArchive(reset = false) {
   const container = document.getElementById("pam-archive");
   const darryl = character("darryl");
+  const dwight = character("dwight");
+  if (reset) historyDepth = { notes: HISTORY_FIRST, docs: HISTORY_FIRST };
   try {
-    const [recent, bin] = await Promise.all([
-      api("/darryl/documents/recent?limit=5"),
+    const [notes, recent, bin] = await Promise.all([
+      api(`/dwight/entries/recent?limit=${historyDepth.notes}`),
+      api(`/darryl/documents/recent?limit=${historyDepth.docs}`),
       api("/darryl/documents/unclassified"),
     ]);
+    const noteRows = notes.length
+      ? notes.map(noteRow).join("")
+      : `<p class="silent-line">No notes yet - tell ${esc(dwight.display_name)} what happened.</p>`;
     // The header and the sync button stay even on an empty corpus:
     // the FIRST sync has to start somewhere.
     const rows = recent.length
@@ -543,7 +572,17 @@ async function loadPamArchive() {
     const binButton = bin.length
       ? `<button class="linklike" data-bin-toggle>${bin.length} document${bin.length > 1 ? "s" : ""} not filed - open the bin</button>`
       : "";
+    // A full page means there may be more below: keep the button as
+    // long as either memory could go deeper.
+    const moreButton =
+      notes.length === historyDepth.notes || recent.length === historyDepth.docs
+        ? `<button class="linklike" data-history-more>Show more</button>`
+        : "";
     container.innerHTML = `
+      <div class="archive-head">
+        <p class="sources-title">Last notes to ${esc(dwight.display_name)}</p>
+      </div>
+      ${noteRows}
       <div class="archive-head">
         <p class="sources-title">${esc(darryl.display_name)} filed these recently</p>
         <button class="btn btn-ghost" data-darryl-sync>Sync the shared folder</button>
@@ -551,7 +590,8 @@ async function loadPamArchive() {
       <p class="thinking-none" id="archive-feedback"></p>
       ${rows}
       ${binButton}
-      <div class="bin-rows" id="bin-rows" hidden>${bin.map(docRow).join("")}</div>`;
+      <div class="bin-rows" id="bin-rows" hidden>${bin.map(docRow).join("")}</div>
+      ${moreButton}`;
     container.hidden = false;
   } catch {
     container.hidden = true;
@@ -567,6 +607,14 @@ function bindPamArchive() {
     if (target.matches("[data-bin-toggle]")) {
       const bin = document.getElementById("bin-rows");
       bin.hidden = !bin.hidden;
+      return;
+    }
+    if (target.matches("[data-history-more]")) {
+      historyDepth = {
+        notes: historyDepth.notes + HISTORY_STEP,
+        docs: historyDepth.docs + HISTORY_STEP,
+      };
+      await loadPamArchive();
       return;
     }
     if (target.matches("[data-darryl-sync]")) {

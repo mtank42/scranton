@@ -36,10 +36,12 @@ def sync(service: DarrylService = Depends(get_darryl_service)) -> DarrylSyncRepo
 
 @router.get("/documents/recent", response_model=list[DocumentOut])
 def recent_documents(
-    limit: int = 5, service: DarrylService = Depends(get_darryl_service)
+    limit: int = 5,
+    offset: int = 0,
+    service: DarrylService = Depends(get_darryl_service),
 ) -> list[DocumentOut]:
     """The last ingested documents: the Pam overlay archive strip."""
-    return service.recent(limit=limit)
+    return service.recent(limit=limit, offset=offset)
 
 
 @router.get("/documents/unclassified", response_model=list[DocumentOut])

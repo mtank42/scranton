@@ -160,6 +160,22 @@ class CaptureResponse(BaseModel):
     privacy_note: str | None = None
 
 
+class EntryHistoryOut(BaseModel):
+    """One past note in the Pam overlay history strip.
+
+    The raw note is what the manager remembers writing, so it is the
+    anchor; the segment counters say what became of it without loading
+    the segments themselves (the strip is a glance, not an audit view).
+    """
+
+    id: int
+    raw_content: str
+    source_type: SourceType
+    created_at: datetime
+    segments_total: int
+    segments_validated: int
+
+
 class SegmentValidation(BaseModel):
     """Request body for POST /api/v1/dwight/segments/{id}/validate.
 
