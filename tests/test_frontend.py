@@ -14,14 +14,22 @@ def test_ui_config_exposes_the_character_map(client):
     response = client.get("/api/v1/config/ui")
     assert response.status_code == 200
     characters = response.json()["characters"]
-    assert set(characters) == {"dwight", "pam", "jim", "michael", "angela", "toby"}
+    assert set(characters) == {
+        "dwight", "pam", "jim", "michael", "angela", "toby", "darryl",
+    }
     assert characters["dwight"]["display_name"] == "Tell Dwight"
     assert characters["dwight"]["avatar_asset"].endswith(".png")
 
 
 def test_avatar_assets_are_served(client):
-    """The avatar files referenced by the map exist under /assets."""
+    """The avatar files referenced by the map exist under /assets.
+
+    Darryl has no avatar yet (invisible agent, no surface of his own):
+    an empty asset is skipped, never requested.
+    """
     config = client.get("/api/v1/config/ui").json()
     for character in config["characters"].values():
+        if not character["avatar_asset"]:
+            continue
         response = client.get(f"/assets/{character['avatar_asset']}")
         assert response.status_code == 200, character

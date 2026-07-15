@@ -167,6 +167,10 @@ function switchView(viewId) {
 function openOverlay(id) {
   const overlay = document.getElementById(id);
   overlay.hidden = false;
+  // Darryl's trail loads with the overlay: the archivist works in the
+  // shadows, Pam's sheet is where his work is surfaced (owner, session
+  // 2026-07-15).
+  if (id === "pam-overlay") loadPamArchive();
   overlay.querySelector("textarea, input")?.focus();
 }
 
@@ -451,13 +455,159 @@ function sourceRow(source, index) {
   // are filtered to the cited ones server-side, so numbering must NOT
   // be recomputed from position (QA 2026-07-14: source noise).
   const number = source.ref ?? index + 1;
+  // Two memories, two badges (session 2026-07-15): a validated team
+  // note, or a shared document with the link back to the original.
+  const isDoc = source.kind === "document";
+  const docName = isDoc
+    ? (source.link
+        ? `<a class="doc-link" href="${esc(source.link)}" target="_blank" rel="noopener">${esc(source.title)}</a>`
+        : `<strong>${esc(source.title)}</strong>`) + " - "
+    : "";
+  const badge = isDoc
+    ? `<span class="chip doc">document</span>`
+    : `<span class="chip ${source.data_type}">team memory</span>`;
   return `
     <div class="source-row">
       <span class="source-num">[${number}]</span>
-      <span class="source-text">${esc(source.content)}</span>
-      <span class="chip ${source.data_type}">${source.data_type}</span>
+      <span class="source-text">${docName}${esc(source.content)}</span>
+      ${badge}
       <span class="source-date">${date}</span>
     </div>`;
+}
+
+/* --- Darryl's archive strip (inside the Pam overlay) --- */
+
+/* The archivist has no view of his own (owner, 2026-07-15): his trail
+ * is this strip - last filed documents, the unclassified bin, and the
+ * manager's one-click corrections. Optional by design: any error hides
+ * the strip and never blocks Pam. */
+
+function docBadges(doc) {
+  if (doc.status === "unclassified") {
+    return `<button class="htag not-filed" data-classify="${doc.id}">not filed - file it</button>`;
+  }
+  return doc.tags
+    .map((tag) => {
+      const name = state.labels[tag.entity_type]?.[tag.entity_id]
+        || `${tag.entity_type} #${tag.entity_id}`;
+      return `<span class="htag kind-${tag.entity_type}">${esc(name)}</span>`;
+    })
+    .join("");
+}
+
+function docRow(doc) {
+  const date = doc.modified_at ? doc.modified_at.slice(0, 10) : "";
+  const title = doc.web_view_link
+    ? `<a class="doc-link" href="${esc(doc.web_view_link)}" target="_blank" rel="noopener">${esc(doc.title)}</a>`
+    : esc(doc.title);
+  const version = doc.is_latest ? "" : `<span class="chip">older version</span>`;
+  return `
+    <div class="doc-row">
+      <span class="source-text">${title}</span>
+      ${docBadges(doc)}${version}
+      <span class="source-date">${date}</span>
+    </div>`;
+}
+
+/* Filing a binned document: the picker offers the known clients and
+ * projects (closed world, same seam-resolved labels as the tags). */
+function classifyPicker(docId) {
+  const groups = [["client", "Clients"], ["project", "Projects"]]
+    .map(([kind, label]) => {
+      const options = Object.entries(state.labels[kind] || {})
+        .map(([id, name]) => `<option value="${kind}:${id}">${esc(name)}</option>`)
+        .join("");
+      return options ? `<optgroup label="${label}">${options}</optgroup>` : "";
+    })
+    .join("");
+  return `
+    <span class="classify-picker">
+      <select data-classify-target>${groups}</select>
+      <button class="btn btn-primary" data-classify-send="${docId}">File</button>
+    </span>`;
+}
+
+async function loadPamArchive() {
+  const container = document.getElementById("pam-archive");
+  const darryl = character("darryl");
+  try {
+    const [recent, bin] = await Promise.all([
+      api("/darryl/documents/recent?limit=5"),
+      api("/darryl/documents/unclassified"),
+    ]);
+    // The header and the sync button stay even on an empty corpus:
+    // the FIRST sync has to start somewhere.
+    const rows = recent.length
+      ? recent.map(docRow).join("")
+      : `<p class="silent-line">No documents in the archive yet - share a folder and sync.</p>`;
+    const binButton = bin.length
+      ? `<button class="linklike" data-bin-toggle>${bin.length} document${bin.length > 1 ? "s" : ""} not filed - open the bin</button>`
+      : "";
+    container.innerHTML = `
+      <div class="archive-head">
+        <p class="sources-title">${esc(darryl.display_name)} filed these recently</p>
+        <button class="btn btn-ghost" data-darryl-sync>Sync the shared folder</button>
+      </div>
+      <p class="thinking-none" id="archive-feedback"></p>
+      ${rows}
+      ${binButton}
+      <div class="bin-rows" id="bin-rows" hidden>${bin.map(docRow).join("")}</div>`;
+    container.hidden = false;
+  } catch {
+    container.hidden = true;
+  }
+}
+
+function bindPamArchive() {
+  const container = document.getElementById("pam-archive");
+  // onclick, not addEventListener: the container survives overlay
+  // openings and the handler must not accumulate (frontend gotcha).
+  container.onclick = async (event) => {
+    const target = event.target;
+    if (target.matches("[data-bin-toggle]")) {
+      const bin = document.getElementById("bin-rows");
+      bin.hidden = !bin.hidden;
+      return;
+    }
+    if (target.matches("[data-darryl-sync]")) {
+      target.disabled = true;
+      target.textContent = "Darryl is filing...";
+      try {
+        const report = await api("/darryl/sync", { method: "POST" });
+        await loadPamArchive();
+        document.getElementById("archive-feedback").textContent =
+          `Sync done: ${report.added} added, ${report.updated} updated, ` +
+          `${report.removed} removed.`;
+      } catch (error) {
+        target.disabled = false;
+        target.textContent = "Sync the shared folder";
+        document.getElementById("archive-feedback").textContent = error.message;
+      }
+      return;
+    }
+    if (target.matches("[data-classify]")) {
+      // The badge becomes the picker, in place: one click to correct.
+      target.outerHTML = classifyPicker(target.dataset.classify);
+      return;
+    }
+    if (target.matches("[data-classify-send]")) {
+      const picker = target.closest(".classify-picker");
+      const choice = picker.querySelector("[data-classify-target]").value;
+      if (!choice) return;
+      const [kind, id] = choice.split(":");
+      target.disabled = true;
+      try {
+        await api(`/darryl/documents/${target.dataset.classifySend}/classify`, {
+          method: "POST",
+          body: JSON.stringify({ entity_type: kind, entity_id: Number(id) }),
+        });
+        await loadPamArchive();
+      } catch (error) {
+        target.disabled = false;
+        alert(error.message);
+      }
+    }
+  };
 }
 
 /* A summary served AS the answer (recadrage): Pam understood that the
@@ -1093,6 +1243,7 @@ async function init() {
   renderChrome();
   bindOverlays();
   bindDwightOverlay();
+  bindPamArchive();
   document.getElementById("pam-form").addEventListener("submit", submitPam);
   document.getElementById("pam-thread").addEventListener("click", (event) => {
     if (event.target.matches("[data-open-dwight]")) {

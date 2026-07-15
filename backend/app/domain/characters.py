@@ -46,4 +46,11 @@ CHARACTERS: dict[str, Character] = {
         "display_name": "Meet Toby",
         "avatar_asset": "toby-removebg-preview.png",
     },
+    # The invisible archivist (session 2026-07-15): no view of his own,
+    # surfaced through the Pam overlay strip. No avatar yet - the strip
+    # does not render one; the asset joins when the owner provides it.
+    "darryl": {
+        "display_name": "Darryl",
+        "avatar_asset": "",
+    },
 }

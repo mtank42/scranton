@@ -285,9 +285,10 @@ class PamService:
                         document_id=document.id,
                         title=document.title,
                         link=document.web_view_link,
+                        # The UI renders the title (linked) itself: the
+                        # content carries the rest of the catalog line.
                         content=(
-                            f"{document.title} - folder: "
-                            f"{document.folder_path or 'shared root'}"
+                            f"folder: {document.folder_path or 'shared root'}"
                             + (" - current version" if document.is_latest else "")
                         ),
                         data_type=DataType.COLD,
