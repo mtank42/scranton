@@ -26,8 +26,9 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 
 1. **Never write code without an explicit "go".** Surface options first.
 2. **Never modify the validated data model** (`SCRANTON_CONTEXT.md` §5:
-   9 tables) without a dedicated session. Mapping it to the ORM is fine;
-   adding/renaming fields is not.
+   9 tables + the 3 Darryl tables, session 2026-07-15) without a
+   dedicated session. Mapping it to the ORM is fine; adding/renaming
+   fields is not.
 3. **Honor the seams** - never hardcode a provider, a data source, a
    vector store, or a character name/avatar. Each lives behind an
    interface or a config map.
@@ -47,15 +48,30 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
   Philly; never index a proposed or rejected segment. For documents,
   the owner's day-one doctrine (reaffirmed 2026-07-15): a document
   placed in the folder shared with Scranton was validated BY that human
-  gesture - it feeds Pam directly, Dwight has no business with it
-  (Dwight structures unstructured HUMAN input, nothing else). The
-  documentary side (agent Darryl) is DECIDED but NOT BUILT - dedicated
-  session, dossier in BACKLOG "Darryl l'archiviste"; until it ships,
-  Drive ingestion still flows through the Dwight gate.
+  gesture - it feeds Pam directly through agent Darryl (BUILT
+  2026-07-15, `docs/darryl.md`); Dwight has no business with it (Dwight
+  structures unstructured HUMAN input, nothing else). Removing a file
+  from the folder withdraws the consent: soft delete + vectors dropped
+  at sync.
+- **Darryl routes SILENTLY or not at all - never a bet.** Deterministic
+  signals first (the actual roster matched against folder path and file
+  name - no filing convention to configure), LLM second opinion under
+  `DARRYL_MIN_CONFIDENCE` (settings, default 0.75), and below the floor
+  the UNCLASSIFIED BIN: still queryable, feeds no entity file, fixed in
+  one click from the Pam overlay strip (a manager tag REPLACES the
+  routing). Spreadsheets are cataloged (name, folder, date, link),
+  never content-extracted. Versions: `family_key` groups a file's
+  versions, only `is_latest` answers by default, ALL versions through
+  the deterministic Pam route ("toutes les versions ...").
 - **SQLite is the source of truth for text.** ChromaDB stores vectors +
   *scalar* metadata only. Retrieval returns ids + scores; text is re-read
   from SQLite. A hit whose id is missing from SQLite is skipped, never
-  answered from.
+  answered from. TWO collections since 2026-07-15: `segments` (human
+  layer) and `documents` (corpus, one vector per chunk). The corpus
+  collection's metadata is STATIC (`chunk_id`, `document_id`,
+  `data_type: cold`): lifecycle rules (deleted docs, silenced older
+  versions) apply at the SQLite re-read in Pam, never in the index -
+  re-filing a document must never re-embed anything.
 - **Chroma metadata is flattened to scalars** (no lists): `team_member_3:
   true`, `view_commitment: true`, plus `data_type`, `sensitivity_level`,
   `entry_id`. Multi-key filters need Chroma's `$and` (handled in
@@ -110,9 +126,14 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 
 ## The seams
 
-`LLMProvider` (mistral/gemini/ollama) · `IngestionSource` (local/gdrive) ·
-`VectorStore` (chroma) · `Transcriber` (V2 voice) · `Exporter`
-(md/html) · `characters` config map (agent registry + IP-safe rebrand).
+`LLMProvider` (mistral/gemini/ollama) · `IngestionSource` (local/gdrive,
+the Dwight gate) · `DocumentSource` (local/gdrive, Darryl's corpus -
+Notion/Teams/Slack/GMail plug in here later) · `ContentExtractor`
+(registry per MIME type; spreadsheets deliberately absent) ·
+`VectorStore` (chroma, two collections) · `Transcriber` (V2 voice) ·
+`Exporter` (md/html) · `characters` config map (agent registry +
+IP-safe rebrand; `darryl` has no avatar yet, and the seed member is
+Val so the agent owns the name).
 Services are pure logic and take seams via `api/deps.py`; adapters do the
 I/O. The lifespan hook (`main.py`) builds shared adapters once onto
 `app.state`; deps only assemble - which is why tests swap any seam via
@@ -196,16 +217,18 @@ shared client).
 
 **THE ROADMAP WAS REBUILT WITH THE OWNER (2026-07-15)** - see
 `PRODUCT_ROADMAP.md` section 4, four tiers (indispensable / nécessaire /
-utile / agréable). **Next session: Darryl l'archiviste** (indispensable
-number 1, full session dossier in BACKLOG.md: three owner arbitrations -
-silent routing + unclassified bin, one Pam over two badged memories,
-clickable doc links in V1 - plus the Fabrice use case to play before
-any schema). Then document editing (indispensable number 2, decisions
-taken: persisted edits, "Edit manually" alongside Dwight, context
-travels). Both need a data model slot. The nécessaire tier: manager
-identity/admin & onboarding, Dwight entity suggestions, exports &
-partage. Celebrations overhaul is the agréable tier (TWSS and Maire
-stay off until then).
+utile / agréable). **DARRYL L'ARCHIVISTE SHIPPED the same day** (the
+full session: data model, pipeline, one Pam over two badged memories
+with clickable links, the archive strip in the Pam overlay, seed demo
+corpus, owner arbitrations recorded in BACKLOG). Reference:
+`docs/darryl.md`. **Next session: document editing** (indispensable
+number 2, decisions taken: persisted edits, "Edit manually" alongside
+Dwight, context travels; needs its data model slot). The nécessaire
+tier: manager identity/admin & onboarding, Dwight entity suggestions,
+exports & partage. Celebrations overhaul is the agréable tier (TWSS
+and Maire stay off until then). Note for the identity session: the
+Pam overlay archive strip (sync, filing) is currently visible to both
+roles - scoping it to the manager belongs to the roles/identity work.
 
 **Succession (2026-07-12)**: the owner passed the baton from Fable to
 Opus; the former "pure Fable repo" rule is lifted - build ON this

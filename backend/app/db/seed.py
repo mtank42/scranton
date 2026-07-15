@@ -8,7 +8,7 @@ segments, made once at seed time.
 The storylines are demo material:
 - Ryan's mood declines over the quarter (ctrl -> press -> stuck ->
   danger) with two sensitive warm segments: the act-at-week-6 story.
-- Darryl stops checking in: the silence signal.
+- Val stops checking in: the silence signal.
 - Two segments are left unvalidated: live material for the validation UI.
 
 Run:  python -m backend.app.db.seed [--reset]
@@ -32,6 +32,11 @@ from backend.app.domain.models import (
     BIRTHDAY_YEAR,
     Client,
     DataType,
+    Document,
+    DocumentChunk,
+    DocumentProposedBy,
+    DocumentStatus,
+    DocumentTag,
     EntityType,
     Entry,
     EntrySegment,
@@ -64,20 +69,20 @@ TEAM = [
     ("Kelly", "Customer service"),
     ("Phyllis", "Saleswoman"),
     ("Stanley", "Salesman"),
-    ("Darryl", "Warehouse foreman"),
+    ("Val", "Warehouse foreman"),
 ]
 
 # Member-owned data (human profile). Sparse on purpose: profiles grow
 # from real conversations, they are not an HR form to fill. Birthdays
 # are day + month only (year fixed to 2000, never shown - owner rule)
 # and RELATIVE to seed day, like the rest of the dataset: Kelly is
-# Maire de Scranton on demo day, Darryl's reminder shows at J-3.
+# Maire de Scranton on demo day, Val's reminder shows at J-3.
 PROFILES: dict[str, dict] = {
     "Kelly": {
         "birthday_in_days": 0,
         "personal_profile": "Loves romantic comedies and celebrity news. Collects lip gloss.",
     },
-    "Darryl": {
+    "Val": {
         "birthday_in_days": 3,
         "personal_profile": "Plays keyboard in a band. Chess player. Dreams of running his own business.",
     },
@@ -136,10 +141,10 @@ SEGMENTS = [
      "Ryan and Kelly ran the Prince Family Paper follow-up call together; the recovery plan was accepted.",
      DataType.COLD, 1, True,
      [("team_member", "Ryan"), ("team_member", "Kelly"), ("client", "Prince Family Paper")]),
-    (40, "routes overhaul kickoff darryl owns schedule draft in 2 weeks",
-     "Delivery routes overhaul kickoff: Darryl owns the new schedule, first draft expected in two weeks.",
+    (40, "routes overhaul kickoff val owns schedule draft in 2 weeks",
+     "Delivery routes overhaul kickoff: Val owns the new schedule, first draft expected in two weeks.",
      DataType.COLD, 1, True,
-     [("team_member", "Darryl"), ("project", "Delivery routes overhaul"), ("view", ViewType.PROJECT_FILE)]),
+     [("team_member", "Val"), ("project", "Delivery routes overhaul"), ("view", ViewType.PROJECT_FILE)]),
     (35, "phyllis mentored ryan on cold calls, keep it quiet",
      "Phyllis quietly mentored Ryan on cold calls this week; she did not want it mentioned in the meeting.",
      DataType.WARM, 3, True,
@@ -180,7 +185,7 @@ SEGMENTS = [
 ]
 
 # Weekly mood per member, oldest week first (12 weeks). Ryan declines,
-# Darryl goes silent after week 8 (None = no check-in that week).
+# Val goes silent after week 8 (None = no check-in that week).
 F, C, P, PR, S, D = (MoodLevel.FLOW, MoodLevel.CTRL, MoodLevel.PRETZEL_DAY,
                      MoodLevel.PRESS, MoodLevel.STUCK, MoodLevel.DANGER)
 MOOD_STORYLINES: dict[str, list[MoodLevel | None]] = {
@@ -189,20 +194,51 @@ MOOD_STORYLINES: dict[str, list[MoodLevel | None]] = {
     "Kelly":   [F, F, C, F, F, PR, F, F, F, C, F, F],
     "Phyllis": [C, F, C, F, C, F, C, F, C, F, C, F],
     "Stanley": [P, PR, P, PR, P, PR, P, PR, P, PR, P, PR],
-    "Darryl":  [C, C, C, C, C, C, C, C, C, None, None, None],
+    "Val":     [C, C, C, C, C, C, C, C, C, None, None, None],
 }
 WEEKS = 12
+
+# Darryl's demo corpus (session 2026-07-15): a version family on Prince
+# Family Paper (only the DEF answers by default), a cataloged
+# spreadsheet, and one unclassified document so the bin has something
+# to file. One entry per document: (days_ago, title, mime, folder,
+# status, is_latest, family, client_name_or_None, chunk_text).
+MD = "text/markdown"
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+DOCUMENTS = [
+    (60, "Contrat_papier_recycle_V1.md", MD, "Clients/Prince Family Paper",
+     DocumentStatus.INDEXED, False, "contrat papier recycle", "Prince Family Paper",
+     "Recycled paper trial, draft terms: 15 boxes monthly, pricing to be "
+     "confirmed with accounting before signature."),
+    (9, "Contrat_papier_recycle_V2_DEF.md", MD, "Clients/Prince Family Paper",
+     DocumentStatus.INDEXED, True, "contrat papier recycle", "Prince Family Paper",
+     "Recycled paper trial, signed: 20 boxes monthly starting next month, "
+     "delivery on the first Tuesday of each month, renewal reviewed after "
+     "one quarter."),
+    (14, "Suivi_Lackawanna_County_Schools.xlsx", XLSX, "Clients",
+     DocumentStatus.CATALOGED, True, "suivi lackawanna county schools",
+     "Lackawanna County Schools",
+     "Cataloged file: Suivi_Lackawanna_County_Schools.xlsx (folder: Clients)"),
+    (3, "notes_entrepot_vrac.md", MD, "Divers",
+     DocumentStatus.UNCLASSIFIED, True, "notes entrepot vrac", None,
+     "Warehouse loose notes: pallet turnaround ideas, forklift maintenance "
+     "calendar, and the mezzanine storage question to settle."),
+]
 
 
 def seed(
     session_factory: sessionmaker[Session],
     llm: LLMProvider,
     vector_store: VectorStore,
+    doc_vector_store: VectorStore | None = None,
 ) -> str:
     """Insert the demo dataset, embedding validated segments.
 
     Refuses to run on a non-empty roster: seeding is for fresh or reset
     databases, never a way to silently mix demo and real data.
+    doc_vector_store receives the demo corpus vectors (the 'documents'
+    collection); None skips the corpus embedding, which keeps older
+    callers valid.
     """
     with session_factory() as session:
         if session.query(TeamMember).count() > 0:
@@ -297,6 +333,42 @@ def seed(
                     )
                 )
 
+        # Darryl's demo corpus: documents pre-filed as a real sync would
+        # leave them (routing tags at 1.0, one bin item, one catalog
+        # entry, the version family with only the DEF as latest).
+        chunks: list[DocumentChunk] = []
+        for age, title, mime, folder, doc_status, latest, family, client_name, text in DOCUMENTS:
+            document = Document(
+                title=title,
+                mime_type=mime,
+                source="seed",
+                origin_ref=f"seed:{title}",
+                web_view_link=None,
+                folder_path=folder,
+                modified_at=days_ago(age),
+                content_sha256=f"seed-{title}",
+                status=doc_status,
+                family_key=family,
+                is_latest=latest,
+                ingested_at=days_ago(age),
+            )
+            session.add(document)
+            session.flush()
+            if client_name:
+                session.add(
+                    DocumentTag(
+                        document_id=document.id,
+                        entity_type=EntityType.CLIENT,
+                        entity_id=clients[client_name].id,
+                        proposed_by=DocumentProposedBy.DARRYL,
+                        confidence=1.0,
+                    )
+                )
+            chunk = DocumentChunk(document_id=document.id, chunk_order=0, content=text)
+            session.add(chunk)
+            session.flush()
+            chunks.append(chunk)
+
         session.flush()
         # One batched embedding call for all validated segments, then one
         # upsert: the only non-deterministic (network) part of the seed.
@@ -311,10 +383,27 @@ def seed(
                 for segment, embedding in zip(validated_segments, embeddings)
             ]
         )
+        if doc_vector_store is not None:
+            chunk_embeddings = llm.embed([chunk.content for chunk in chunks])
+            doc_vector_store.upsert(
+                [
+                    SegmentVector(
+                        segment_id=chunk.id,
+                        embedding=embedding,
+                        metadata={
+                            "chunk_id": chunk.id,
+                            "document_id": chunk.document_id,
+                            "data_type": "cold",
+                        },
+                    )
+                    for chunk, embedding in zip(chunks, chunk_embeddings)
+                ]
+            )
         session.commit()
         return (
             f"Seeded {len(TEAM)} members, {len(CLIENTS)} clients, "
-            f"{len(SEGMENTS)} entries, {len(validated_segments)} segments embedded."
+            f"{len(SEGMENTS)} entries, {len(validated_segments)} segments embedded, "
+            f"{len(DOCUMENTS)} corpus documents."
         )
 
 
@@ -341,6 +430,9 @@ def main() -> None:
         build_session_factory(engine),
         build_llm(settings),
         ChromaStore(persist_dir=settings.chroma_dir),
+        doc_vector_store=ChromaStore(
+            persist_dir=settings.chroma_dir, collection_name="documents"
+        ),
     )
     print(result)
 

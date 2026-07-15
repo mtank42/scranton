@@ -31,7 +31,7 @@ pytestmark = [
 GOLDEN = [
     ("What did we promise to Stone & Son?", "revised quote"),
     ("How is Ryan doing lately?", "exhausted"),
-    ("Who owns the delivery routes overhaul?", "Darryl owns the new schedule"),
+    ("Who owns the delivery routes overhaul?", "Val owns the new schedule"),
     ("Is there anything to know about Keystone Logistics?", "late on two deliveries"),
     ("When is the Lackawanna cardstock delivery due?", "September 15"),
 ]

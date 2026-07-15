@@ -62,7 +62,7 @@ def test_seed_refuses_a_non_empty_roster(session_factory):
 
 
 def test_seeded_storylines_feed_toby_signals(session_factory):
-    """The dataset is demo material: Ryan declines, Darryl goes silent."""
+    """The dataset is demo material: Ryan declines, Val goes silent."""
     from backend.app.services.toby_service import TobyService
 
     run_seed(session_factory)
@@ -76,5 +76,5 @@ def test_seeded_storylines_feed_toby_signals(session_factory):
         by_name[signal.member_name].add(signal.type)
 
     assert {"declining_mood", "low_mood", "sensitive_warm_segment"} <= by_name["Ryan"]
-    assert "no_recent_checkin" in by_name["Darryl"]
+    assert "no_recent_checkin" in by_name["Val"]
     assert "Oscar" not in by_name  # steady member, zero alarms

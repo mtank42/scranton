@@ -155,9 +155,9 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 
 ---
 
-## 5. Data model — validated May 2026 (+ handover session July 2026)
+## 5. Data model — validated May 2026 (+ handover session July 2026, + Darryl session 2026-07-15)
 
-### SQLite tables (9)
+### SQLite tables (9 + 3)
 
 | Table | Role |
 |---|---|
@@ -170,6 +170,9 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 | `stakeholders` | Partners, subcontractors, investors, institutional contacts, secondary client contacts. |
 | `mood_checkins` | Pretzel Day daily check-ins. Attributed (not anonymous). |
 | `handover_validations` | Transfer to Philly consent trail (dedicated session, 2026-07-08). One record per handover: status, frozen selection, typed signatures, fiche hash. |
+| `documents` | Darryl's corpus (dedicated session, 2026-07-15). One row per shared document: identity (`origin_ref`, unique), `web_view_link`, `folder_path`, `content_sha256`, `status` (indexed / cataloged / unclassified), version family (`family_key`, `is_latest`), soft delete (`deleted_at`). |
+| `document_chunks` | Retrievable slices of a document — the corpus counterpart of `entry_segments`. SQLite stays the source of truth for text. |
+| `document_tags` | Document-level routing (client / project only): `proposed_by` darryl / manager, `confidence` (1.0 for deterministic signals and manager decisions). |
 
 ### Key fields
 
@@ -229,9 +232,16 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 
 ### ChromaDB
 
-Single collection: `segments`. One vector per `entry_segment`.
-Metadata: `segment_id`, `data_type`, `sensitivity_level`, entity tags and view tags (flattened lists).
-Pam queries by semantic similarity + metadata filters.
+Two collections since the Darryl session (2026-07-15) — different
+lifecycles, one query interface:
+
+- `segments`: one vector per `entry_segment`. Metadata: `segment_id`,
+  `data_type`, `sensitivity_level`, entity and view tags (flattened to
+  scalars). Pam queries by semantic similarity + metadata filters.
+- `documents`: one vector per `document_chunk`. Metadata: `chunk_id`,
+  `document_id`, `data_type: cold` — STATIC on purpose: routing,
+  versions and deletion are applied at the SQLite re-read, so nothing
+  is ever re-embedded when a document is re-filed.
 
 ### Design principles baked into the schema
 

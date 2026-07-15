@@ -125,7 +125,7 @@ These are not features. They are constraints that shape every feature.
 
 | # | Chantier | Contenu arbitré | Effort |
 |---|---|---|---|
-| 1 | **Darryl l'archiviste — le RAG documentaire** | Un document rangé dans le dossier partagé EST validé par ce geste (spec du 1er jour, réaffirmée 2026-07-15). Darryl indexe doc/ppt/pdf (xls catalogué sans contenu), route en silence (arborescence + monde clos, LLM en appoint), bac « non classé » plutôt que rabattement plausible, surface d'audit minimale. Une seule Pam sur deux mémoires (collections séparées), sources badgées *mémoire d'équipe* / *document*, **liens cliquables vers les docs dès la V1**. Session data model requise (table documents/chunks). | L |
+| 1 | **Darryl l'archiviste — le RAG documentaire** — ✅ **LIVRÉ (2026-07-15)** | Un document rangé dans le dossier partagé EST validé par ce geste (spec du 1er jour, réaffirmée 2026-07-15). Darryl indexe doc/ppt/pdf (xls catalogué sans contenu), route en silence (arborescence + monde clos, LLM en appoint), bac « non classé » plutôt que rabattement plausible, surface d'audit minimale (la bande du volet Pam). Une seule Pam sur deux mémoires (collections séparées), sources badgées *mémoire d'équipe* / *document*, **liens cliquables vers les docs dès la V1**. Data model livré : `documents` / `document_chunks` / `document_tags`. Référence : `docs/darryl.md`. | L |
 | 2 | **Édition des documents** | Décisions prises (2026-07-14) : documents édités PERSISTÉS ; « Edit with Dwight » toujours flanqué d'un « Edit manually » ; Desk inclus ; le contexte voyage avec l'instruction. Mini data model dans la session. | M–L |
 
 Ordre 1→2 recommandé : Darryl vient d'être arbitré à chaud, et éditer

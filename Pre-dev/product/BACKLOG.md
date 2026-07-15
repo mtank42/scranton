@@ -1,8 +1,8 @@
 # Scranton — Backlog
 > Features identifiées avant le go, hors roadmap POC initiale.
 > Chaque entrée inclut : description, scope suggéré, et questions à résoudre pour le data model.
-> Last updated: 2026-07-15 — dossier de session « Darryl l'archiviste » complet
-> (3 arbitrages owner + use case Fabrice) ; l'ordre des chantiers vit désormais
+> Last updated: 2026-07-15 — **Darryl l'archiviste LIVRÉ** (session du
+> jour, voir le statut de l'entrée) ; l'ordre des chantiers vit désormais
 > dans PRODUCT_ROADMAP.md §4 (indispensable / nécessaire / utile / agréable)
 
 ---
@@ -97,6 +97,7 @@ Aucun changement de data model (les tables projects/clients/stakeholders existen
 
 **Catégorie** : Ask Pam / Ingestion / Architecture / Nouvel agent
 **Priorité** : **L'INDISPENSABLE #1** (roadmap 2026-07-15) — session dédiée avec data model
+**Statut** : **LIVRÉ (session du 2026-07-15)** — pipeline complet (sync, routage déterministe + LLM en appoint, bac non classé, familles de versions), une Pam sur deux mémoires (sources badgées, liens cliquables), bande d'archive dans le volet Pam (5 derniers docs + bac + classement en un clic + bouton Sync), seed enrichi (4 docs de démo, l'équipier Darryl renommé Val). Doc de référence : `docs/darryl.md`. Arbitrages de session complémentaires (owner) : versions = « le plus récent par défaut, TOUTES sur demande explicite à Pam » (route déterministe) ; PAS d'écran d'audit dédié — Darryl travaille dans l'ombre, son travail est surfacé par le volet Pam ; souplesse de routage = roster comme signal (pas de convention de dossiers à configurer) + seuil réglable + bac comme filet. Restent OUVERTS pour plus tard : sources futures (Notion/Teams/Slack/GMail, principes déjà actés ci-dessous), watch/sync automatique (V1 = bouton).
 **Origine** : test GDrive de la QA 2, puis session PM du 2026-07-15 (casquettes PM/architecte/Fabrice). Verdict owner : « C'est le RAG. J'ai une boîte qui tourne, je branche Scranton sur le RAG, je ne veux pas avoir à tout apprendre à Dwight. De la matière pour Pam, pas pour Dwight. »
 
 ### Le cadrage juste (correction owner, 2026-07-15)
