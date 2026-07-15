@@ -1,8 +1,9 @@
 # Scranton — Backlog
 > Features identifiées avant le go, hors roadmap POC initiale.
 > Chaque entrée inclut : description, scope suggéré, et questions à résoudre pour le data model.
-> Last updated: 2026-07-15 — arbitrages owner post-QA 2 (édition des documents cadrée,
-> RAG documentaire acté, exports & partage, identité manager/admin, célébrations en pause)
+> Last updated: 2026-07-15 — dossier de session « Darryl l'archiviste » complet
+> (3 arbitrages owner + use case Fabrice) ; l'ordre des chantiers vit désormais
+> dans PRODUCT_ROADMAP.md §4 (indispensable / nécessaire / utile / agréable)
 
 ---
 
@@ -92,32 +93,77 @@ Aucun changement de data model (les tables projects/clients/stakeholders existen
 
 ---
 
-## RAG documentaire — les documents préexistants nourrissent Pam directement
+## Darryl l'archiviste — le corpus documentaire au service de Pam
 
-**Catégorie** : Ask Pam / Ingestion / Architecture
-**Priorité** : **SESSION DÉDIÉE** (décision owner, QA 2 2026-07-14 — change un invariant)
-**Origine** : test GDrive de la QA 2. Verdict owner sans ambiguïté : « C'est le RAG. J'ai une boîte qui tourne, je branche Scranton sur le RAG, je ne veux pas avoir à tout apprendre à Dwight. Le RAG, ce sont des rapports préexistants, des devis, des livrables, des études. De la matière pour Pam, pas pour Dwight. »
+**Catégorie** : Ask Pam / Ingestion / Architecture / Nouvel agent
+**Priorité** : **L'INDISPENSABLE #1** (roadmap 2026-07-15) — session dédiée avec data model
+**Origine** : test GDrive de la QA 2, puis session PM du 2026-07-15 (casquettes PM/architecte/Fabrice). Verdict owner : « C'est le RAG. J'ai une boîte qui tourne, je branche Scranton sur le RAG, je ne veux pas avoir à tout apprendre à Dwight. De la matière pour Pam, pas pour Dwight. »
 
-### Description
+### Le cadrage juste (correction owner, 2026-07-15)
 
-Décision structurante : il y a **deux mémoires de nature différente**.
-- **La couche humaine** (notes du manager → Dwight → validation) reste
-  derrière la porte de validation, invariant inchangé.
-- **Le corpus documentaire** (documents déjà produits par la boîte,
-  ingérés depuis Drive ou ailleurs) est de la matière déjà validée par
-  l'existence même des documents : il nourrit Pam DIRECTEMENT, sans
-  repasser par une validation manuelle segment par segment.
+Ce n'est PAS un changement d'invariant : c'est la porte de validation
+qui prend sa forme documentaire, **dans les specs depuis le 1er jour**
+(`source_type` = deliverable/quote/purchase_order, `origin_ref`).
+**Un document rangé dans le dossier partagé avec Scranton est, par ce
+geste même, validé par l'humain.** Le faire repasser par Dwight serait
+demander deux fois la même signature. Dwight structure l'humain non
+structuré, point barre. Deux mémoires donc :
+- **couche humaine** : notes → Dwight → validation explicite (inchangé) ;
+- **corpus documentaire** : dossier partagé → Darryl → Pam, directement.
 
-L'invariant « la validation est la SEULE porte vers la mémoire » devient
-« ... vers la mémoire HUMAINE » ; le corpus documentaire est une seconde
-mémoire, avec ses propres règles.
+### Darryl, le nouvel agent
 
-### Questions à résoudre (session dédiée obligatoire)
+L'archiviste « invisible » : mandat étroit (détecter, extraire, découper,
+router, versionner), aucune décision humaine à voler. Thématiquement
+parfait (le foreman du warehouse). Invisible au quotidien, **auditable à
+la demande** : une surface minimale montre ce qu'il a lu, quand, où il
+l'a rangé — et permet de corriger un routage. ⚠️ Le seed démo a un
+équipier Darryl : le renommer (la map `characters` est la couture).
 
-1. Architecture : collection vectorielle séparée ? Statut/type des segments documentaires ? Impact data model (table documents ?) → session data model.
-2. Périmètre de la réponse Pam : le documentaire se mélange-t-il au validé dans une même réponse (avec sources distinguées), ou sur des routes séparées ?
-3. Sensibilité : un dossier Drive peut contenir de la compta, des salaires — filtre à l'ingestion ? liste de dossiers autorisés ?
-4. Ce qui reste de l'ancienne entrée « Catalogue documentaire » ci-dessous (métadonnées + liens vers les sources) est probablement le premier étage de la même session.
+### Décisions arbitrées (owner, 2026-07-15) — ne pas re-débattre
+
+1. **La porte = le dossier** : partager un dossier avec Scranton, c'est
+   valider son contenu. La compta reste hors périmètre parce qu'on ne
+   partage pas ce dossier-là (la peur n°1 de Fabrice).
+2. **Darryl route SEUL, jamais de pari** : routage silencieux quand
+   c'est sûr (signaux déterministes d'abord : arborescence, nom de
+   fichier ; LLM en appoint), **bac « non classé »** sous le seuil —
+   jamais de rabattement plausible (leçon Matthaeus). Un doc non classé
+   reste interrogeable, il ne nourrit pas les fiches.
+3. **Une seule Pam, deux mémoires** : réponse tissée, sources badgées
+   *mémoire d'équipe* / *document*. Architecte : deux collections
+   vectorielles (cycles de vie différents), une interface de requête.
+4. **Liens cliquables vers les docs : V1, non négociable** (la demande
+   n°1 de Fabrice — `origin_ref` + `webViewLink`, quasi gratuit).
+5. **Formats** : doc, ppt, pdf indexés en contenu ; **xls catalogué
+   seulement** (nom, date, client, lien — pas de contenu aplati en
+   bouillie). Extraction derrière un seam par type MIME ; Notion et
+   Teams = adaptateurs ultérieurs (owner : « nous verrons ça plus tard »).
+6. **Le corpus documentaire est cold par construction** : la règle Pam
+   cold-only s'étend naturellement.
+
+### Use case d'ouverture de session (à jouer avant le schéma)
+
+Fabrice, agence de marketing online, 5 personnes, quinze ans de Drive.
+Il partage `Clients/` (pas `Compta/`). Il demande : « qu'est-ce qu'on a
+livré à Techni-Pneus au premier trimestre ? » → réponse qui tisse la
+mémoire d'équipe (« promis le 15, souci de facturation signalé ») et les
+documents (« le rapport SEO de mars », lien cliquable). Ses trois peurs
+à traiter dans le design : la compta (réglée par la porte-dossier), les
+six versions de `Rapport_SEO_final_V3_DEF(1).pdf`, les formats réels.
+
+### Questions pour la session (data model comprise)
+
+1. Table(s) `documents` + chunks : l'équivalent documentaire de
+   « SQLite est la vérité du texte » (on ne relit pas le Drive à chaque
+   réponse) — forme exacte, `origin_ref`, `webViewLink`.
+2. Cycle de vie : resync (nouveau doc, doc modifié, doc supprimé),
+   fréquence, déclencheur (bouton ? watch ?).
+3. Versions : « le plus récent gagne » suffit-il ? Détection des
+   familles de fichiers (V1/V2/DEF) : heuristique ou tant pis ?
+4. Seuil de routage et forme exacte du bac « non classé ».
+5. Où vit la surface d'audit de Darryl (vue dédiée ? section du
+   Dashboard ?) — absorbe l'entrée « Écran de revue des ingestions ».
 
 ---
 
@@ -126,11 +172,12 @@ mémoire, avec ses propres règles.
 **Catégorie** : Ask Pam / Ingestion / V2
 **Priorité** : V2 (périmètre à acter — demande owner, 2026-07-09)
 
-> **[2026-07-14]** La question 1 ci-dessous (« indexer le CONTENU = hors
-> périmètre ») est **RENVERSÉE par la décision RAG documentaire**
-> ci-dessus : le owner veut précisément que les documents préexistants
-> soient de la matière pour Pam. Cette entrée devient le volet
-> "catalogue/liens" de la session RAG documentaire.
+> **[2026-07-15] ABSORBÉE par « Darryl l'archiviste » ci-dessus.** La
+> question 1 ci-dessous (« indexer le CONTENU = hors périmètre ») est
+> renversée par l'arbitrage owner ; l'étage catalogue/liens (métadonnées
+> + `origin_ref`) devient le traitement des xls et le socle des liens
+> cliquables dans la session Darryl. Conservée pour l'historique du
+> raisonnement.
 **Origine** : scénario onboarding ("un collaborateur débarque sur Matthaeus et demande le statut ET les docs de levée"). Ancré dans les stories : Helio semaine 5 (Lucas débarque, rien n'est documenté nulle part) et "la couche de sens au-dessus du chaos" (storytelling §Helio). Le data model l'anticipait : `source_type` = deliverable / quote / purchase_order, `origin_ref` conserve le pointeur source.
 
 ### Description
@@ -202,7 +249,7 @@ Deux volets décidés le 2026-07-14 :
 ## Écran de revue des ingestions
 
 **Catégorie** : Tell Dwight / Ingestion / UI
-**Priorité** : V1.x (petit, découvert avec le owner le 2026-07-09)
+**Priorité** : ~~V1.x~~ **ABSORBÉE par « Darryl l'archiviste » (2026-07-15)** — l'ingestion documentaire ne passe plus par la validation Dwight ; ce besoin devient la **surface d'audit de Darryl** (question 5 de cette entrée). Conservée pour l'historique.
 **Origine** : premier run GDrive réel — l'ingestion crée entrées et segments proposés, mais l'UI n'a aucun écran pour les relire : la validation n'est accessible que par API.
 
 ### Description

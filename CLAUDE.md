@@ -40,15 +40,18 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 
 ## Invariants that break silently if violated
 
-- **Validation is the ONLY gate to memory.** Segments are embedded into
-  ChromaDB at *validation* time, never at capture. Only `VALIDATED`
+- **Validation is the ONLY gate to memory - and filing a document IS
+  the validation.** For the human layer, segments are embedded into
+  ChromaDB at *validation* time, never at capture; only `VALIDATED`
   segments feed Ask Pam, Meet Toby, Smart Summaries and Transfer to
-  Philly. Never index a proposed or rejected segment. ⚠️ DECIDED but not
-  built (owner, QA 2 2026-07-14): pre-existing company documents (Drive
-  ingestion) will feed Pam DIRECTLY as a second, documentary memory -
-  the gate will then scope to the HUMAN layer only. Dedicated session
-  required (BACKLOG "RAG documentaire"); until then the gate covers
-  everything.
+  Philly; never index a proposed or rejected segment. For documents,
+  the owner's day-one doctrine (reaffirmed 2026-07-15): a document
+  placed in the folder shared with Scranton was validated BY that human
+  gesture - it feeds Pam directly, Dwight has no business with it
+  (Dwight structures unstructured HUMAN input, nothing else). The
+  documentary side (agent Darryl) is DECIDED but NOT BUILT - dedicated
+  session, dossier in BACKLOG "Darryl l'archiviste"; until it ships,
+  Drive ingestion still flows through the Dwight gate.
 - **SQLite is the source of truth for text.** ChromaDB stores vectors +
   *scalar* metadata only. Retrieval returns ids + scores; text is re-read
   from SQLite. A hit whose id is missing from SQLite is skipped, never
@@ -191,18 +194,18 @@ acknowledgment, celebrations paused, weak-signals card links to Toby,
 seed enriched (cold Ryan, validated Prince Family Paper, Ryan+Kelly
 shared client).
 
-**NEXT BIG SESSION (owner arbitration, 2026-07-14): document editing
-via Dwight** - decisions already taken: edited documents ARE persisted,
-"Edit with Dwight" always ships with "Edit manually", the document
-context travels with the instruction, Desk included. Remaining
-questions in BACKLOG.md ("Édition des documents via Dwight"). Other
-scoped sessions waiting on the owner's pick: RAG documentaire (decided
-invariant change, see above), exports & partage (My board shared
-agendas, member suggestions, shared 1:1), identité manager/admin &
-onboarding (manager = admin, separate identity, creates accounts,
-mayor-eligible, no own mood tracking), celebrations overhaul.
-'Brief me' vs 'Annual review' too similar: retest on the enriched
-seed.
+**THE ROADMAP WAS REBUILT WITH THE OWNER (2026-07-15)** - see
+`PRODUCT_ROADMAP.md` section 4, four tiers (indispensable / nécessaire /
+utile / agréable). **Next session: Darryl l'archiviste** (indispensable
+number 1, full session dossier in BACKLOG.md: three owner arbitrations -
+silent routing + unclassified bin, one Pam over two badged memories,
+clickable doc links in V1 - plus the Fabrice use case to play before
+any schema). Then document editing (indispensable number 2, decisions
+taken: persisted edits, "Edit manually" alongside Dwight, context
+travels). Both need a data model slot. The nécessaire tier: manager
+identity/admin & onboarding, Dwight entity suggestions, exports &
+partage. Celebrations overhaul is the agréable tier (TWSS and Maire
+stay off until then).
 
 **Succession (2026-07-12)**: the owner passed the baton from Fable to
 Opus; the former "pure Fable repo" rule is lifted - build ON this

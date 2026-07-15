@@ -1,8 +1,11 @@
 # SCRANTON — PRODUCT ROADMAP
 > Single source of truth for **what** gets built and **in what order**.
 > Companion to `SCRANTON_CONTEXT.md` (architecture, data model, conventions) and `BACKLOG.md` (feature briefs).
-> Audience: a capable LLM agent (Fable 5 or equivalent) planning and building the POC, plus the human owner.
-> Last updated: July 2026 — roadmap session.
+> Audience: a capable LLM agent planning and building the product, plus the human owner.
+> Last updated: **2026-07-15 — roadmap reconstruite avec le owner** : MVP/MLP/V1
+> et le recadrage sont LIVRÉS ; la section 4 (indispensable / nécessaire /
+> utile / agréable) est désormais l'ordre de marche. Les sections 3, 5, 6, 10
+> restent comme historique du build.
 
 ---
 
@@ -45,6 +48,10 @@ These are not features. They are constraints that shape every feature.
 ---
 
 ## 3. Product tiers
+
+> **[HISTORIQUE]** MVP, MLP et V1 sont livrés, puis **recadrés**
+> (`RECADRAGE_2026-07-12.md`, exécuté en entier le 2026-07-13, deux QA
+> owner passées). Les priorités courantes vivent en **§4**.
 
 ### Definitions
 
@@ -105,25 +112,51 @@ These are not features. They are constraints that shape every feature.
 
 ---
 
-## 4. Prioritized backlog (one glance)
+## 4. Roadmap courante (2026-07-15) — indispensable / nécessaire / utile / agréable
 
-MoSCoW within the POC horizon (MVP + MLP). Everything below MLP is **Won't (now)** for the POC build.
+> Reconstruite avec le owner après la QA 2 et l'arbitrage Darryl.
+> Quatre niveaux, dans l'ordre : **l'indispensable** (sans ça le produit
+> ment), **le nécessaire** (sans ça pas d'usage réel hors démo),
+> **l'utile** (le confort qui fait rester), **l'agréable** (la
+> récompense). Chaque gros chantier = une session dédiée avec le owner
+> (cadrage → go → exécution), briefs détaillés dans `BACKLOG.md`.
 
-| # | Item | Tier | Priority (POC) | Effort |
-|---|---|---|---|---|
-| 1 | Tell Dwight | MVP | Must | L |
-| 2 | Ask Pam | MVP | Must | L |
-| 3 | Pretzel Day | MLP | Must | S |
-| 4 | Meet Toby v0 | MLP | Must | M |
-| 5 | Modern UI shell | MLP | Must | M |
-| 6 | That's What She Said | MLP | Should | S |
-| 7 | Google Drive ingestion (source adapter) | MLP | Must (for real testers) | M–L |
-| 8 | Profil humain | V1 | Won't (now) | M |
-| 9 | Maire de Scranton | V1 | Won't (now) | M |
-| 10 | Transfer to Philly — case 1 | V1 | Won't (now) | L |
-| 11 | Smart Summaries | V1 | Won't (now) | L |
-| 12 | Send Angela | V1 | Won't (now) | M |
-| 13+ | Voice capture, Transfer case 2, Whisper Jim, sovereign hardening, ecosystem, rebrand, billing | V2 | Won't (now) | — |
+### Niveau 1 — L'INDISPENSABLE
+
+| # | Chantier | Contenu arbitré | Effort |
+|---|---|---|---|
+| 1 | **Darryl l'archiviste — le RAG documentaire** | Un document rangé dans le dossier partagé EST validé par ce geste (spec du 1er jour, réaffirmée 2026-07-15). Darryl indexe doc/ppt/pdf (xls catalogué sans contenu), route en silence (arborescence + monde clos, LLM en appoint), bac « non classé » plutôt que rabattement plausible, surface d'audit minimale. Une seule Pam sur deux mémoires (collections séparées), sources badgées *mémoire d'équipe* / *document*, **liens cliquables vers les docs dès la V1**. Session data model requise (table documents/chunks). | L |
+| 2 | **Édition des documents** | Décisions prises (2026-07-14) : documents édités PERSISTÉS ; « Edit with Dwight » toujours flanqué d'un « Edit manually » ; Desk inclus ; le contexte voyage avec l'instruction. Mini data model dans la session. | M–L |
+
+Ordre 1→2 recommandé : Darryl vient d'être arbitré à chaud, et éditer
+des documents se conçoit mieux sur de la matière réelle (celle que
+Darryl apporte). Interchangeable au choix du owner en début de session.
+
+### Niveau 2 — LE NÉCESSAIRE
+
+| # | Chantier | Contenu | Effort |
+|---|---|---|---|
+| 3 | **Identité manager, admin & onboarding** | Le manager existe : admin, identité à part, crée les comptes, day-one de Scranton. Décisions prises : pas de mood tracking manager, éligible Maire, co-admin plus tard. Session data model. | M |
+| 4 | **Dwight propose de nouvelles entités** | Le cas Matthaeus : suggestion de création (projet/client/stakeholder) sur le modèle transitoire des profile_suggestions. Inclut la granularité du rejet en cours de dialogue (QA 2). | M |
+| 5 | **Exports & partage** | Formats utiles (à instruire sur cas réels), ODJ d'équipe sur le My board de chaque équipier + suggestions d'items, brief 1:1 partagé. Dépend de la persistance (chantier 2). | M |
+
+### Niveau 3 — L'UTILE
+
+| # | Chantier | Notes |
+|---|---|---|
+| 6 | Pam's Front Page → Dashboard news | Mesure d'importance à concevoir (jamais un classement de personnes). |
+| 7 | Retest « Brief me » vs « Annual review » | Petite passe QA sur le seed enrichi — se glisse n'importe quand. |
+| 8 | Connecteurs Notion / Teams | Des adaptateurs sur les seams de Darryl (« nous verrons ça plus tard », owner 2026-07-15). |
+| 9 | Transfer to Philly (V2/V3) | Moteur construit et testé, surface à recréer dans Michael's Desk ; but = passation manager. |
+| 10 | Souveraineté locale + multi-user | Ollama attend un modèle local plus costaud ; auth réelle préparée par le chantier 3. V2. |
+| 11 | Capture vocale + Whisper Jim | V2 (transcription souveraine, PWA). |
+
+### Niveau 4 — L'AGRÉABLE
+
+| # | Chantier | Notes |
+|---|---|---|
+| 12 | **Refonte des célébrations** (TWSS + Maire) | Coupés depuis le 2026-07-15 (`CELEBRATIONS=false`). Session dédiée : gamification, rareté, adaptation à l'humeur, Maire discret et festif, le manager aussi éligible. Icône Pretzel Day (asset owner). | 
+| 13 | Rebrand clean-room | V2 commercial — la map `characters` rend ça trivial. |
 
 ---
 
