@@ -43,7 +43,12 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 - **Validation is the ONLY gate to memory.** Segments are embedded into
   ChromaDB at *validation* time, never at capture. Only `VALIDATED`
   segments feed Ask Pam, Meet Toby, Smart Summaries and Transfer to
-  Philly. Never index a proposed or rejected segment.
+  Philly. Never index a proposed or rejected segment. ⚠️ DECIDED but not
+  built (owner, QA 2 2026-07-14): pre-existing company documents (Drive
+  ingestion) will feed Pam DIRECTLY as a second, documentary memory -
+  the gate will then scope to the HUMAN layer only. Dedicated session
+  required (BACKLOG "RAG documentaire"); until then the gate covers
+  everything.
 - **SQLite is the source of truth for text.** ChromaDB stores vectors +
   *scalar* metadata only. Retrieval returns ids + scores; text is re-read
   from SQLite. A hit whose id is missing from SQLite is skipped, never
@@ -71,11 +76,25 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
   moods in WORDS - never an average or index that reads like a score.
 - **People information never flows through Pam** (owner, QA 2026-07-14).
   Pam's Q&A retrieval is COLD-ONLY (`data_type` filter) and her template
-  router serves clients/projects only, generated `cold_only=True`. The
+  router serves clients/projects only, generated `cold_only=True`. A
+  broad question naming ONE member gets a deterministic redirect (Toby /
+  the Desk); naming TWO members gets the deterministic shared
+  projects/clients answer (validated tags, cold sources, no LLM). The
   warm layer lives in Meet Toby and Michael's Desk briefs (manager-only
   surfaces, full warm+cold mix). Personal-life data is member-DECLARED
-  through their own Pretzel Day space: Dwight silently drops such info
-  from manager notes (prompt rule 5), no suggestion flow.
+  through their own Pretzel Day space: Dwight leaves such info out of
+  manager notes and SAYS so (`privacy_note`, prompt rule 5) - an
+  acknowledgment, never a suggestion flow.
+- **Pam's sources are the cited ones.** Retrieval hits below
+  `PAM_MIN_SCORE` (settings, default 0.6 - a tuning lever like
+  LLM_MODEL) never reach the model; after the answer, only excerpts it
+  cites [n] are returned, keeping their excerpt number (`ref`). An
+  answer with no citation shows no sources. Recomputing source numbers
+  positionally in the UI would desync the citations - use `ref`.
+- **Celebrations are PAUSED** (owner, QA 2 2026-07-14): `CELEBRATIONS =
+  false` in `frontend/app.js` disables TWSS and the whole Maire surface
+  (popin, ritual card, fetch). Backend endpoints stay live. Do not
+  re-enable without the celebrations session (BACKLOG).
 - **Structured LLM calls go through `services/llm_json.complete_validated`**
   (parse tolerant of ```json fences, Pydantic validate, one retry). Used
   by Dwight and Summaries. Don't re-roll a bespoke parser.
@@ -159,22 +178,31 @@ Dock launcher (must stay in the repo).
 
 ## Current state (July 2026)
 
-**RECADRAGE EXECUTED IN FULL (2026-07-13) and first owner QA passed
-(2026-07-14, 35/37 + lot A of 10 fixes shipped).** The app IS the
-recadrage now: one OS, two roles (manager: Dashboard / Michael's Desk /
-Meet Toby; member: My board / Pretzel Day + identity picker), Dwight
-and Pam as floating overlay actions, Pam serving Client/Project
-templates on broad questions, Toby speaking in dated quotes, human
-tags with spelled-out confidence. Build on this UI.
+**RECADRAGE EXECUTED IN FULL (2026-07-13), TWO owner QA passes done
+(2026-07-14: 35/37 + lot A, then 36/37 + lot B shipped 2026-07-15).**
+The app IS the recadrage now: one OS, two roles (manager: Dashboard /
+Michael's Desk / Meet Toby; member: My board / Pretzel Day + identity
+picker), Dwight and Pam as floating overlay actions, Pam serving
+Client/Project templates on broad questions, Toby speaking in dated
+quotes, human tags with spelled-out confidence. Build on this UI.
+Lot B (QA 2): Pam noise fixed (score floor + cited-only sources),
+people redirect + two-member shared-work answers, Dwight privacy
+acknowledgment, celebrations paused, weak-signals card links to Toby,
+seed enriched (cold Ryan, validated Prince Family Paper, Ryan+Kelly
+shared client).
 
 **NEXT BIG SESSION (owner arbitration, 2026-07-14): document editing
-via Dwight** - generated documents (Desk agendas/briefs, Pam template
-cards) are read-only and the owner calls the Desk "unusable" without
-the final human touch. Scoped entry with the 3 open questions in
-BACKLOG.md ("Édition des documents via Dwight"). Related open items:
-useful export formats (product session), 'Brief me' vs 'Annual review'
-outputs too similar (retest on richer data), celebrations overhaul
-(TWSS felt as "nuisance", Maire popin "sinistre" - backlog).
+via Dwight** - decisions already taken: edited documents ARE persisted,
+"Edit with Dwight" always ships with "Edit manually", the document
+context travels with the instruction, Desk included. Remaining
+questions in BACKLOG.md ("Édition des documents via Dwight"). Other
+scoped sessions waiting on the owner's pick: RAG documentaire (decided
+invariant change, see above), exports & partage (My board shared
+agendas, member suggestions, shared 1:1), identité manager/admin &
+onboarding (manager = admin, separate identity, creates accounts,
+mayor-eligible, no own mood tracking), celebrations overhaul.
+'Brief me' vs 'Annual review' too similar: retest on the enriched
+seed.
 
 **Succession (2026-07-12)**: the owner passed the baton from Fable to
 Opus; the former "pure Fable repo" rule is lifted - build ON this

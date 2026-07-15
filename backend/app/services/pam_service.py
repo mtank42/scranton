@@ -7,18 +7,37 @@ The retrieval contract is inherited from M1's design decisions:
 - Chroma returns ids and scores only; the text of truth is re-read from
   SQLite. If the two stores ever disagree, SQLite wins.
 
+Noise control (owner QA, 2026-07-14: "de nombreuses sources non
+pertinentes apparaissent"): two filters keep the sources honest.
+- A similarity floor (min_score, env PAM_MIN_SCORE) drops far-fetched
+  hits before they even reach the model.
+- Only excerpts the answer actually cites [n] are returned as sources;
+  an answer that cites nothing shows no sources at all (prompt rule 3:
+  unrelated excerpts mean an honest empty, never a source list).
+
 Deliberate M2 scope cut (documented in docs/ask_pam.md): no clarify
 step. Ambiguous questions are handled by the grounded prompt's honesty
 rule ("say when the memory does not contain the answer") instead of a
 second LLM round-trip.
 """
 
+import re
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.adapters.llm.base import LLMProvider
 from backend.app.adapters.vectorstore.base import Hit, VectorStore
-from backend.app.domain.models import Client, EntrySegment, Project
+from backend.app.domain.models import (
+    Client,
+    DataType,
+    EntityType,
+    EntrySegment,
+    Project,
+    SegmentTag,
+    TeamMember,
+    ValidationStatus,
+)
 from backend.app.domain.schemas import PamAnswer, PamSource
 from backend.app.services.prompts import build_pam_messages
 
@@ -26,6 +45,14 @@ from backend.app.services.prompts import build_pam_messages
 # paying for a model call just to say "no memory". English on purpose:
 # UI text is English (SCRANTON_CONTEXT section 8).
 NO_MEMORY_ANSWER = "Pam has no validated memory matching this question yet."
+
+# People are not Pam's department (owner, QA 2026-07-14): a broad
+# question about one person gets a deterministic redirect, zero noise.
+PEOPLE_REDIRECT_ANSWER = (
+    "People are not my department: what the team shares and signals lives "
+    "in Meet Toby, and the one-on-one briefs in Michael's Desk (manager "
+    "view). I keep the operational memory - projects, clients, commitments."
+)
 
 # Broad-intent markers, French and English (the owner's two working
 # languages - same closed-set philosophy as the language pin). A broad
@@ -47,6 +74,9 @@ TEMPLATE_BY_KIND = {
     "client": "client_file",
 }
 
+# Cap on the supporting excerpts of the deterministic two-member answer.
+SHARED_WORK_SOURCE_CAP = 6
+
 
 class PamService:
     """Orchestrates the retrieval pipeline. Pure logic: all I/O behind seams."""
@@ -57,14 +87,17 @@ class PamService:
         session_factory: sessionmaker[Session],
         vector_store: VectorStore,
         summary_service=None,
+        min_score: float = 0.6,
     ) -> None:
         """Wire the seams. summary_service powers the template answers
         (recadrage 2026-07-12); without it Pam is plain Q&A, which keeps
-        older tests and callers valid."""
+        older tests and callers valid. min_score is the retrieval floor
+        (settings.pam_min_score): hits below it are noise, not memory."""
         self.llm = llm
         self.session_factory = session_factory
         self.vector_store = vector_store
         self.summary_service = summary_service
+        self.min_score = min_score
 
     def query(self, question: str, *, filters: dict | None = None, k: int = 8) -> PamAnswer:
         """Answer a plain-language question over the validated memory.
@@ -73,7 +106,7 @@ class PamService:
         minimal) but the seam accepts it so entity- or view-scoped
         queries plug in without a signature change.
         """
-        served = self._serve_template(question)
+        served = self._serve_routed(question)
         if served is not None:
             return served
 
@@ -84,6 +117,7 @@ class PamService:
         # asking Pam must never surface a colleague's confidences.
         cold_filters = {"data_type": "cold", **(filters or {})}
         hits = self.vector_store.query(embedding, filters=cold_filters, k=k)
+        hits = [hit for hit in hits if hit.score is None or hit.score >= self.min_score]
         if not hits:
             return PamAnswer(answer=NO_MEMORY_ANSWER, sources=[])
 
@@ -96,39 +130,68 @@ class PamService:
             return PamAnswer(answer=NO_MEMORY_ANSWER, sources=[])
 
         context_block = "\n".join(
-            f"[{i}] ({source.created_at:%Y-%m-%d}) {source.content}"
-            for i, source in enumerate(sources, start=1)
+            f"[{source.ref}] ({source.created_at:%Y-%m-%d}) {source.content}"
+            for source in sources
         )
         answer = self.llm.complete(build_pam_messages(question, context_block))
-        return PamAnswer(answer=answer, sources=sources)
+        return PamAnswer(answer=answer, sources=self._cited_only(answer, sources))
 
-    def _serve_template(self, question: str) -> PamAnswer | None:
-        """Summaries are Pam RESPONSE TEMPLATES (recadrage 2026-07-12).
+    @staticmethod
+    def _cited_only(answer: str, sources: list[PamSource]) -> list[PamSource]:
+        """Keep only the excerpts the answer actually cites.
 
-        Deterministic closed-world router, no LLM: when the question
-        names exactly ONE known entity AND asks for the broad picture,
-        Pam serves the matching living template instead of top-k Q&A.
-        Anything else (precise question, zero or several entities) falls
-        through to the grounded RAG path. The clarify-before-answering
-        Pam of slide 05 is the V2 upgrade, tracked in the recadrage.
+        The excerpt number (ref) survives the filter so the displayed
+        [n] still matches the citations in the text. No citation at all
+        means the model found the excerpts unrelated (prompt rule 3):
+        showing them anyway is exactly the noise the QA flagged.
         """
-        if self.summary_service is None:
-            return None
+        cited = {int(number) for number in re.findall(r"\[(\d+)\]", answer)}
+        return [source for source in sources if source.ref in cited]
+
+    # --- deterministic routes (templates and people), no LLM ---
+
+    def _serve_routed(self, question: str) -> PamAnswer | None:
+        """Route a broad question about known entities, closed-world.
+
+        Summaries are Pam RESPONSE TEMPLATES (recadrage 2026-07-12): a
+        broad question naming exactly ONE project or client is served as
+        the matching living template. People stay out of Pam's answers
+        (owner, QA 2026-07-14): one member named gets a redirect to Meet
+        Toby / the Desk; two members named get the deterministic list of
+        the projects and clients they share. Anything else (precise
+        question, unknown or mixed names) falls through to grounded RAG.
+        The clarify-before-answering Pam of slide 05 is the V2 upgrade.
+        """
         lowered = question.lower()
         if not any(marker in lowered for marker in BROAD_INTENT_MARKERS):
             return None
 
-        matches: list[tuple[str, int, str]] = []
+        entity_matches: list[tuple[str, int, str]] = []
+        member_matches: list[tuple[int, str]] = []
         with self.session_factory() as session:
             for kind, model in (("project", Project), ("client", Client)):
                 for row in session.scalars(select(model)):
-                    name = getattr(row, "full_name", None) or row.name
-                    if name and name.lower() in lowered:
-                        matches.append((kind, row.id, name))
-        if len(matches) != 1:
-            return None
+                    if row.name and row.name.lower() in lowered:
+                        entity_matches.append((kind, row.id, row.name))
+            for member in session.scalars(
+                select(TeamMember).where(TeamMember.is_active.is_(True))
+            ):
+                if member.full_name and member.full_name.lower() in lowered:
+                    member_matches.append((member.id, member.full_name))
 
-        kind, target_id, name = matches[0]
+        if member_matches and entity_matches:
+            return None  # mixed picture: let grounded RAG sort it out
+        if len(member_matches) == 1:
+            return PamAnswer(answer=PEOPLE_REDIRECT_ANSWER, sources=[])
+        if len(member_matches) == 2:
+            return self._shared_work(member_matches)
+        if len(entity_matches) == 1 and self.summary_service is not None:
+            return self._serve_template(entity_matches[0])
+        return None
+
+    def _serve_template(self, match: tuple[str, int, str]) -> PamAnswer | None:
+        """Serve the living template of one project or client."""
+        kind, target_id, name = match
         try:
             summary = self.summary_service.generate(
                 TEMPLATE_BY_KIND[kind], target_id, cold_only=True
@@ -146,12 +209,133 @@ class PamService:
             summary=summary,
         )
 
+    def _shared_work(self, members: list[tuple[int, str]]) -> PamAnswer:
+        """What two members share: their common projects and clients.
+
+        Deterministic SQL over validated tags, no LLM (owner, QA
+        2026-07-14: a broad question on two people should say what they
+        work on together). A link is a validated segment tagged with the
+        member AND the project/client; only COLD segments are shown as
+        sources - the warm layer never flows through Pam.
+        """
+        (id_a, name_a), (id_b, name_b) = members
+        with self.session_factory() as session:
+            links_a = self._work_links(session, id_a)
+            links_b = self._work_links(session, id_b)
+            shared = sorted(set(links_a) & set(links_b))
+            if not shared:
+                return PamAnswer(
+                    answer=(
+                        f"The validated memory shows no shared project or "
+                        f"client for {name_a} and {name_b}. For who they "
+                        "are beyond the work, Meet Toby is the place."
+                    ),
+                    sources=[],
+                )
+            labels = [self._entity_label(session, kind, entity_id) for kind, entity_id in shared]
+            sources = self._shared_sources(session, (id_a, id_b), shared)
+        listed = "; ".join(labels)
+        return PamAnswer(
+            answer=(
+                f"{name_a} and {name_b} appear together on: {listed}. "
+                "That is the operational overlap the validated memory holds."
+            ),
+            sources=sources,
+        )
+
+    @staticmethod
+    def _work_links(session: Session, member_id: int) -> set[tuple[str, int]]:
+        """The (kind, id) projects and clients a member is tagged with.
+
+        A link means: one VALIDATED segment carries both the member tag
+        and the project/client tag - the segment is the evidence.
+        """
+        member_segments = (
+            select(SegmentTag.segment_id)
+            .join(EntrySegment, EntrySegment.id == SegmentTag.segment_id)
+            .where(
+                SegmentTag.entity_type == EntityType.TEAM_MEMBER,
+                SegmentTag.entity_id == member_id,
+                EntrySegment.validation_status == ValidationStatus.VALIDATED,
+            )
+        )
+        rows = session.execute(
+            select(SegmentTag.entity_type, SegmentTag.entity_id)
+            .where(
+                SegmentTag.segment_id.in_(member_segments),
+                SegmentTag.entity_type.in_([EntityType.PROJECT, EntityType.CLIENT]),
+                SegmentTag.entity_id.is_not(None),
+            )
+            .distinct()
+        )
+        return {(entity_type.value, entity_id) for entity_type, entity_id in rows}
+
+    @staticmethod
+    def _entity_label(session: Session, kind: str, entity_id: int) -> str:
+        """Human label of one shared entity: 'Name (project|client)'."""
+        model = Project if kind == "project" else Client
+        row = session.get(model, entity_id)
+        name = row.name if row else f"{kind} #{entity_id}"
+        return f"{name} ({kind})"
+
+    def _shared_sources(
+        self,
+        session: Session,
+        member_ids: tuple[int, int],
+        shared: list[tuple[str, int]],
+    ) -> list[PamSource]:
+        """The cold validated segments linking either member to the
+        shared entities - the receipts behind the deterministic answer."""
+        member_segments = (
+            select(SegmentTag.segment_id)
+            .where(
+                SegmentTag.entity_type == EntityType.TEAM_MEMBER,
+                SegmentTag.entity_id.in_(member_ids),
+            )
+        )
+        entity_clauses = [
+            (SegmentTag.entity_type == EntityType(kind)) & (SegmentTag.entity_id == entity_id)
+            for kind, entity_id in shared
+        ]
+        entity_filter = entity_clauses[0]
+        for clause in entity_clauses[1:]:
+            entity_filter = entity_filter | clause
+        segment_ids = session.scalars(
+            select(SegmentTag.segment_id)
+            .where(SegmentTag.segment_id.in_(member_segments), entity_filter)
+            .distinct()
+        ).all()
+        segments = session.scalars(
+            select(EntrySegment)
+            .where(
+                EntrySegment.id.in_(segment_ids),
+                EntrySegment.validation_status == ValidationStatus.VALIDATED,
+                EntrySegment.data_type == DataType.COLD,
+            )
+            .order_by(EntrySegment.created_at.desc())
+            .limit(SHARED_WORK_SOURCE_CAP)
+        ).all()
+        return [
+            PamSource(
+                ref=index,
+                segment_id=segment.id,
+                entry_id=segment.entry_id,
+                content=segment.content,
+                data_type=segment.data_type,
+                sensitivity_level=segment.sensitivity_level,
+                score=None,
+                created_at=segment.created_at,
+            )
+            for index, segment in enumerate(segments, start=1)
+        ]
+
     @staticmethod
     def _load_sources(session: Session, hits: list[Hit]) -> list[PamSource]:
         """Re-read hit segments from SQLite, preserving relevance order.
 
         A hit whose id is missing from SQLite is silently skipped: the
-        relational store is the source of truth, not the index.
+        relational store is the source of truth, not the index. ref is
+        the excerpt number the prompt and the citations share.
         """
         segments = session.scalars(
             select(EntrySegment).where(
@@ -166,6 +350,7 @@ class PamService:
                 continue
             sources.append(
                 PamSource(
+                    ref=len(sources) + 1,
                     segment_id=segment.id,
                     entry_id=segment.entry_id,
                     content=segment.content,

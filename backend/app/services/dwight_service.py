@@ -183,6 +183,10 @@ class DwightService:
                 profile_suggestions=self._resolve_suggestions(
                     session, proposal, entry.raw_content
                 ),
+                # Personal-life info was left out AND said out loud (owner,
+                # QA 2026-07-14): the acknowledgment rides along, nothing
+                # about it is ever persisted.
+                privacy_note=proposal.privacy_note,
             )
 
     @staticmethod

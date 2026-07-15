@@ -12,6 +12,12 @@
 
 const API = "/api/v1";
 
+/* Celebrations are PAUSED (owner, QA 2026-07-14: TWSS felt like "une
+ * nuisance", the Maire popin "sinistre et intrusif"). The code stays:
+ * the dedicated celebrations session will rework frequency, triggers
+ * and form (gamification), then flip this back on. */
+const CELEBRATIONS = false;
+
 const state = {
   characters: {},
   role: "manager",
@@ -315,7 +321,10 @@ async function submitDwight(event) {
         </div>
         ${replyForm()}`;
     } else {
-      block.innerHTML = renderSegments(answer.segments);
+      // The privacy acknowledgment (personal info left out, said out
+      // loud) reads like Dwight talking, whether segments came or not.
+      const privacy = answer.privacy_note ? dwightBubble(answer.privacy_note) : "";
+      block.innerHTML = (answer.segments.length ? renderSegments(answer.segments) : "") + privacy;
     }
     input.value = "";
     input.placeholder = "Anything else to tell Dwight?";
@@ -345,7 +354,11 @@ async function sendReply(form) {
       thread.insertAdjacentHTML("beforeend", dwightBubble(result.clarification));
     } else {
       form.remove();
-      thread.insertAdjacentHTML("afterend", renderSegments(result.segments));
+      const privacy = result.privacy_note ? dwightBubble(result.privacy_note) : "";
+      thread.insertAdjacentHTML(
+        "afterend",
+        (result.segments.length ? renderSegments(result.segments) : "") + privacy
+      );
     }
   } catch (error) {
     thread.insertAdjacentHTML("beforeend", `<div class="error-banner">${esc(error.message)}</div>`);
@@ -434,9 +447,13 @@ function bindDwightOverlay() {
 
 function sourceRow(source, index) {
   const date = source.created_at ? source.created_at.slice(0, 10) : "";
+  // ref is the excerpt number the answer's [n] citations use; sources
+  // are filtered to the cited ones server-side, so numbering must NOT
+  // be recomputed from position (QA 2026-07-14: source noise).
+  const number = source.ref ?? index + 1;
   return `
     <div class="source-row">
-      <span class="source-num">[${index + 1}]</span>
+      <span class="source-num">[${number}]</span>
       <span class="source-text">${esc(source.content)}</span>
       <span class="chip ${source.data_type}">${source.data_type}</span>
       <span class="source-date">${date}</span>
@@ -545,8 +562,10 @@ async function loadDashboard() {
       `<div class="cards-row">
          <div class="mcard"><div class="ml">Team</div><div class="mv">${state.members.length}</div><div class="ms">active members</div></div>
          <div class="mcard"><div class="ml">Projects</div><div class="mv">${(catalog.targets.project || []).length}</div><div class="ms">in the memory</div></div>
-         <div class="mcard ${signals ? "alert" : ""}"><div class="ml">Weak signals</div><div class="mv">${signals}</div>
-           <div class="ms">${signals ? `see ${esc(character("toby").display_name)}` : "all quiet"}</div></div>
+         <div class="mcard ${signals ? "alert" : ""}" data-goto="toby" role="button" tabindex="0"
+              title="Open ${esc(character("toby").display_name)}">
+           <div class="ml">Weak signals</div><div class="mv">${signals}</div>
+           <div class="ms">${signals ? `open ${esc(character("toby").display_name)} &rarr;` : "all quiet"}</div></div>
        </div>
        ${ritualCard()}
        <p class="sources-title">Pretzel Day - moodboard this week</p>
@@ -958,6 +977,12 @@ async function saveShare() {
 /* One Maire surface only (owner, QA 2026-07-14): the ritual card on
  * the dashboard. The celebration still fires once per page load. */
 async function loadMayor() {
+  if (!CELEBRATIONS) {
+    // Paused with the rest of the celebrations: no popin, no ritual
+    // card, not even the fetch. The backend endpoint stays live.
+    state.mayorOverview = { mayor: null, upcoming: [] };
+    return;
+  }
   try {
     state.mayorOverview = await api("/team/mayor");
   } catch {
@@ -1029,6 +1054,7 @@ const TWSS_QUOTES = [
 let twssTimer = null;
 
 function twss(options = {}) {
+  if (!CELEBRATIONS) return;
   const overlay = document.getElementById("twss");
   const title = options.title || "THAT'S WHAT SHE SAID";
   const quote =

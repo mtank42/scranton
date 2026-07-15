@@ -89,11 +89,15 @@ class DwightProposal(BaseModel):
     Exactly one of the two branches is meaningful: a non-null clarification
     means the note was too vague and no segment was produced.
     profile_suggestions may accompany segments (V1 human profile).
+    privacy_note is Dwight saying out loud that personal-life info was
+    left out (owner, QA 2026-07-14: the silent drop felt broken) - an
+    acknowledgment, never a suggestion to store anything.
     """
 
     clarification: str | None = None
     segments: list[ProposedSegment] = []
     profile_suggestions: list[ProfileSuggestion] = []
+    privacy_note: str | None = None
 
 
 # --- Dwight API surface ---
@@ -150,6 +154,8 @@ class CaptureResponse(BaseModel):
     clarification: str | None = None
     segments: list[SegmentOut] = []
     profile_suggestions: list[ProfileSuggestion] = []
+    # Dwight's spoken acknowledgment that personal-life info stayed out.
+    privacy_note: str | None = None
 
 
 class SegmentValidation(BaseModel):
@@ -199,9 +205,12 @@ class PamSource(BaseModel):
     content is re-read from SQLite (the source of truth). score comes
     from the vector index (similarity, 1.0 is best); it is None when the
     excerpt was gathered exhaustively (Smart Summaries) rather than by
-    semantic search.
+    semantic search. ref is the excerpt number shared by the prompt and
+    the [n] citations, so a filtered source list keeps honest numbering;
+    None on paths that never cite (template gathering).
     """
 
+    ref: int | None = None
     segment_id: int
     entry_id: int
     content: str

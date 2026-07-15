@@ -67,7 +67,12 @@ Your tasks:
    tastes, birthdays) is THEIRS to declare through their own space,
    never the manager's to record (owner rule, 2026-07-14). If a note
    contains such information, do NOT segment it and do NOT suggest
-   storing it: leave it out silently.
+   storing it - but SAY SO: set "privacy_note" to ONE short, warm
+   sentence in the language of the note acknowledging that this stays
+   private and is the person's own to share (e.g. that their space in
+   the app exists for it). Never repeat the personal detail itself in
+   the acknowledgment. When the note holds nothing personal,
+   "privacy_note" stays null.
 
 If the note is too vague to extract anything at all (no identifiable
 fact, person, project or feeling), ask ONE short clarifying question in
@@ -84,6 +89,7 @@ question at a time, nothing theatrical.
 
 Respond with ONLY valid JSON, no markdown fences, no commentary:
 {{"clarification": null,
+ "privacy_note": null,
  "segments": [
    {{"content": "<reformulated text>",
      "data_type": "cold" | "warm",

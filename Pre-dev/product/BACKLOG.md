@@ -1,7 +1,8 @@
 # Scranton — Backlog
 > Features identifiées avant le go, hors roadmap POC initiale.
 > Chaque entrée inclut : description, scope suggéré, et questions à résoudre pour le data model.
-> Last updated: 2026-07-12 — mise en cohérence avec le RECADRAGE (voir ci-dessous) lors de la passation Fable → Opus
+> Last updated: 2026-07-15 — arbitrages owner post-QA 2 (édition des documents cadrée,
+> RAG documentaire acté, exports & partage, identité manager/admin, célébrations en pause)
 
 ---
 
@@ -36,22 +37,35 @@ entrée font foi. En résumé :
 
 Le manager ajuste un document généré en dialoguant avec Dwight (« ajoute le point sur le devis, enlève la section 2, reformule l'intro ») et garde la touche finale. Concerne Michael's Desk ET le bouton « Adjust with Dwight » des cartes Pam. Inclut l'accordéon (replier une section traitée).
 
-### Questions à résoudre
+### Décisions owner (2026-07-14, réponses au triage QA 2)
 
-1. Le document édité est-il persisté (jusque-là les summaries sont vivants, jamais stockés) ou l'édition est-elle une passe de régénération contrainte ?
-2. Où passe la frontière Dwight/Pam : Pam agrège, Dwight édite — un seul appel LLM avec le doc + l'instruction ?
-3. Lien avec les exports utiles (autre remarque QA : .md/.html inutilisables) — l'édition doit déboucher sur un format actionnable, à cadrer ensemble.
+1. **Persistance : OUI** — un document édité devient un objet persisté (« oui, bien sûr ! »). Les summaries non touchés restent vivants ; la première édition fige. ⚠️ Implique probablement une table → mini-session data model dans la session.
+2. **« Edit with Dwight » est TOUJOURS accompagné d'un « Edit manually »** — le owner réalise que bien souvent la modif à la main est plus pratique. Les deux gestes, partout : Desk ET cartes Pam.
+3. **Le contexte voyage avec l'instruction** (QA 2 : « en l'état, il ne sert à rien s'il faut tout lui répéter ») — Dwight reçoit le document en cours d'ajustement, jamais une instruction nue.
+
+### Questions restantes
+
+1. Frontière Dwight/Pam côté implémentation : un seul appel LLM (doc + instruction → doc révisé) via `complete_validated` ?
+2. L'accordéon (replier une section traitée) : dans cette session ou avec les exports ?
+3. Lien avec l'entrée « Exports & partage » ci-dessous — l'édition doit déboucher sur un format actionnable.
 
 ---
 
 ## Refonte des célébrations — TWSS et Maire
 
 **Catégorie** : That's What She Said / Maire / Reward
-**Priorité** : V1.x (feedback QA owner, 2026-07-14 — verbatim : « pour l'instant c'est plus une nuisance qu'une récompense » ; le popin Maire est « sinistre et intrusif »)
+**Priorité** : session dédiée (feedback QA owner, 2026-07-14 — verbatim : « pour l'instant c'est plus une nuisance qu'une récompense » ; le popin Maire est « sinistre et intrusif »)
+
+> **[2026-07-15]** En attendant cette session, **TWSS et Maire sont
+> DÉSACTIVÉS** (owner, QA 2 : « c'est trop mauvais, que du bruit et de
+> la friction ») : flag `CELEBRATIONS = false` dans `frontend/app.js`,
+> le code et le backend restent intacts. La QA 2 ajoute un cas concret :
+> recevoir une blague après un check-in « je ne vais pas bien » est
+> malvenu — l'adaptation à l'humeur est un levier central de la refonte.
 
 ### Description
 
-Repenser fréquence, déclencheurs et forme : gamification (rareté, variété, montée en valeur), TWSS pas à chaque micro-action, célébration Maire discrète et festive plutôt qu'un overlay bloquant. Absorbe l'entrée « TWSS adaptatif à l'humeur » ci-dessous (l'adaptation à l'humeur devient un des leviers).
+Repenser fréquence, déclencheurs et forme : gamification (rareté, variété, montée en valeur), TWSS pas à chaque micro-action, célébration Maire discrète et festive plutôt qu'un overlay bloquant. Absorbe l'entrée « TWSS adaptatif à l'humeur » ci-dessous (l'adaptation à l'humeur devient un des leviers). Note owner : le manager aussi a le droit d'être Maire de Scranton (voir l'entrée « Identité manager ») 🙂
 
 ---
 
@@ -74,6 +88,36 @@ Aucun changement de data model (les tables projects/clients/stakeholders existen
 1. Anti-bruit : suggérer dès la première occurrence, ou seulement quand l'entité revient (2+ segments / 2+ notes) ?
 2. Le rabattement observé (Matthaeus → Tables mairie à 0.7) : faut-il aussi durcir le prompt pour qu'une entité non nommée ne reçoive AUCUN tag entité plutôt qu'un tag plausible à confidence moyenne ?
 3. Type ambigu (projet ou client ?) : Dwight propose le type avec sa confidence, le manager corrige au clic.
+4. **[QA 2, 2026-07-14] Granularité du rejet en cours de dialogue** : quand la clarification part dans la bonne direction puis dérive, le rejet emporte le point ENTIER, pas le dernier échange — perte de temps vécue en signalant que Matthaeus était un nouveau projet. Prévoir un « reprends à l'échange précédent » (ou équivalent) dans cette même session.
+
+---
+
+## RAG documentaire — les documents préexistants nourrissent Pam directement
+
+**Catégorie** : Ask Pam / Ingestion / Architecture
+**Priorité** : **SESSION DÉDIÉE** (décision owner, QA 2 2026-07-14 — change un invariant)
+**Origine** : test GDrive de la QA 2. Verdict owner sans ambiguïté : « C'est le RAG. J'ai une boîte qui tourne, je branche Scranton sur le RAG, je ne veux pas avoir à tout apprendre à Dwight. Le RAG, ce sont des rapports préexistants, des devis, des livrables, des études. De la matière pour Pam, pas pour Dwight. »
+
+### Description
+
+Décision structurante : il y a **deux mémoires de nature différente**.
+- **La couche humaine** (notes du manager → Dwight → validation) reste
+  derrière la porte de validation, invariant inchangé.
+- **Le corpus documentaire** (documents déjà produits par la boîte,
+  ingérés depuis Drive ou ailleurs) est de la matière déjà validée par
+  l'existence même des documents : il nourrit Pam DIRECTEMENT, sans
+  repasser par une validation manuelle segment par segment.
+
+L'invariant « la validation est la SEULE porte vers la mémoire » devient
+« ... vers la mémoire HUMAINE » ; le corpus documentaire est une seconde
+mémoire, avec ses propres règles.
+
+### Questions à résoudre (session dédiée obligatoire)
+
+1. Architecture : collection vectorielle séparée ? Statut/type des segments documentaires ? Impact data model (table documents ?) → session data model.
+2. Périmètre de la réponse Pam : le documentaire se mélange-t-il au validé dans une même réponse (avec sources distinguées), ou sur des routes séparées ?
+3. Sensibilité : un dossier Drive peut contenir de la compta, des salaires — filtre à l'ingestion ? liste de dossiers autorisés ?
+4. Ce qui reste de l'ancienne entrée « Catalogue documentaire » ci-dessous (métadonnées + liens vers les sources) est probablement le premier étage de la même session.
 
 ---
 
@@ -81,6 +125,12 @@ Aucun changement de data model (les tables projects/clients/stakeholders existen
 
 **Catégorie** : Ask Pam / Ingestion / V2
 **Priorité** : V2 (périmètre à acter — demande owner, 2026-07-09)
+
+> **[2026-07-14]** La question 1 ci-dessous (« indexer le CONTENU = hors
+> périmètre ») est **RENVERSÉE par la décision RAG documentaire**
+> ci-dessus : le owner veut précisément que les documents préexistants
+> soient de la matière pour Pam. Cette entrée devient le volet
+> "catalogue/liens" de la session RAG documentaire.
 **Origine** : scénario onboarding ("un collaborateur débarque sur Matthaeus et demande le statut ET les docs de levée"). Ancré dans les stories : Helio semaine 5 (Lucas débarque, rien n'est documenté nulle part) et "la couche de sens au-dessus du chaos" (storytelling §Helio). Le data model l'anticipait : `source_type` = deliverable / quote / purchase_order, `origin_ref` conserve le pointeur source.
 
 ### Description
@@ -95,6 +145,57 @@ Deux étages, PAS de doc-RAG plein texte :
 2. Le catalogue passe-t-il par la validation manager (cohérence invariant) ou entre-t-il directement (ce sont des métadonnées, pas du contenu humain) ?
 3. Schéma : nouvelle table `documents` → session data model dédiée obligatoire.
 4. Lien avec Transfer to Philly cas 2 : l'onboarding entrant et la passation sortante consomment le même catalogue.
+
+---
+
+## Exports & partage — des documents qui servent à quelque chose
+
+**Catégorie** : Send Angela / Michael's Desk / My board
+**Priorité** : session produit dédiée (owner, QA 1 et QA 2 : « il faudra vraiment changer les formats d'export, je ne sais pas quoi en faire »)
+
+### Description
+
+Deux volets décidés le 2026-07-14 :
+
+1. **Formats utiles** : .md/.html bruts ne servent à rien au quotidien.
+   Cadrer les vrais débouchés (impression propre ? PDF ? Grist/Docs via
+   les pistes LaSuite ? copie formatée ?) — à instruire avec les cas
+   d'usage réels du owner.
+2. **Le partage dans l'app plutôt que l'export** (owner, QA 2) :
+   - L'**ODJ de la réunion d'équipe** est visible sur le **My board de
+     chaque équipier** ; chacun peut **suggérer d'y ajouter des items**
+     à discuter.
+   - Le **brief 1:1 est partagé** entre le manager et l'équipier
+     concerné, même logique.
+
+### Questions à résoudre
+
+1. Le partage suppose que le document généré soit persisté → dépend de la décision de persistance de la session Édition (acquise : oui).
+2. Une suggestion d'item équipier est-elle une entrée Dwight (validée par le manager) ou un objet propre ?
+3. Frontière avec le warm : un ODJ partagé à l'équipe ne doit JAMAIS embarquer du matériau Toby/warm — le partage force une hygiène cold-only des documents partagés.
+
+---
+
+## Identité du manager, rôle admin & onboarding d'équipe
+
+**Catégorie** : Architecture / Rôles / Onboarding
+**Priorité** : session dédiée (owner, QA 2 2026-07-14 — « comment on commence avec Scranton la 1re fois ? »)
+**Origine** : confusion QA 2 sur Darryl — le manager n'a AUCUNE identité dans le système (le sélecteur d'identité équipier prend juste le premier du roster). Et aucun workflow ne crée équipe/comptes : le seed est le seul chemin.
+
+### Décisions owner déjà prises (2026-07-14)
+
+- **Le manager est l'admin**, avec une **identité à part** (pas un team_member déguisé).
+- En tant qu'admin, **il crée les comptes** de chaque nouveau collaborateur.
+- **Pas de suivi de sa propre humeur** : le manager n'a pas besoin de son Pretzel Day mood (« je pense que c'est inutile »).
+- **Mais il a le droit d'être Maire de Scranton** 🙂 — son anniversaire existe donc quelque part.
+- Plus tard : **co-admin** (passer un membre co-admin en cas d'absence du manager).
+
+### Questions à résoudre
+
+1. Data model : une identité manager à part = probablement une table ou un rôle → session data model dédiée (règle 2).
+2. Premier lancement : le workflow d'initialisation (créer le manager, créer l'équipe, importer un roster ?) — le « day one » de Scranton.
+3. Lien avec la création d'entités par Dwight (nouveau collaborateur mentionné dans une note → proposer la création du compte ?).
+4. Anniversaire du manager sans mood tracking : où le déclare-t-il ?
 
 ---
 

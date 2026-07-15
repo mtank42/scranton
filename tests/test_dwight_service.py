@@ -53,6 +53,16 @@ CLARIFICATION_ANSWER = json.dumps(
     {"clarification": "Which project is this note about?", "segments": []}
 )
 
+# A note that was ONLY personal-life info: no segment, but Dwight says
+# out loud that it stays private (owner, QA 2026-07-14).
+PRIVACY_ONLY_ANSWER = json.dumps(
+    {
+        "clarification": None,
+        "privacy_note": "Noted - but that stays private: it is Oscar's to share in his own space.",
+        "segments": [],
+    }
+)
+
 
 def make_service(session_factory, completions: list[str]) -> tuple[DwightService, ScriptedLLMProvider, FakeVectorStore]:
     """Assemble a DwightService on scripted fakes, returning all three."""
@@ -91,6 +101,22 @@ def test_capture_persists_segments_and_tags(session_factory):
     assert warm.tags[0].proposed_by == ProposedBy.DWIGHT
     assert warm.tags[0].validated is False
     # Nothing is indexed at capture time: validation is the gate.
+    assert store.upserted == []
+
+
+def test_privacy_note_rides_along_and_persists_nothing(session_factory):
+    """Personal-life info: Dwight acknowledges out loud, stores no
+    segment about it, and the entry closes cleanly (not pending)."""
+    service, llm, store = make_service(session_factory, [PRIVACY_ONLY_ANSWER])
+
+    result = capture_note(service, "Oscar's birthday is March 12, he loves triathlon.")
+
+    assert result.privacy_note is not None and "private" in result.privacy_note
+    assert result.clarification is None
+    assert result.segments == []
+    assert result.processing_status == ProcessingStatus.COMPLETE
+    with session_factory() as session:
+        assert session.query(EntrySegment).count() == 0
     assert store.upserted == []
 
 

@@ -42,6 +42,9 @@ def get_pam_service(request: Request) -> PamService:
         session_factory=state.session_factory,
         vector_store=state.vector_store,
         summary_service=get_summary_service(request),
+        # The retrieval floor is configuration (PAM_MIN_SCORE), a tuning
+        # lever like LLM_MODEL - never a constant buried in the service.
+        min_score=get_settings().pam_min_score,
     )
 
 

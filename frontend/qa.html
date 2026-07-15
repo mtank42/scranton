@@ -112,11 +112,11 @@ const SECTIONS = [
       ["d1", "Coller et envoyer la note ci-dessus.", "3 segments environ, <strong>en français</strong>, cold pour les faits / warm pour Ryan (sensibilité élevée)"],
       ["d2", "Regarder les tags des segments.", "<strong>Des noms lisibles</strong> : « Lackawanna County Schools », « Ryan », « Commitment » — et la confiance en toutes lettres : <strong>✓ sure</strong> ou <strong>? to check</strong> (orange). Plus jamais de team_member#1"],
       ["d3", "Après l'envoi : regarder la zone de saisie.", "Elle est passée <strong>SOUS les propositions</strong> et dit « Anything else to tell Dwight? »"],
-      ["d4", "Décider : validez Lackawanna et le devis, <strong>rejetez</strong> le segment Ryan (Reject → Forget it).", "Au dernier segment décidé : la carte TWSS s'affiche, lisible en entier, une seule fois"],
+      ["d4", "Décider : validez Lackawanna et le devis, <strong>rejetez</strong> le segment Ryan (Reject → Forget it).", "Les cartes passent en validated/rejected. <strong>AUCUNE carte TWSS</strong> : les célébrations sont en pause en attendant leur refonte (session dédiée)"],
       { copy: "bon ben c'est réglé finalement" },
-      ["d5", "Envoyer la note vague ci-dessus.", "UNE question de clarification en français, ton Dwight ; votre réponse dans le fil produit des segments"],
+      ["d5", "Envoyer la note vague ci-dessus.", "UNE question de clarification en français, ton Dwight ; si votre réponse reste vague, Dwight repose UNE question (le dialogue boucle) ; une réponse précise produit des segments"],
       { copy: "En discutant avec Oscar j'ai appris que son anniversaire est le 12 mars et qu'il adore le triathlon." },
-      ["d6", "Envoyer la note ci-dessus.", "Dwight <strong>ignore silencieusement</strong> l'info perso (aucune suggestion, aucun segment dessus) : ces données se déclarent dans Pretzel Day, par Oscar lui-même"]
+      ["d6", "Envoyer la note ci-dessus.", "Aucun segment ni suggestion sur l'info perso, mais Dwight <strong>le dit</strong> : une bulle du genre « ça reste privé, c'est à Oscar de le partager dans son espace » — sans répéter le détail"]
     ]
   },
   {
@@ -127,7 +127,7 @@ const SECTIONS = [
       { copy: "Pourquoi Ryan est-il épuisé ?" },
       ["g1", "Poser la question ci-dessus à Ask Pam (segment Ryan REJETÉ en 2).", "Pam dit que la mémoire n'a <strong>rien</strong> là-dessus — le rejeté n'existe pas pour elle"],
       { copy: "Qu'est-ce que Lackawanna nous a confirmé pour le Q3 ?" },
-      ["g2", "Poser la question ci-dessus (segments VALIDÉS en 2).", "Réponse française exacte avec citation [n] et sources datées"]
+      ["g2", "Poser la question ci-dessus (segments VALIDÉS en 2).", "Réponse française exacte avec citation [n] et sources datées — <strong>seules les sources réellement citées [n] apparaissent</strong>, plus jamais 10 extraits hors sujet"]
     ]
   },
   {
@@ -138,10 +138,10 @@ const SECTIONS = [
       { copy: "Fais-moi le point sur Prince Family Paper" },
       ["p1", "Question LARGE nommant UN client.", "Pam sert une <strong>carte template CLIENT - PRINCE FAMILY PAPER</strong> : sections, sources, bouton « Adjust with Dwight ». Le mot « file » n'apparaît nulle part"],
       { copy: "Tout savoir sur Ryan" },
-      ["p2", "Question large nommant UN MEMBRE de l'équipe.", "<strong>PAS de template</strong> et pas de warm : les infos sur les personnes sont chez Toby et Michael's Desk. Pam reste sur le Q&A, cold uniquement"],
-      ["p3", "Cliquer « Adjust with Dwight » sous une carte.", "Le panneau Dwight s'ouvre : les retouches passent par lui, c'est vous qui décidez"],
+      ["p2", "Question large nommant UN MEMBRE de l'équipe.", "Pam <strong>redirige poliment</strong> : les personnes, c'est Meet Toby et Michael's Desk — <strong>zéro source</strong>, aucun bruit"],
+      ["p3", "Cliquer « Adjust with Dwight » sous une carte.", "Le panneau Dwight s'ouvre : les retouches passent par lui, c'est vous qui décidez (le contexte du document arrivera avec la session Édition)"],
       { copy: "Le point sur Ryan et Kelly" },
-      ["p4", "Question large mais AMBIGUË (deux noms).", "Pas de template deviné : réponse Q&A classique (la clarification fine, c'est la V2)"],
+      ["p4", "Question large nommant DEUX membres.", "Pam liste <strong>leurs projets/clients communs</strong> (mémoire validée, cold), avec les extraits à l'appui — ou un vide honnête s'ils ne partagent rien"],
       { copy: "What did we promise to Stone & Son?" },
       ["p5", "Question PRÉCISE en anglais.", "Q&A groundée <strong>en anglais</strong>, pas de template — la langue suit la question"]
     ]
@@ -152,7 +152,7 @@ const SECTIONS = [
     note: "Basculer sur « Team member », choisir Ryan comme identité.",
     flow: [
       ["m1", "Ouvrir My board.", "Sa carte Pretzel du jour, son « About me », le renvoi vers Pretzel Day — et une note honnête : notes/actions perso = V2"],
-      ["m2", "Ouvrir Pretzel Day : faire un check-in avec une note (ex : « grosse semaine, je dors mal »).", "Palette 6 niveaux, <strong>aucun sélecteur de membre</strong> (c'est VOTRE humeur), TWSS après enregistrement"],
+      ["m2", "Ouvrir Pretzel Day : faire un check-in avec une note (ex : « grosse semaine, je dors mal »).", "Palette 6 niveaux, <strong>aucun sélecteur de membre</strong> (c'est VOTRE humeur), confirmation sobre « Recorded. Thanks for saying it. » et votre historique 30 jours mis à jour — <strong>pas de blague TWSS</strong> (célébrations en pause)"],
       ["m3", "Bloc « About me - shared on purpose » : remplir anniversaire (jour+mois) et goûts, sauvegarder.", "Mention explicite « visible par votre manager, et lui seul » ; <strong>aucun champ année</strong>"],
       ["m4", "Changer d'identité (ex : Kelly) et revenir.", "Le formulaire montre les données de Kelly, pas celles de Ryan : chacun chez soi"]
     ]
@@ -162,9 +162,9 @@ const SECTIONS = [
     title: "6. Dashboard manager + Maire",
     note: "Rebasculer en rôle Manager.",
     flow: [
-      ["b1", "Regarder les 3 cartes du haut.", "Team (effectif), Projects, <strong>Weak signals en rouge</strong> avec renvoi vers Meet Toby"],
+      ["b1", "Regarder les 3 cartes du haut, cliquer la carte <strong>Weak signals</strong>.", "Team (effectif), Projects, Weak signals en rouge « open Meet Toby → » — <strong>le clic ouvre Meet Toby</strong> directement"],
       ["b2", "Le moodboard de la semaine.", "Une ligne par personne avec ses pastilles du moment (dont VOTRE check-in de l'étape 5) et un lien « signals → »"],
-      ["b3", "Dans Pretzel Day (équipier), mettre l'anniversaire de Stanley à AUJOURD'HUI, puis recharger la page en manager.", "Bannière <strong>MAIRE DE SCRANTON</strong> + célébration plein écran (une fois par chargement)"]
+      ["b3", "Dans Pretzel Day (équipier), mettre l'anniversaire de Stanley à AUJOURD'HUI, puis recharger la page en manager.", "<strong>RIEN ne se passe</strong> : Maire de Scranton est en pause avec les célébrations (ni popin, ni carte rituel) — la refonte festive viendra en session dédiée"]
     ]
   },
   {
@@ -180,6 +180,7 @@ const SECTIONS = [
   {
     id: "toby",
     title: "8. Meet Toby — en leurs mots",
+    note: "Rappel : le manager n'a pas (encore) d'identité propre dans le POC — tous les noms listés sont des équipiers. L'identité manager/admin et l'onboarding d'équipe sont cadrés au backlog.",
     flow: [
       ["t1", "Les signaux faibles en haut.", "Ryan (humeurs du seed) et Darryl (silence) ressortent, formulations factuelles et datées"],
       ["t2", "La carte de Ryan, section citations.", "VOTRE note de check-in de l'étape 5 y est, <strong>citée et datée</strong> (« grosse semaine, je dors mal ») — plus seulement des pastilles"],
@@ -201,16 +202,16 @@ const SECTIONS = [
   {
     id: "gdrive",
     title: "10. Google Drive <span class=\"optional\">(optionnel — utilise votre vrai Drive)</span>",
-    note: "Lit le dossier Drive configuré ; les segments arrivent dans CETTE base jetable.",
+    note: "Lit le dossier Drive configuré ; les segments arrivent dans CETTE base jetable. Décision produit (2026-07-14) : les documents préexistants (rapports, devis, livrables) deviendront de la matière DIRECTE pour Pam — le RAG documentaire, session dédiée à venir. En attendant, l'ingestion passe encore par la porte de validation.",
     flow: [
       { gdrive: true },
       ["v1", "Cliquer le bouton ci-dessus.", "Documents comptés, entrées créées, 0 failure (PDF/images ignorés sans erreur)"],
-      ["v2", "Poser à Pam une question sur ces documents SANS rien valider.", "<strong>Rien en mémoire</strong> — l'ingestion propose, elle n'impose jamais (l'écran de revue est au backlog)"]
+      ["v2", "Poser à Pam une question sur ces documents SANS rien valider.", "<strong>Rien en mémoire</strong> pour l'instant : comportement transitoire jusqu'à la session RAG documentaire (voir la note de section)"]
     ]
   }
 ];
 
-const STORE_KEY = "scranton-qa-v3";
+const STORE_KEY = "scranton-qa-v4";
 const state = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
 const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));
 

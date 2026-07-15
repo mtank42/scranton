@@ -45,6 +45,10 @@ class Settings:
     llm_model: str = ""
     # Local Ollama endpoint (LLM_PROVIDER=ollama): the max-sovereignty path.
     ollama_base_url: str = "http://localhost:11434"
+    # Minimum retrieval similarity for Pam's Q&A context (QA 2026-07-14:
+    # top-k with no floor surfaced unrelated sources as noise). A tuning
+    # lever like LLM_MODEL: adjust from .env, never from code.
+    pam_min_score: float = 0.6
 
 
 def get_settings() -> Settings:
@@ -73,4 +77,5 @@ def get_settings() -> Settings:
         gdrive_folder_id=os.getenv("GDRIVE_FOLDER_ID", ""),
         llm_model=os.getenv("LLM_MODEL", ""),
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        pam_min_score=float(os.getenv("PAM_MIN_SCORE", "0.6")),
     )
