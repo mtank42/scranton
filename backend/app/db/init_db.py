@@ -1,4 +1,4 @@
-"""Database initialization: create the eight tables if missing.
+"""Database initialization: create the tables if missing.
 
 Why create_all instead of Alembic migrations: the POC is single-user,
 local-first, and the data model is frozen. create_all is idempotent and

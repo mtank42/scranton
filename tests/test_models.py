@@ -1,4 +1,4 @@
-"""The nine validated tables: schema creation and a full capture roundtrip."""
+"""The validated tables: schema creation and a full capture roundtrip."""
 
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
@@ -28,10 +28,14 @@ EXPECTED_TABLES = {
     "mood_checkins",
     # Added in the dedicated data model session (2026-07-08).
     "handover_validations",
+    # The documentary corpus, added in the Darryl session (2026-07-15).
+    "documents",
+    "document_chunks",
+    "document_tags",
 }
 
 
-def test_init_db_creates_the_nine_validated_tables(engine):
+def test_init_db_creates_the_validated_tables(engine):
     """init_db materializes exactly the validated data model: no more, no less."""
     init_db(engine)
     assert set(inspect(engine).get_table_names()) == EXPECTED_TABLES

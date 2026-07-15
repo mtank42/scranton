@@ -1,9 +1,11 @@
 """SQLAlchemy ORM mapping of the validated Scranton data model.
 
-These nine tables are a direct mapping of the data model validated in
+These tables are a direct mapping of the data model validated in
 May 2026 (SCRANTON_CONTEXT.md section 5; handover_validations added in
-the dedicated July 2026 session). The model is frozen: do not add,
-remove or rename fields without a dedicated session with the owner.
+the dedicated 2026-07-08 session; documents, document_chunks and
+document_tags added in the Darryl session, 2026-07-15). The model is
+frozen: do not add, remove or rename fields without a dedicated
+session with the owner.
 
 Two design principles are baked into the schema and must survive here:
 - Raw entries are immutable: only segments are processed and routed.
@@ -151,6 +153,30 @@ class HandoverStatus(str, enum.Enum):
     SENT = "sent"
 
 
+class DocumentStatus(str, enum.Enum):
+    """How Darryl filed a document (documents.status).
+
+    INDEXED: routed to at least one entity, content chunked and embedded.
+    CATALOGED: routed, but catalog entry only - spreadsheets keep their
+    name, date, folder and link, never their content flattened to text
+    (owner arbitration, 2026-07-15).
+    UNCLASSIFIED: no routing signal was sure enough - the bin. Still
+    queryable through Pam, but it feeds no entity file until the manager
+    files it (never a plausible bet: the Matthaeus lesson).
+    """
+
+    INDEXED = "indexed"
+    CATALOGED = "cataloged"
+    UNCLASSIFIED = "unclassified"
+
+
+class DocumentProposedBy(str, enum.Enum):
+    """Who routed a document: Darryl (the archivist) or the manager."""
+
+    DARRYL = "darryl"
+    MANAGER = "manager"
+
+
 class MoodLevel(str, enum.Enum):
     """The six-level Pretzel Day palette, from flow to danger."""
 
@@ -175,11 +201,11 @@ MOOD_INDEX: dict[MoodLevel, int] = {
 }
 
 
-# --- The nine tables ---
+# --- The tables ---
 
 
 class Base(DeclarativeBase):
-    """Declarative base shared by the nine tables."""
+    """Declarative base shared by every table."""
 
 
 class TeamMember(Base):
@@ -373,3 +399,104 @@ class MoodCheckin(Base):
     mood_level: Mapped[MoodLevel] = mapped_column(as_db_enum(MoodLevel))
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+# --- The documentary corpus (Darryl session, 2026-07-15) ---
+
+
+class Document(Base):
+    """One document of the shared corpus.
+
+    The day-one doctrine, in code: placing a document in the folder
+    shared with Scranton IS its validation - that human gesture replaces
+    the Dwight gate, so there is no 'proposed' status here. SQLite stays
+    the source of truth for text: answers re-read chunks from this store,
+    never from the vector index and never live from the Drive.
+    """
+
+    __tablename__ = "documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    mime_type: Mapped[str] = mapped_column(String(150))
+    # Which connector produced it (gdrive / local): the source seam key.
+    source: Mapped[str] = mapped_column(String(30))
+    # Stable opaque reference into the source (e.g. 'gdrive:<file id>'):
+    # the matching key of every resync, unique by construction.
+    origin_ref: Mapped[str] = mapped_column(String(300), unique=True)
+    # The clickable link back to the original - Fabrice's request number
+    # one, non-negotiable in V1. Null for sources without web URLs.
+    web_view_link: Mapped[str | None] = mapped_column(String(600))
+    # Folder path relative to the shared root ('Clients/Techni-Pneus'):
+    # Darryl's first routing signal, and display context for the manager.
+    folder_path: Mapped[str] = mapped_column(String(600), default="")
+    # Source-side last modification: what orders versions inside a family.
+    modified_at: Mapped[datetime | None]
+    # Content fingerprint: resync re-extracts only when it changes.
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    status: Mapped[DocumentStatus] = mapped_column(as_db_enum(DocumentStatus))
+    # Version family: the title normalized with version markers removed
+    # ('rapport seo' for 'Rapport_SEO_final_V3_DEF(1).pdf'). The most
+    # recent member of a family answers by default; the others surface
+    # only when the manager explicitly asks for all versions.
+    family_key: Mapped[str] = mapped_column(String(300))
+    is_latest: Mapped[bool] = mapped_column(default=True)
+    ingested_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # Soft delete, set when the source no longer has the file: the row
+    # stays as trail, retrieval skips it, its vectors are removed.
+    deleted_at: Mapped[datetime | None]
+
+    chunks: Mapped[list["DocumentChunk"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="DocumentChunk.chunk_order",
+    )
+    tags: Mapped[list["DocumentTag"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+
+
+class DocumentChunk(Base):
+    """One retrievable slice of a document: the corpus counterpart of
+    entry_segments. One vector per chunk lives in the 'documents' Chroma
+    collection; the text of truth is this row."""
+
+    __tablename__ = "document_chunks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"))
+    # Position of this slice within its document.
+    chunk_order: Mapped[int]
+    content: Mapped[str] = mapped_column(Text)
+
+    document: Mapped[Document] = relationship(back_populates="chunks")
+
+
+class DocumentTag(Base):
+    """Document-level routing: which client or project a document feeds.
+
+    Document-level (not chunk-level) on purpose: a deliverable belongs
+    to a client as a whole. Darryl routes silently when sure and never
+    bets; the manager's corrections arrive as proposed_by=manager.
+    """
+
+    __tablename__ = "document_tags"
+    __table_args__ = (
+        CheckConstraint(
+            "confidence >= 0.0 AND confidence <= 1.0", name="ck_doc_confidence_range"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"))
+    # client / project only in V1 (owner arbitration: documents feed the
+    # client and project files; people routing stays out of the corpus).
+    entity_type: Mapped[EntityType] = mapped_column(as_db_enum(EntityType))
+    entity_id: Mapped[int]
+    proposed_by: Mapped[DocumentProposedBy] = mapped_column(as_db_enum(DocumentProposedBy))
+    # 1.0 for deterministic signals (folder or file name naming the
+    # entity) and manager decisions; the LLM fallback scores below.
+    confidence: Mapped[float]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    document: Mapped[Document] = relationship(back_populates="tags")
