@@ -30,32 +30,45 @@ dossier `GDRIVE_FOLDER_ID` configuré.
 
 ## 2. La checklist interactive
 
-Elle s'ouvre sur `http://localhost:8010/qa.html` et se suffit : ~40
-points groupés par feature, chaque point = une action dans l'app + le
-résultat attendu. Les notes de test sont fournies avec un bouton
-**Copier** (rien à inventer, rien à taper). Les cases et remarques sont
-conservées localement d'une session à l'autre ; **Copier le rapport**
-génère un compte rendu prêt à coller pour la session de correction.
+Elle s'ouvre sur `http://localhost:8010/qa.html` et se suffit : chaque
+point = une action dans l'app + le résultat attendu. Les notes de test
+sont fournies avec un bouton **Copier** (rien à inventer, rien à
+taper). Les cases et remarques sont conservées localement d'une session
+à l'autre ; **Copier le rapport** génère un compte rendu prêt à coller
+pour la session de correction.
 
-Elle couvre le produit RECADRÉ (2026-07-13) : le shell OS à deux rôles
-(vues manager / vues équipier, identité, agents en boutons flottants),
-la capture Dwight en overlay (langue, cold/warm, tags humains avec
-confiance en toutes lettres, saisie qui suit la conversation,
-clarification, suggestion de profil sans année), **la porte de
-validation** (le test le plus important : Pam ignore tout segment non
-validé), Ask Pam en Q&A ET en templates servis (question large sur une
-entité → carte template ; ambiguë ou précise → Q&A ; langue de la
-question), l'espace équipier (check-in pour soi, About me consenti,
-étanchéité entre identités), le Dashboard + Maire, Michael's Desk
-(agenda, brief 1:1, annual review = matière jamais verdict, exports),
-Meet Toby en citations (les mots des gens, infos déclarées en lecture
-seule, silence comme signal), **les checks négatifs** (vues Team et
-Summaries disparues, saisie par procuration impossible, « file » et
-tags cryptiques absents), et l'ingestion Drive (optionnelle).
+**Le périmètre est glissant (règle owner, 2026-07-16)** : ce qu'une
+passe QA a validé et que la suite automatisée couvre en non-régression
+**sort de la checklist** — on ne reteste pas à la main ce que la
+machine surveille. Chaque version de la checklist = une passe éclair
+sur le vivant (ce qui dépend du vrai modèle) + les nouveautés jamais
+testées par le owner.
 
-Nota : le cycle Transfer to Philly ne fait plus partie de la passe
-courante — son moteur reste testé par la suite automatisée, sa surface
-revient en V2/V3 dans Michael's Desk (recadrage).
+**Version courante (v5, 2026-07-16)**, quatre sections :
+
+1. **Passe éclair** (4 points) : shell, une capture Dwight avec
+   décisions, la porte de validation, une réponse Pam citée — le cœur
+   validé en QA 1-2, revérifié en 5 minutes parce qu'il parle au vrai
+   modèle.
+2. **Le volet Pam, deux mémoires** : Darryl l'archiviste (bandeau,
+   bac + classement un clic, badge document, famille de versions,
+   tableur catalogué) et l'historique des notes (« Show more », repli)
+   — livrés APRÈS la QA 2, jamais testés.
+3. **Édition des documents** (le gros de la passe) : Save and edit,
+   accordéon, édition manuelle, révision Dwight en diff calculé, le
+   delta des nouveautés (badge, tissage, dismiss), la carte Pam vers
+   l'éditeur, l'entrée au corpus des docs clients et l'exception
+   personnes.
+4. **Drive réel** (optionnelle, EN DERNIER : le sync remplace le corpus
+   de démo) : formats réels, familles de versions, comportement du bac.
+
+Sorti de la passe courante (validé + sous non-régression automatisée) :
+le shell détaillé, les vues équipier/Dashboard/Toby, les templates
+servis et redirects personnes de Pam, les checks négatifs du recadrage,
+la clarification Dwight et l'acquittement vie privée, les exports
+Angela. Le cycle Transfer to Philly reste hors passe (moteur testé par
+la suite, surface V2/V3). L'ancienne ingestion Drive par Dwight a
+disparu de la checklist : le corpus documentaire passe par Darryl.
 
 Règle d'or pour juger une sortie du modèle : un écart **ponctuel** de
 formulation n'est pas un bug (échantillonnage) ; un écart **répétable**
@@ -70,14 +83,17 @@ depuis M0 — chaque feature est arrivée avec ses tests, la suite doit
 
 | Commande | Contenu | Quand |
 |---|---|---|
-| `pytest` | 112 tests offline, déterministes (fakes scriptés, zéro réseau, zéro coût) | Avant chaque commit ; avant tout test manuel |
+| `pytest` | 166 tests offline, déterministes (fakes scriptés, zéro réseau, zéro coût) | Avant chaque commit ; avant tout test manuel |
 | `pytest -m integration` | 7 tests sur la vraie API Mistral (dont les golden queries anti-régression du seed) | Avant une démo ; après un changement de prompt ou de modèle |
 
 Couvert : pipeline Dwight (parsing, validation, rework), porte de
-validation → Chroma, Pam (grounding, sources, langue pinnée), mood/Toby,
-profils/Maire (année effacée), summaries (registre, collecte SQL),
-Angela, handover complet (dossier + trail de consentement + hash),
-ingestion (sur mocks), coutures (factory, config), détecteur de langue.
+validation → Chroma, Pam (grounding, sources, langue pinnée, deux
+mémoires, redirects personnes), Darryl (sync, routage, versions, bac,
+classement), moteur d'édition (persistance, delta, diff, réviseur pur,
+exception personnes, protection du sync), mood/Toby, profils/Maire
+(année effacée), summaries (registre, collecte SQL), Angela, handover
+complet (dossier + trail de consentement + hash), ingestion (sur
+mocks), coutures (factory, config), détecteur de langue.
 
 Non couvert par l'automatique — c'est le rôle de la checklist :
 l'expérience UI réelle, la qualité subjective des sorties LLM (ton,

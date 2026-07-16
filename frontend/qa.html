@@ -65,12 +65,13 @@
 <body>
   <header>
     <h1>SCRANTON<span>_</span> Checklist QA</h1>
-    <p class="sub"><strong>Vous jouerez LES DEUX RÔLES</strong> avec le sélecteur en haut à
-      droite de l'app : le manager (Dashboard, Michael's Desk, Meet Toby) et un équipier
-      (My board, Pretzel Day — choisissez QUI vous êtes avec le menu d'identité).
-      Dwight et Pam sont les boutons flottants en bas, disponibles partout.<br />
+    <p class="sub">Passe v5 (2026-07-16) : ce qui a été validé en QA 1 et 2 est sorti de la
+      checklist (sa non-régression est automatisée) — il reste une <strong>passe éclair</strong>,
+      puis les nouveautés jamais testées : <strong>le volet Pam deux mémoires</strong> (Darryl +
+      historique) et <strong>l'édition des documents</strong>.<br />
       Environnement jetable : la base et la mémoire de ce test sont recréées à
-      chaque lancement, <strong>vos données réelles ne sont jamais touchées</strong>.
+      chaque lancement, <strong>vos données réelles ne sont jamais touchées</strong>
+      (sauf section 4, optionnelle, qui lit votre vrai Drive).
       Faites chaque action dans l'app, cochez si le résultat correspond à l'attendu.
       Un écart = décochez et notez-le dans la zone de remarques de la section.</p>
     <div class="toolbar">
@@ -95,123 +96,67 @@
  * Snippets: {copy: "text"} rendered as a copy-paste block. */
 const SECTIONS = [
   {
-    id: "shell",
-    title: "1. Le shell — un OS, deux rôles",
+    id: "smoke",
+    title: "1. Passe éclair — le produit déjà validé",
+    note: "QA 1 et 2 (14-15/07) ont validé le produit recadré ; la non-régression est automatisée (166 tests à chaque commit). On ne revérifie ici que le VIVANT — ce qui dépend du vrai modèle — en 4 points. Rôle manager.",
     flow: [
-      ["a1", "Au chargement : regarder la fenêtre.", "Barre de fenêtre « SCRANTON - MANAGER VIEW », onglets <strong>Dashboard / Michael's Desk / Meet Toby</strong> (avec avatars) — plus aucun onglet par agent"],
-      ["a2", "En bas de l'écran, partout.", "Deux boutons flottants <strong>+ Tell Dwight</strong> et <strong>? Ask Pam</strong> ; Whisper Jim grisé « V2 »"],
-      ["a3", "Basculer sur « Team member » en haut à droite.", "Un menu d'identité apparaît (qui suis-je), la fenêtre devient « TEAM MEMBER VIEW (nom) » avec My board / Pretzel Day"]
-    ]
-  },
-  {
-    id: "dwight",
-    title: "2. Tell Dwight — l'action de capture",
-    note: "Rôle manager. Cliquez « + Tell Dwight » : tout se passe dans le panneau.",
-    flow: [
-      { copy: "Réunion du matin : Lackawanna County Schools confirme 40 caisses de plus sur le contrat cardstock Q3, livraison avancée au 5 septembre. J'ai promis un devis révisé à Stone & Son pour vendredi. Ryan s'est endormi en réunion, il a l'air épuisé depuis deux semaines, ça m'inquiète." },
-      ["d1", "Coller et envoyer la note ci-dessus.", "3 segments environ, <strong>en français</strong>, cold pour les faits / warm pour Ryan (sensibilité élevée)"],
-      ["d2", "Regarder les tags des segments.", "<strong>Des noms lisibles</strong> : « Lackawanna County Schools », « Ryan », « Commitment » — et la confiance en toutes lettres : <strong>✓ sure</strong> ou <strong>? to check</strong> (orange). Plus jamais de team_member#1"],
-      ["d3", "Après l'envoi : regarder la zone de saisie.", "Elle est passée <strong>SOUS les propositions</strong> et dit « Anything else to tell Dwight? »"],
-      ["d4", "Décider : validez Lackawanna et le devis, <strong>rejetez</strong> le segment Ryan (Reject → Forget it).", "Les cartes passent en validated/rejected. <strong>AUCUNE carte TWSS</strong> : les célébrations sont en pause en attendant leur refonte (session dédiée)"],
-      { copy: "bon ben c'est réglé finalement" },
-      ["d5", "Envoyer la note vague ci-dessus.", "UNE question de clarification en français, ton Dwight ; si votre réponse reste vague, Dwight repose UNE question (le dialogue boucle) ; une réponse précise produit des segments"],
-      { copy: "En discutant avec Oscar j'ai appris que son anniversaire est le 12 mars et qu'il adore le triathlon." },
-      ["d6", "Envoyer la note ci-dessus.", "Aucun segment ni suggestion sur l'info perso, mais Dwight <strong>le dit</strong> : une bulle du genre « ça reste privé, c'est à Oscar de le partager dans son espace » — sans répéter le détail"]
-    ]
-  },
-  {
-    id: "gate",
-    title: "3. La porte de validation — LE test",
-    note: "Rien n'entre dans la mémoire sans validation. On utilise les décisions de la section 2.",
-    flow: [
+      ["s1", "Au chargement : le shell.", "« SCRANTON - MANAGER VIEW », onglets <strong>Dashboard / Michael's Desk / Meet Toby</strong>, boutons flottants <strong>+ Tell Dwight</strong> / <strong>? Ask Pam</strong> en bas"],
+      { copy: "Lackawanna County Schools confirme 40 caisses de plus sur le contrat cardstock Q3. Ryan s'est endormi en réunion, il a l'air épuisé, ça m'inquiète." },
+      ["s2", "Tell Dwight : envoyer la note ci-dessus, puis <strong>valider</strong> Lackawanna et <strong>rejeter</strong> le segment Ryan.", "Segments <strong>en français</strong>, cold pour le fait / warm pour Ryan, tags lisibles avec confiance en toutes lettres ; cartes validated/rejected, aucune blague TWSS"],
       { copy: "Pourquoi Ryan est-il épuisé ?" },
-      ["g1", "Poser la question ci-dessus à Ask Pam (segment Ryan REJETÉ en 2).", "Pam dit que la mémoire n'a <strong>rien</strong> là-dessus — le rejeté n'existe pas pour elle"],
+      ["s3", "La porte : poser la question ci-dessus à Ask Pam.", "La mémoire n'a <strong>rien</strong> — le segment rejeté n'existe pas pour Pam"],
       { copy: "Qu'est-ce que Lackawanna nous a confirmé pour le Q3 ?" },
-      ["g2", "Poser la question ci-dessus (segments VALIDÉS en 2).", "Réponse française exacte avec citation [n] et sources datées — <strong>seules les sources réellement citées [n] apparaissent</strong>, plus jamais 10 extraits hors sujet"]
+      ["s4", "Poser la question ci-dessus.", "Réponse française exacte, citation [n], <strong>seules les sources citées</strong> s'affichent"]
     ]
   },
   {
-    id: "pam",
-    title: "4. Ask Pam — Q&A et templates servis",
-    note: "Le cœur du recadrage : les summaries ne sont plus un écran, Pam les SERT quand la question s'y prête.",
+    id: "darryl",
+    title: "2. Le volet Pam — deux mémoires et l'historique",
+    note: "JAMAIS passé en QA : Darryl l'archiviste et l'historique du volet ont été livrés après votre QA 2. Le seed plante 4 documents : la famille Contrat papier recyclé (V1 + V2_DEF) chez Prince Family Paper, un tableur Lackawanna catalogué, et des notes d'entrepôt au bac. Ouvrez ? Ask Pam.",
     flow: [
+      ["da1", "Regarder le bandeau sous l'en-tête du volet.", "Les <strong>5 dernières notes Dwight</strong> (extrait + compteur « validés/total » + date) AU-DESSUS des <strong>documents récents de Darryl</strong> (badges de classement) + le bouton Sync"],
+      ["da2", "Cliquer « Show more », puis fermer et rouvrir le volet.", "Chaque clic déplie <strong>10 de plus</strong> par mémoire (le bouton disparaît à l'épuisement) ; à la réouverture, tout est <strong>replié à 5</strong>"],
+      ["da3", "La ligne « 1 document not filed - open the bin » : ouvrir le bac et classer les notes d'entrepôt vers un client.", "Le badge « not filed » devient un menu, <strong>un clic classe</strong>, le document sort du bac avec son nouveau tag"],
+      { copy: "Que dit le contrat papier recyclé signé avec Prince Family Paper ?" },
+      ["da4", "Poser la question ci-dessus.", "Réponse groundée citant le document avec badge <strong>document</strong> (nom du fichier) — et c'est la <strong>V2_DEF qui répond</strong>, jamais la V1 (une famille, une voix)"],
+      { copy: "Toutes les versions du contrat papier recyclé" },
+      ["da5", "Poser la question ci-dessus (route déterministe, zéro LLM).", "Les <strong>DEUX versions listées</strong>, l'ancienne marquée « older version »"],
+      ["da6", "Chercher le tableur Lackawanna (bandeau ou question à Pam).", "Il existe par <strong>nom, dossier, date</strong> (catalogué) — son contenu n'est jamais extrait ni cité"]
+    ]
+  },
+  {
+    id: "editing",
+    title: "3. Édition des documents — LA nouveauté",
+    note: "Le cœur de cette passe (session 2026-07-16). Doctrine : votre document ne change JAMAIS tout seul ; la mémoire qui bouge se PRÉSENTE, vous tranchez par le dialogue ; chaque retouche de Dwight s'affiche en diff calculé. Rôle manager, Michael's Desk.",
+    flow: [
+      ["e1", "1:1 preparation → Ryan → « Brief me », puis <strong>« Save and edit »</strong> sous le document.", "Le brief devient VOTRE document : l'éditeur s'ouvre dans le bloc <strong>My documents</strong>, sections repliables, actions « Edit with Tell Dwight » / « Edit manually »"],
+      ["e2", "Cliquer le titre d'une section.", "Elle se <strong>replie/déplie</strong> (l'accordéon du 1:1 : on replie ce qui est traité)"],
+      ["e3", "« Edit manually » : corriger une tournure à la main, Save.", "Le texte revient <strong>au caractère près</strong> avec votre correction, date de sauvegarde mise à jour"],
+      { copy: "Enlève la section Signals to watch, et reformule l'intro de Manager observations en une phrase." },
+      ["e4", "« Edit with Tell Dwight » avec la consigne ci-dessus.", "Une <strong>proposition en diff</strong> : ajouts surlignés en vert, suppressions barrées en rouge — rien d'autre ne bouge (réviseur pur). « Keep it » l'applique, « Discard » la jette"],
+      { copy: "Ryan a fini le reporting Q3, tout est à jour. Il a signé le renouvellement Prince Family Paper." },
+      ["e5", "Faire bouger la mémoire : Tell Dwight avec la note ci-dessus, <strong>valider</strong> les segments Ryan. Revenir sur My documents.", "Le brief de Ryan porte un badge <strong>« N new since your edit »</strong> — le document, lui, n'a pas bougé"],
+      ["e6", "Ouvrir le document.", "Un panneau « The memory moved » <strong>présente les nouveautés</strong> une par une (cochées par défaut), avec « Weave in with Tell Dwight » et « Dismiss »"],
+      ["e7", "« Weave in » (consigne facultative), puis « Keep it » sur le diff.", "Les points cochés sont <strong>tissés au bon endroit</strong> (diff vert à l'appui) ; après Keep it, le panneau nouveautés a disparu"],
       { copy: "Fais-moi le point sur Prince Family Paper" },
-      ["p1", "Question LARGE nommant UN client.", "Pam sert une <strong>carte template CLIENT - PRINCE FAMILY PAPER</strong> : sections, sources, bouton « Adjust with Dwight ». Le mot « file » n'apparaît nulle part"],
-      { copy: "Tout savoir sur Ryan" },
-      ["p2", "Question large nommant UN MEMBRE de l'équipe.", "Pam <strong>redirige poliment</strong> : les personnes, c'est Meet Toby et Michael's Desk — <strong>zéro source</strong>, aucun bruit"],
-      ["p3", "Cliquer « Adjust with Dwight » sous une carte.", "Le panneau Dwight s'ouvre : les retouches passent par lui, c'est vous qui décidez (le contexte du document arrivera avec la session Édition)"],
-      { copy: "Le point sur Ryan et Kelly" },
-      ["p4", "Question large nommant DEUX membres.", "Pam liste <strong>leurs projets/clients communs</strong> (mémoire validée, cold), avec les extraits à l'appui — ou un vide honnête s'ils ne partagent rien"],
-      { copy: "What did we promise to Stone & Son?" },
-      ["p5", "Question PRÉCISE en anglais.", "Q&A groundée <strong>en anglais</strong>, pas de template — la langue suit la question"]
-    ]
-  },
-  {
-    id: "member",
-    title: "5. Vue équipier — My board et Pretzel Day",
-    note: "Basculer sur « Team member », choisir Ryan comme identité.",
-    flow: [
-      ["m1", "Ouvrir My board.", "Sa carte Pretzel du jour, son « About me », le renvoi vers Pretzel Day — et une note honnête : notes/actions perso = V2"],
-      ["m2", "Ouvrir Pretzel Day : faire un check-in avec une note (ex : « grosse semaine, je dors mal »).", "Palette 6 niveaux, <strong>aucun sélecteur de membre</strong> (c'est VOTRE humeur), confirmation sobre « Recorded. Thanks for saying it. » et votre historique 30 jours mis à jour — <strong>pas de blague TWSS</strong> (célébrations en pause)"],
-      ["m3", "Bloc « About me - shared on purpose » : remplir anniversaire (jour+mois) et goûts, sauvegarder.", "Mention explicite « visible par votre manager, et lui seul » ; <strong>aucun champ année</strong>"],
-      ["m4", "Changer d'identité (ex : Kelly) et revenir.", "Le formulaire montre les données de Kelly, pas celles de Ryan : chacun chez soi"]
-    ]
-  },
-  {
-    id: "dashboard",
-    title: "6. Dashboard manager + Maire",
-    note: "Rebasculer en rôle Manager.",
-    flow: [
-      ["b1", "Regarder les 3 cartes du haut, cliquer la carte <strong>Weak signals</strong>.", "Team (effectif), Projects, Weak signals en rouge « open Meet Toby → » — <strong>le clic ouvre Meet Toby</strong> directement"],
-      ["b2", "Le moodboard de la semaine.", "Une ligne par personne avec ses pastilles du moment (dont VOTRE check-in de l'étape 5) et un lien « signals → »"],
-      ["b3", "Dans Pretzel Day (équipier), mettre l'anniversaire de Stanley à AUJOURD'HUI, puis recharger la page en manager.", "<strong>RIEN ne se passe</strong> : Maire de Scranton est en pause avec les célébrations (ni popin, ni carte rituel) — la refonte festive viendra en session dédiée"]
-    ]
-  },
-  {
-    id: "desk",
-    title: "7. Michael's Desk — 1:1 et réunions",
-    flow: [
-      ["k1", "« Draft the agenda » (réunion d'équipe).", "Sections remplies avec citations [n] et sources — dont vos segments validés de l'étape 2"],
-      ["k2", "1:1 preparation : choisir Ryan → « Brief me ».", "Le portrait complet de Ryan pour la conversation, sources datées"],
-      ["k3", "« Annual review material » sur Ryan.", "De la <strong>matière à discussion</strong>, jamais un verdict ni une note"],
-      ["k4", "Les liens d'export sous un document généré.", "Le .md et le .html imprimable téléchargent le document tel quel"]
-    ]
-  },
-  {
-    id: "toby",
-    title: "8. Meet Toby — en leurs mots",
-    note: "Rappel : le manager n'a pas (encore) d'identité propre dans le POC — tous les noms listés sont des équipiers. L'identité manager/admin et l'onboarding d'équipe sont cadrés au backlog.",
-    flow: [
-      ["t1", "Les signaux faibles en haut.", "Ryan (humeurs du seed) et Val (silence) ressortent, formulations factuelles et datées"],
-      ["t2", "La carte de Ryan, section citations.", "VOTRE note de check-in de l'étape 5 y est, <strong>citée et datée</strong> (« grosse semaine, je dors mal ») — plus seulement des pastilles"],
-      ["t3", "Les infos déclarées sous chaque carte.", "L'anniversaire/goûts saisis dans Pretzel Day apparaissent en chips ; qui n'a rien partagé : « that's their right » ; le manager ne peut RIEN y modifier"],
-      ["t4", "Chercher un score, une note, un classement.", "<strong>Aucun</strong>, nulle part"]
-    ]
-  },
-  {
-    id: "gone",
-    title: "9. Ce qui doit avoir DISPARU (checks négatifs)",
-    note: "Le recadrage a supprimé des choses : vérifier qu'elles ne reviennent pas.",
-    flow: [
-      ["n1", "Chercher un onglet « Team » ou « Smart Summaries ».", "<strong>Ils n'existent plus</strong> — le member-owned vit dans Pretzel Day, les templates dans Pam et Michael's Desk"],
-      ["n2", "En rôle manager : chercher un moyen de saisir l'humeur ou le profil de quelqu'un d'autre.", "<strong>Impossible</strong> — la saisie par procuration est abolie"],
-      ["n3", "Chercher le mot « file » dans les titres et libellés.", "Absent partout"],
-      ["n4", "Chercher un tag cryptique type team_member#1 ou view:commitment.", "Absent : noms résolus et libellés humains uniquement"]
+      ["e8", "Ask Pam : question ci-dessus, puis <strong>« Save and edit »</strong> sous la carte template.", "Le volet se ferme, l'app bascule sur le Desk, <strong>l'éditeur est ouvert</strong> sur la fiche client — même moteur, autre surface"],
+      ["e9", "Rouvrir ? Ask Pam et regarder les documents récents de Darryl.", "La fiche client sauvegardée <strong>est entrée au corpus</strong> (elle apparaît, taguée Prince Family Paper) — sauvegarder EST le geste de classement"],
+      ["e10", "Chercher le brief 1:1 de Ryan dans ce même bandeau et dans les sources de Pam.", "<strong>Absent, toujours</strong> : un document ciblant une personne n'entre jamais dans la mémoire de Pam (l'humain vit sur le Desk et chez Toby)"]
     ]
   },
   {
     id: "gdrive",
-    title: "10. Google Drive <span class=\"optional\">(optionnel — utilise votre vrai Drive)</span>",
-    note: "Lit le dossier Drive configuré ; les segments arrivent dans CETTE base jetable. Décision produit (2026-07-14) : les documents préexistants (rapports, devis, livrables) deviendront de la matière DIRECTE pour Pam — le RAG documentaire, session dédiée à venir. En attendant, l'ingestion passe encore par la porte de validation.",
+    title: "4. Drive réel <span class=\"optional\">(optionnel — EN DERNIER, remplace le corpus de démo)</span>",
+    note: "Le Sync du volet Pam lit le VRAI dossier partagé configuré : les documents de démo, absents de ce dossier, seront soft-supprimés — faites cette section en dernier. Test des FORMATS réels (pas du routage : sans vos clients dans les noms, le bac est la destination normale). Déposez d'abord quelques vrais fichiers (PDF, Word, un tableur, deux versions d'un même document) dans le dossier partagé.",
     flow: [
-      { gdrive: true },
-      ["v1", "Cliquer le bouton ci-dessus.", "Documents comptés, entrées créées, 0 failure (PDF/images ignorés sans erreur)"],
-      ["v2", "Poser à Pam une question sur ces documents SANS rien valider.", "<strong>Rien en mémoire</strong> pour l'instant : comportement transitoire jusqu'à la session RAG documentaire (voir la note de section)"]
+      ["v1", "Volet Pam → « Sync the shared folder ».", "Rapport chiffré (added/updated/removed), aucun crash ; PDF/Word indexés, <strong>tableurs catalogués</strong> (jamais extraits), images ignorées sans erreur"],
+      ["v2", "Regarder le bandeau et le bac après le sync.", "Vos fichiers listés avec <strong>liens cliquables vers le Drive</strong> ; deux versions d'un même nom = une famille, l'ancienne « older version » ; sans signal de routage, direction <strong>le bac</strong> — classement en un clic"],
+      ["v3", "Poser à Pam une question dont la réponse est dans un de vos fichiers.", "Réponse citant le document, badge <strong>document</strong>, lien vers l'original"]
     ]
   }
 ];
 
-const STORE_KEY = "scranton-qa-v4";
+const STORE_KEY = "scranton-qa-v5";
 const state = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
 const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));
 
@@ -245,14 +190,6 @@ function render() {
               <p>${esc(step.copy)}</p>
               <button data-copy="${esc(step.copy)}">Copier</button>
             </div>`;
-        }
-        if (step.gdrive) {
-          return `
-            <div class="snippet">
-              <p>POST /api/v1/ingest/gdrive : lance l'ingestion du dossier Drive configuré.</p>
-              <button id="gdrive-run">Lancer l'ingestion</button>
-            </div>
-            <div class="gdrive-result" id="gdrive-result"></div>`;
         }
         return "";
       }).join("")}
@@ -297,22 +234,6 @@ document.getElementById("main").addEventListener("click", async (event) => {
     target.textContent = "Copié !";
     target.classList.add("copied");
     setTimeout(() => { target.textContent = "Copier"; target.classList.remove("copied"); }, 1500);
-  }
-  if (target.id === "gdrive-run") {
-    target.disabled = true;
-    const box = document.getElementById("gdrive-result");
-    box.textContent = "Ingestion en cours (Dwight lit vos documents)...";
-    try {
-      const response = await fetch("/api/v1/ingest/gdrive", { method: "POST" });
-      const body = await response.json();
-      box.textContent = response.ok
-        ? JSON.stringify(body, null, 2)
-        : `Erreur ${response.status} : ${body.detail || ""}`;
-    } catch (error) {
-      box.textContent = `Erreur : ${error.message}`;
-    } finally {
-      target.disabled = false;
-    }
   }
 });
 
