@@ -396,7 +396,16 @@ Deux volets décidés le 2026-07-14 :
 ## Identité du manager, rôle admin & onboarding d'équipe
 
 **Catégorie** : Architecture / Rôles / Onboarding
-**Priorité** : session dédiée (owner, QA 2 2026-07-14 — « comment on commence avec Scranton la 1re fois ? »)
+**Priorité** : session dédiée (owner, QA 2 2026-07-14 — « comment on commence avec Scranton la 1re fois ? ») — **candidat n°1 post-QA v5 (owner, 2026-07-16)** : chantier jugé LE plus structurant, à faire avec Fable en priorité (règle « le plus difficile d'abord »)
+
+> **[2026-07-16] Cadrage élargi par le owner** : le chantier est plus
+> vaste qu'évoqué — il regroupe les questions d'**accès/login**
+> (qu'est-ce qu'une session dans une app local-first, où vivent les
+> secrets ?), la **création/suppression de comptes**, et les **champs
+> basiques** manquants du roster (mail, contact, etc. → toucherait la
+> table team_members : créneau data model obligatoire). S'y rattache
+> le scoping des surfaces déjà noté (bandeaux du volet Pam, My
+> documents, vues par rôle).
 **Origine** : confusion QA 2 sur Darryl — le manager n'a AUCUNE identité dans le système (le sélecteur d'identité équipier prend juste le premier du roster). Et aucun workflow ne crée équipe/comptes : le seed est le seul chemin.
 
 ### Décisions owner déjà prises (2026-07-14)
@@ -413,6 +422,32 @@ Deux volets décidés le 2026-07-14 :
 2. Premier lancement : le workflow d'initialisation (créer le manager, créer l'équipe, importer un roster ?) — le « day one » de Scranton.
 3. Lien avec la création d'entités par Dwight (nouveau collaborateur mentionné dans une note → proposer la création du compte ?).
 4. Anniversaire du manager sans mood tracking : où le déclare-t-il ?
+
+---
+
+## Toolbar d'accès aux outils du quotidien
+
+**Catégorie** : Shell / Intégrations
+**Priorité** : hors MVP, **prio post-MLP** (owner, 2026-07-16)
+**Origine** : specs d'origine ; pas rediscuté depuis. Le owner l'a renommé explicitement le 2026-07-16 en listant les chantiers à venir.
+
+Une barre d'accès rapide aux outils du quotidien du manager depuis le
+shell Scranton. Périmètre exact à recadrer en session (les specs
+d'origine font foi comme point de départ, la maquette validée comme
+boussole UX).
+
+---
+
+## Affichage des calendriers perso et partagés
+
+**Catégorie** : Shell / Intégrations / Calendriers
+**Priorité** : hors MVP, **prio post-MLP** (owner, 2026-07-16)
+**Origine** : specs d'origine (« dont on n'a pas parlé depuis les specs » — owner, 2026-07-16).
+
+Afficher les calendriers personnels et partagés dans Scranton.
+Recoupe naturellement Michael's Desk (préparer un 1:1 face à son
+agenda) et, côté connecteurs, la couture `DocumentSource`/OAuth déjà
+en place pour Google. À recadrer en session dédiée.
 
 ---
 
