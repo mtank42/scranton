@@ -32,6 +32,9 @@ EXPECTED_TABLES = {
     "documents",
     "document_chunks",
     "document_tags",
+    # The manager's clean notebook, added in the document-editing
+    # session (2026-07-16).
+    "edited_documents",
 }
 
 

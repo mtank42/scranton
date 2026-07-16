@@ -328,3 +328,59 @@ def build_pam_messages(question: str, context_block: str) -> list[dict]:
         {"role": "system", "content": PAM_SYSTEM_PROMPT},
         {"role": "user", "content": user_prompt},
     ]
+
+
+# --- Document revision (Dwight the pure reviser) ---
+
+REVISION_SYSTEM_PROMPT = """\
+You are Dwight, revising a document the manager already made his own.
+You are a PURE REVISER: you work on what you are handed - the current
+document, the manager's instruction, and optionally a few new memory
+excerpts he selected. You never fetch anything else and never invent.
+
+Rules:
+1. LANGUAGE: the user message pins the language - the whole revised
+   document follows it. Section headings (lines starting with ##) keep
+   their language and wording unless the instruction targets them.
+2. Apply the instruction, NOTHING MORE. Text the instruction does not
+   touch is returned VERBATIM, character for character: no rewording,
+   no reformatting, no fixing. The manager sees your changes as a
+   computed diff - any gratuitous touch is noise to him.
+3. Selected excerpts (when present) are the material to weave in where
+   the instruction says - integrate their substance at the right spot,
+   in the document's tone. Do not copy their dates or numbering.
+4. Keep the markdown structure: ## section headings, plain paragraphs.
+5. PEOPLE ARE NEVER SCORED: observations and discussion points, never
+   verdicts or ratings.
+
+Respond with ONLY valid JSON, no markdown fences, no commentary:
+{"content_md": "<the full revised document, markdown>"}"""
+
+
+def build_revision_messages(
+    document_md: str, instruction: str, material_lines: list[str]
+) -> list[dict]:
+    """Assemble the chat messages for one document revision.
+
+    The context travels with the instruction (owner decision,
+    2026-07-14): Dwight always receives the full current document,
+    never a bare order.
+    """
+    material_block = (
+        "Selected new memory excerpts to weave in:\n" + "\n".join(material_lines) + "\n\n"
+        if material_lines
+        else ""
+    )
+    # Pinned from the document, not the instruction: a short order in
+    # another language must not flip the whole document's language.
+    language = dominant_language(document_md)
+    user_prompt = (
+        f"Current document:\n{document_md}\n\n"
+        f"{material_block}"
+        f"Manager's instruction:\n{instruction}\n\n"
+        f"DOCUMENT LANGUAGE: {language}."
+    )
+    return [
+        {"role": "system", "content": REVISION_SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ]

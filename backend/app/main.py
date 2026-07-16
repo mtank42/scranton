@@ -15,6 +15,7 @@ from backend.app.api.v1 import (
     angela,
     config,
     darryl,
+    documents,
     dwight,
     handover,
     health,
@@ -80,6 +81,7 @@ def create_app() -> FastAPI:
     app.include_router(config.router, prefix="/api/v1")
     app.include_router(ingest.router, prefix="/api/v1")
     app.include_router(darryl.router, prefix="/api/v1")
+    app.include_router(documents.router, prefix="/api/v1")
     # The UI, served by the same process (no build tooling, no second
     # server). Mounted last: API routes always win over static files.
     app.mount(

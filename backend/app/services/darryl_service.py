@@ -19,6 +19,7 @@ Design decisions (owner arbitrations, 2026-07-15):
   ids; a document gone from the source loses its vectors immediately.
 """
 
+import hashlib
 import re
 import unicodedata
 from datetime import datetime, timezone
@@ -57,6 +58,12 @@ class UnknownEntityError(Exception):
 # Retrieval wants coherent slices: paragraphs are packed up to this
 # size, never split. An oversized single paragraph stays whole.
 CHUNK_TARGET_CHARS = 1200
+
+# The source key of documents born INSIDE Scranton (edited documents,
+# 2026-07-16). They have no connector behind them, so the sync
+# reconciliation must never see them: a Drive pass would otherwise
+# soft-delete every document the manager saved.
+SCRANTON_SOURCE = "scranton"
 
 # What the routing fallback gets to read: enough to recognize the
 # subject, small enough to keep the call cheap.
@@ -154,7 +161,12 @@ class DarrylService:
         with self.session_factory() as session:
             existing = {
                 document.origin_ref: document
-                for document in session.scalars(select(Document))
+                for document in session.scalars(
+                    # Scranton-born documents are not the connector's to
+                    # reconcile: absent from the source is their normal
+                    # state, not a withdrawal of consent.
+                    select(Document).where(Document.source != SCRANTON_SOURCE)
+                )
             }
             seen_refs = set()
             for source_doc in source_docs:
@@ -375,6 +387,63 @@ class DarrylService:
                 for chunk, embedding in zip(chunks, embeddings)
             ]
         )
+
+    # --- Scranton-born documents (edited documents, 2026-07-16) ---
+
+    def file_generated_document(
+        self,
+        title: str,
+        text: str,
+        origin_ref: str,
+        entity_type: EntityType,
+        entity_id: int,
+    ) -> None:
+        """File one edited document into the corpus, or refresh it.
+
+        The save gesture IS the filing (same doctrine as the shared
+        folder), so the routing is a manager tag at confidence 1.0 -
+        no Darryl guesswork. Client/project targets only: the caller
+        (the editing engine) enforces that person-targeted documents
+        never reach the corpus.
+        """
+        sha = hashlib.sha256(text.encode()).hexdigest()
+        with self.session_factory() as session:
+            document = session.scalars(
+                select(Document).where(Document.origin_ref == origin_ref)
+            ).first()
+            if document is None:
+                document = Document(
+                    title=title,
+                    mime_type="text/markdown",
+                    source=SCRANTON_SOURCE,
+                    origin_ref=origin_ref,
+                    content_sha256=sha,
+                    status=DocumentStatus.INDEXED,
+                    family_key=family_key_of(title),
+                )
+                session.add(document)
+                session.flush()
+                session.add(
+                    DocumentTag(
+                        document_id=document.id,
+                        entity_type=entity_type,
+                        entity_id=entity_id,
+                        proposed_by=DocumentProposedBy.MANAGER,
+                        confidence=1.0,
+                    )
+                )
+                session.flush()
+                self._index_chunks(session, document, text)
+            elif document.content_sha256 != sha or document.title != title:
+                document.title = title
+                document.family_key = family_key_of(title)
+                document.content_sha256 = sha
+                document.modified_at = utcnow()
+                self.vector_store.delete([chunk.id for chunk in document.chunks])
+                document.chunks.clear()
+                session.flush()
+                self._index_chunks(session, document, text)
+            session.commit()
 
     # --- versions: one family, one default voice ---
 

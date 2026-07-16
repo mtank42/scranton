@@ -27,6 +27,13 @@ const state = {
   entryId: null, // the entry currently discussed in the Dwight overlay
   mayorOverview: null,
   celebrated: false, // Maire celebration: once per page load
+  // Edited documents (2026-07-16): generated results kept at hand for
+  // the save gesture, and the editor's working state.
+  deskSummaries: {},
+  pamSummaries: [],
+  editorDoc: null,
+  editorProposal: null,
+  editorOpenId: null, // set before switching to the Desk to auto-open
 };
 
 /* --- helpers --- */
@@ -669,13 +676,16 @@ function pamSummaryCard(summary) {
          <p class="summary-text">${esc(section.content).replace(/\n/g, "<br />")}</p>`
     )
     .join("");
+  // The save gesture from a Pam card (editing session, 2026-07-16):
+  // persist, then land on the Desk editor - by hand or with Dwight.
+  state.pamSummaries.push(summary);
   return `
     <div class="pam-template">
       <p class="tpl-label">${esc(label.toUpperCase())}</p>
       ${sections}
       <div class="card-actions">
-        <button class="btn btn-primary" data-open-dwight
-          title="Additions and removals go through Dwight: you decide.">Adjust with Dwight</button>
+        <button class="btn btn-primary" data-save-pam="${state.pamSummaries.length - 1}"
+          title="Persist this document and edit it - by hand or with Dwight.">Save and edit</button>
       </div>
     </div>`;
 }
@@ -808,9 +818,33 @@ async function loadDesk() {
       "Everything the memory holds about one person, ready for the conversation.",
       `<select id="desk-member">${memberOptions}</select>
        <button class="btn btn-primary" data-desk="team_member_file" data-out="one-on-one" data-target="desk-member">Brief me</button>
-       <button class="btn btn-ghost" data-desk="annual_review" data-out="one-on-one" data-target="desk-member">Annual review material</button>`)
+       <button class="btn btn-ghost" data-desk="annual_review" data-out="one-on-one" data-target="desk-member">Annual review material</button>`) +
+    deskBlock("mydocs", "My documents",
+      "Saved snapshots you made your own. The memory keeps moving; they never change on their own.",
+      "")
   );
   document.getElementById("desk-body").onclick = async (event) => {
+    try {
+      if (await handleEditorClick(event.target)) return;
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+    const save = event.target.closest("[data-save-doc]");
+    if (save) {
+      const result = state.deskSummaries[save.dataset.saveDoc];
+      if (!result) return;
+      save.disabled = true;
+      try {
+        const doc = await saveSummaryAsDocument(result);
+        await openEditor(doc.id);
+        document.getElementById("desk-mydocs").scrollIntoView({ block: "start" });
+      } catch (error) {
+        save.disabled = false;
+        alert(error.message);
+      }
+      return;
+    }
     const button = event.target.closest("[data-desk]");
     if (!button) return;
     const targetSelect = button.dataset.target
@@ -823,6 +857,14 @@ async function loadDesk() {
       button
     );
   };
+  await loadMyDocs();
+  if (state.editorOpenId) {
+    // A Pam-card save lands here: the Desk opens straight on the doc.
+    const docId = state.editorOpenId;
+    state.editorOpenId = null;
+    await openEditor(docId);
+    document.getElementById("desk-mydocs").scrollIntoView({ block: "start" });
+  }
 }
 
 async function renderSummaryInto(containerId, templateId, targetId, button) {
@@ -850,6 +892,9 @@ async function renderSummaryInto(containerId, templateId, targetId, button) {
     // Send Angela: plain download links, name from the character map.
     const angela = character("angela");
     const exportBase = `${API}/angela/export/${templateId}${query}${query ? "&" : "?"}format=`;
+    // The save gesture (editing session, 2026-07-16): this generation
+    // becomes a persisted document the manager edits and owns.
+    state.deskSummaries[containerId] = result;
     show(
       containerId,
       `<div class="answer-card summary-card">
@@ -857,6 +902,8 @@ async function renderSummaryInto(containerId, templateId, targetId, button) {
          ${sections}
        </div>
        <div class="export-row">
+         <button class="btn btn-primary" data-save-doc="${containerId}"
+                 title="Persist this generation and edit it - by hand or with Dwight.">Save and edit</button>
          <img class="bubble-avatar" src="assets/${esc(angela.avatar_asset)}" alt="" />
          <a class="btn btn-ghost" href="${exportBase}md" download>${esc(angela.display_name)} - .md</a>
          <a class="btn btn-ghost" href="${exportBase}html" download>printable .html</a>
@@ -868,6 +915,277 @@ async function renderSummaryInto(containerId, templateId, targetId, button) {
   } finally {
     button.disabled = false;
   }
+}
+
+/* --- Edited documents (the editing engine's surface, 2026-07-16) ---
+ *
+ * Templates stay living; a saved document is the manager's clean
+ * notebook. It never changes on its own: the delta with the moving
+ * memory arrives as PROPOSALS, Dwight revises as a pure reviser, and
+ * every change he proposes shows as a computed diff - validate at a
+ * glance (owner request). Same engine for Desk and Pam cards; Oscar
+ * will consume it too. */
+
+function mdFromSummary(result) {
+  return result.sections
+    .map((section) => `## ${section.heading}\n\n${section.content}`)
+    .join("\n\n");
+}
+
+/* Markdown -> folding sections. Native <details> is the accordion:
+ * fold a section once it is covered in the 1:1 (owner request). */
+function renderDocBody(md) {
+  const parts = md.split(/^## /m);
+  const intro = parts[0].trim()
+    ? `<p class="summary-text">${esc(parts[0].trim()).replace(/\n/g, "<br />")}</p>`
+    : "";
+  const sections = parts
+    .slice(1)
+    .map((part) => {
+      const newline = part.indexOf("\n");
+      const heading = newline === -1 ? part : part.slice(0, newline);
+      const body = newline === -1 ? "" : part.slice(newline + 1).trim();
+      return `
+        <details class="doc-section" open>
+          <summary>${esc(heading.trim())}</summary>
+          <p class="summary-text">${esc(body).replace(/\n/g, "<br />")}</p>
+        </details>`;
+    })
+    .join("");
+  return intro + sections;
+}
+
+/* The review diff, computed server-side (difflib): insertions
+ * highlighted, deletions struck through. Never stored. */
+function renderDiff(spans) {
+  return spans
+    .map((span) => {
+      const text = esc(span.text).replace(/\n/g, "<br />");
+      if (span.op === "insert") return `<span class="diff-ins">${text}</span>`;
+      if (span.op === "delete") return `<span class="diff-del">${text}</span>`;
+      return text;
+    })
+    .join("");
+}
+
+async function saveSummaryAsDocument(result) {
+  const title = [result.title, result.target_label].filter(Boolean).join(" - ");
+  return api("/documents", {
+    method: "POST",
+    body: JSON.stringify({
+      title,
+      template_key: result.template_id,
+      target_entity_type: result.target_type,
+      target_entity_id: result.target_id,
+      content_md: mdFromSummary(result),
+      generated_at: result.generated_at,
+    }),
+  });
+}
+
+async function loadMyDocs() {
+  const container = document.getElementById("desk-out-mydocs");
+  if (!container) return;
+  try {
+    const docs = await api("/documents");
+    if (!docs.length) {
+      show("desk-out-mydocs",
+        `<p class="silent-line">Nothing saved yet - generate a document above and keep it.</p>`);
+      return;
+    }
+    show(
+      "desk-out-mydocs",
+      docs
+        .map((doc) => {
+          const news = doc.news_count
+            ? `<span class="chip news">${doc.news_count} new since your edit</span>`
+            : "";
+          return `
+            <div class="doc-row doc-open" data-open-doc="${doc.id}" role="button" tabindex="0">
+              <span class="source-text"><strong>${esc(doc.title)}</strong></span>
+              ${news}
+              <span class="source-date">edited ${doc.updated_at.slice(0, 10)}</span>
+            </div>`;
+        })
+        .join("")
+    );
+  } catch (error) {
+    show("desk-out-mydocs", `<div class="error-banner">${esc(error.message)}</div>`);
+  }
+}
+
+function newsRow(segment, index) {
+  return `
+    <div class="doc-row">
+      <input type="checkbox" checked data-news-pick value="${segment.segment_id}"
+             id="news-${index}" />
+      <label class="source-text" for="news-${index}">${esc(segment.content)}</label>
+      <span class="source-date">${segment.created_at.slice(0, 10)}</span>
+    </div>`;
+}
+
+async function openEditor(docId) {
+  const container = document.getElementById("desk-out-mydocs");
+  show("desk-out-mydocs", `<p class="thinking">Opening your document</p>`);
+  try {
+    const [doc, delta] = await Promise.all([
+      api(`/documents/${docId}`),
+      api(`/documents/${docId}/delta`),
+    ]);
+    state.editorDoc = doc;
+    const dwight = character("dwight");
+    const news = delta.segments.length
+      ? `<div class="news-panel">
+           <p class="sources-title">The memory moved since your edit - ${delta.segments.length} validated point${delta.segments.length > 1 ? "s" : ""} about this subject</p>
+           ${delta.segments.map(newsRow).join("")}
+           <div class="form-row">
+             <input type="text" id="news-instruction"
+                    placeholder="Optional: where or how to weave them in" />
+             <button class="btn btn-primary" data-doc-weave>Weave in with ${esc(dwight.display_name)}</button>
+             <button class="btn btn-ghost" data-doc-dismiss
+                     title="They stay in the team memory - they just stop knocking here.">Dismiss</button>
+           </div>
+         </div>`
+      : "";
+    show(
+      "desk-out-mydocs",
+      `<div class="editor-head">
+         <button class="linklike" data-doc-back>&larr; My documents</button>
+         <p class="summary-subtitle">${esc(doc.title)} - saved ${doc.updated_at.slice(0, 10)}.
+           Your document: it never changes on its own.</p>
+       </div>
+       ${news}
+       <div class="answer-card summary-card" id="doc-body">${renderDocBody(doc.content_md)}</div>
+       <div id="doc-proposal"></div>
+       <div class="form-row" id="doc-actions">
+         <input type="text" id="doc-instruction"
+                placeholder="What should ${esc(dwight.display_name)} change?" />
+         <button class="btn btn-primary" data-doc-revise>Edit with ${esc(dwight.display_name)}</button>
+         <button class="btn btn-ghost" data-doc-manual>Edit manually</button>
+       </div>
+       <div id="doc-manual" hidden>
+         <textarea id="doc-manual-text" rows="14"></textarea>
+         <div class="form-row">
+           <button class="btn btn-primary" data-doc-manual-save>Save</button>
+           <button class="btn btn-ghost" data-doc-manual-cancel>Cancel</button>
+         </div>
+       </div>`
+    );
+    document.getElementById("doc-manual-text").value = doc.content_md;
+  } catch (error) {
+    show("desk-out-mydocs", `<div class="error-banner">${esc(error.message)}</div>`);
+  }
+}
+
+function renderProposal(revision, fromNews) {
+  state.editorProposal = { content_md: revision.content_md, fromNews };
+  const dwight = character("dwight");
+  show(
+    "doc-proposal",
+    `<div class="answer-card proposal-card">
+       <p class="sources-title">${esc(dwight.display_name)}'s proposal - his changes, computed, nothing saved yet</p>
+       <p class="summary-text diff-text">${renderDiff(revision.diff)}</p>
+       <div class="card-actions">
+         <button class="btn btn-validate" data-doc-keep>Keep it</button>
+         <button class="btn btn-reject" data-doc-discard>Discard</button>
+       </div>
+     </div>`
+  );
+}
+
+async function reviseDocument(instruction, segmentIds, button) {
+  const dwight = character("dwight");
+  button.disabled = true;
+  show("doc-proposal", `<p class="thinking">${esc(dwight.display_name)} is revising</p>`);
+  try {
+    const revision = await api(`/documents/${state.editorDoc.id}/revise`, {
+      method: "POST",
+      body: JSON.stringify({ instruction, include_segment_ids: segmentIds }),
+    });
+    renderProposal(revision, segmentIds.length > 0);
+  } catch (error) {
+    show("doc-proposal", `<div class="error-banner">${esc(error.message)}</div>`);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/* One delegated handler for every editor gesture (desk-body onclick
+ * routes here). Returns true when the click was an editor action. */
+async function handleEditorClick(target) {
+  if (target.matches("[data-open-doc]")) {
+    await openEditor(Number(target.dataset.openDoc));
+    return true;
+  }
+  if (target.matches("[data-doc-back]")) {
+    state.editorDoc = null;
+    await loadMyDocs();
+    return true;
+  }
+  if (target.matches("[data-doc-dismiss]")) {
+    target.disabled = true;
+    await api(`/documents/${state.editorDoc.id}/mark-reviewed`, { method: "POST" });
+    await openEditor(state.editorDoc.id);
+    return true;
+  }
+  if (target.matches("[data-doc-weave]")) {
+    const picked = [...document.querySelectorAll("[data-news-pick]:checked")]
+      .map((box) => Number(box.value));
+    if (!picked.length) return true;
+    const instruction =
+      document.getElementById("news-instruction").value.trim() ||
+      "Weave the selected new points into the right sections.";
+    await reviseDocument(instruction, picked, target);
+    return true;
+  }
+  if (target.matches("[data-doc-revise]")) {
+    const instruction = document.getElementById("doc-instruction").value.trim();
+    if (!instruction) return true;
+    await reviseDocument(instruction, [], target);
+    return true;
+  }
+  if (target.matches("[data-doc-keep]")) {
+    target.disabled = true;
+    const proposal = state.editorProposal;
+    await api(`/documents/${state.editorDoc.id}/save`, {
+      method: "POST",
+      body: JSON.stringify({ content_md: proposal.content_md }),
+    });
+    if (proposal.fromNews) {
+      // The woven news is triaged: advance the bookmark in the same
+      // gesture, the rest of the delta was the manager's to leave out.
+      await api(`/documents/${state.editorDoc.id}/mark-reviewed`, { method: "POST" });
+    }
+    await openEditor(state.editorDoc.id);
+    return true;
+  }
+  if (target.matches("[data-doc-discard]")) {
+    state.editorProposal = null;
+    show("doc-proposal", "");
+    return true;
+  }
+  if (target.matches("[data-doc-manual]")) {
+    document.getElementById("doc-manual").hidden = false;
+    document.getElementById("doc-actions").hidden = true;
+    return true;
+  }
+  if (target.matches("[data-doc-manual-cancel]")) {
+    document.getElementById("doc-manual").hidden = true;
+    document.getElementById("doc-actions").hidden = false;
+    return true;
+  }
+  if (target.matches("[data-doc-manual-save]")) {
+    target.disabled = true;
+    await api(`/documents/${state.editorDoc.id}/save`, {
+      method: "POST",
+      body: JSON.stringify({
+        content_md: document.getElementById("doc-manual-text").value,
+      }),
+    });
+    await openEditor(state.editorDoc.id);
+    return true;
+  }
+  return false;
 }
 
 /* --- Manager: Meet Toby (team health) --- */
@@ -1293,11 +1611,26 @@ async function init() {
   bindDwightOverlay();
   bindPamArchive();
   document.getElementById("pam-form").addEventListener("submit", submitPam);
-  document.getElementById("pam-thread").addEventListener("click", (event) => {
+  document.getElementById("pam-thread").addEventListener("click", async (event) => {
     if (event.target.matches("[data-open-dwight]")) {
       // One sheet at a time: Dwight was opening BEHIND Pam (QA 2026-07-14).
       document.getElementById("pam-overlay").hidden = true;
       openOverlay("dwight-overlay");
+    }
+    if (event.target.matches("[data-save-pam]")) {
+      const summary = state.pamSummaries[Number(event.target.dataset.savePam)];
+      if (!summary) return;
+      event.target.disabled = true;
+      try {
+        const doc = await saveSummaryAsDocument(summary);
+        // Land on the Desk, editor open: one sheet at a time here too.
+        document.getElementById("pam-overlay").hidden = true;
+        state.editorOpenId = doc.id;
+        switchView("desk");
+      } catch (error) {
+        event.target.disabled = false;
+        alert(error.message);
+      }
     }
   });
   document.getElementById("twss").addEventListener("click", (event) => {

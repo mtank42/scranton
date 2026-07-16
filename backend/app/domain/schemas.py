@@ -473,6 +473,10 @@ class SummaryResponse(BaseModel):
     template_id: str
     title: str
     target_label: str | None
+    # The target as ids, not just a label: what the save gesture needs
+    # to persist an edited document (editing session, 2026-07-16).
+    target_type: str | None = None
+    target_id: int | None = None
     generated_at: datetime
     window_days: int | None
     sections: list[SummarySection]
@@ -664,6 +668,98 @@ class DocumentClassify(BaseModel):
 
     entity_type: Literal[EntityType.CLIENT, EntityType.PROJECT]
     entity_id: int
+
+
+# --- Edited documents API surface (document-editing session, 2026-07-16) ---
+
+
+class EditedDocumentCreate(BaseModel):
+    """Request body for POST /api/v1/documents: persist a generation.
+
+    The first save is the human gesture that turns a living template
+    output into the manager's own document.
+    """
+
+    title: str = Field(min_length=1, max_length=300)
+    template_key: str = Field(min_length=1, max_length=50)
+    target_entity_type: EntityType | None = None
+    target_entity_id: int | None = None
+    content_md: str = Field(min_length=1)
+    generated_at: datetime
+
+
+class EditedDocumentUpdate(BaseModel):
+    """Request body for POST /api/v1/documents/{id}/save: a re-edit."""
+
+    content_md: str = Field(min_length=1)
+
+
+class EditedDocumentOut(BaseModel):
+    """One persisted document; news_count is the delta badge."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    template_key: str
+    target_entity_type: EntityType | None
+    target_entity_id: int | None
+    content_md: str
+    generated_at: datetime
+    created_at: datetime
+    updated_at: datetime
+    memory_reviewed_at: datetime
+    # Validated segments about the target since memory_reviewed_at.
+    news_count: int = 0
+
+
+class DocumentDelta(BaseModel):
+    """What's new for one document: the proposals to triage."""
+
+    document_id: int
+    segments: list[PamSource]
+
+
+class DocumentReviseRequest(BaseModel):
+    """Request body for POST /api/v1/documents/{id}/revise.
+
+    The context travels with the instruction (owner decision,
+    2026-07-14): the service hands Dwight the current document, the
+    instruction, and the selected news segments - never a bare order.
+    """
+
+    instruction: str = Field(min_length=1)
+    include_segment_ids: list[int] = []
+
+
+class DiffSpan(BaseModel):
+    """One span of the review diff: how the proposal differs.
+
+    Computed with difflib, never self-reported by the model: the
+    highlighting is guaranteed by the computation (owner request,
+    2026-07-16 - see at a glance what Dwight changed).
+    """
+
+    op: Literal["equal", "insert", "delete"]
+    text: str
+
+
+class DocumentRevision(BaseModel):
+    """Response for the revise endpoint: a PROPOSAL, nothing persisted.
+
+    Saving the proposal is a separate explicit gesture (the /save
+    endpoint): the AI proposes, the human decides.
+    """
+
+    document_id: int
+    content_md: str
+    diff: list[DiffSpan]
+
+
+class DwightRevision(BaseModel):
+    """The contract the model must honor for a document revision."""
+
+    content_md: str
 
 
 # --- Ingestion API surface ---

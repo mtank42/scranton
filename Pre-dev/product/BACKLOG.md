@@ -30,8 +30,22 @@ entrée font foi. En résumé :
 
 ## Édition des documents via Dwight — la touche finale du manager
 
+> **LIVRÉ (session 2026-07-16, `docs/document_editing.md`, 166 tests
+> verts, use case joué en navigateur avec vraie Mistral).** Décisions
+> de session actées ci-dessous. Le use case a accouché de l'option (d)
+> du owner : le document rouvre intact, les nouveautés sont PRÉSENTÉES
+> (delta déterministe depuis le marque-page `memory_reviewed_at`) et
+> triées par dialogue ; révision Dwight réviseur pur rendue en DIFF
+> CALCULÉ (difflib — demande owner : visualiser les modifs d'un coup
+> d'œil, généralisé dans le moteur) ; « dernier état seul », markdown
+> un bloc, accordéon natif `<details>`. Exception personnes actée :
+> les documents ciblant un membre (brief 1:1, annual review) n'entrent
+> JAMAIS au corpus Darryl. Reste pour d'autres sessions : exports des
+> documents édités (session Exports & partage), scoping des surfaces
+> (session identité), Oscar consommera le moteur.
+
 **Catégorie** : Michael's Desk / Ask Pam / Dwight
-**Priorité** : **PROCHAINE GROSSE SESSION** (arbitrage owner, QA 2026-07-14 : « le manager n'a aucun moyen de modifier ce qu'il reçoit, c'est inutilisable »)
+**Priorité** : ~~PROCHAINE GROSSE SESSION~~ **FAIT** (arbitrage owner, QA 2026-07-14 : « le manager n'a aucun moyen de modifier ce qu'il reçoit, c'est inutilisable »)
 **Origine** : première passe QA du produit recadré — les documents générés (agenda, brief 1:1, annual review, templates Pam) sont en lecture seule.
 
 ### Description

@@ -500,3 +500,42 @@ class DocumentTag(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     document: Mapped[Document] = relationship(back_populates="tags")
+
+
+# --- Edited documents (document-editing session, 2026-07-16) ---
+
+
+class EditedDocument(Base):
+    """A generated document the manager made his own.
+
+    Templates stay LIVING (recomputed on demand); the first edit turns
+    one generation into this persisted snapshot - the manager's clean
+    notebook. It never changes on its own: the gap with the moving
+    memory is PRESENTED as proposals (segments validated after
+    memory_reviewed_at) and only a manager gesture weaves them in.
+    Last state only (owner arbitration, 2026-07-16): no version
+    history in V1.
+    """
+
+    __tablename__ = "edited_documents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(300))
+    # The origin template (summary_service registry key): what to show
+    # and which sections shaped the document.
+    template_key: Mapped[str] = mapped_column(String(50))
+    # The subject. Client/project documents also feed Darryl's corpus;
+    # person-targeted ones NEVER do (people never flow through Pam -
+    # owner arbitration, 2026-07-16). Null for team-wide templates.
+    target_entity_type: Mapped[EntityType | None] = mapped_column(as_db_enum(EntityType))
+    target_entity_id: Mapped[int | None]
+    # THE document: clean markdown, review highlights are never stored.
+    content_md: Mapped[str] = mapped_column(Text)
+    # When the original generation happened (the memory it started from).
+    generated_at: Mapped[datetime]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+    # The bookmark: validated segments about the target created after
+    # this moment are 'what's new' at the next opening. Dismissed news
+    # is dismissed for good - it stays in Pam's memory regardless.
+    memory_reviewed_at: Mapped[datetime] = mapped_column(default=utcnow)

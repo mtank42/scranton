@@ -26,9 +26,10 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
 
 1. **Never write code without an explicit "go".** Surface options first.
 2. **Never modify the validated data model** (`SCRANTON_CONTEXT.md` §5:
-   9 tables + the 3 Darryl tables, session 2026-07-15) without a
-   dedicated session. Mapping it to the ORM is fine; adding/renaming
-   fields is not.
+   9 tables + the 3 Darryl tables, session 2026-07-15 + the
+   `edited_documents` table, session 2026-07-16) without a dedicated
+   session. Mapping it to the ORM is fine; adding/renaming fields is
+   not.
 3. **Honor the seams** - never hardcode a provider, a data source, a
    vector store, or a character name/avatar. Each lives behind an
    interface or a config map.
@@ -121,6 +122,20 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
   `summary_service.py`). Gathering is **exhaustive SQL over tags, not
   vector top-k** (a file wants everything; search would truncate). A new
   template is a registry entry, not a code path.
+- **An edited document never changes on its own** (editing session,
+  2026-07-16, `docs/document_editing.md`). Templates stay living; the
+  first save persists a snapshot (`edited_documents`, last state only).
+  The memory's movement is PRESENTED as delta proposals (segments newer
+  than `memory_reviewed_at`), never applied; Dwight revises as a PURE
+  reviser (doc + instruction + selected excerpts, zero memory access)
+  and his changes return as a difflib-COMPUTED diff, never
+  self-reported. Saving a client/project document files it into
+  Darryl's corpus (source `scranton`, manager tag 1.0);
+  **person-targeted documents never enter the corpus** (people never
+  flow through Pam). Darryl's sync excludes `source='scranton'` rows -
+  removing that filter would soft-delete every saved document. The
+  engine (`editing_service.py`) is surface-independent: Oscar consumes
+  it next.
 - **Entity routing is closed-world**: Dwight may only tag entities from
   the roster injected into its prompt. Unknown names are dropped.
 
@@ -221,14 +236,17 @@ utile / agréable). **DARRYL L'ARCHIVISTE SHIPPED the same day** (the
 full session: data model, pipeline, one Pam over two badged memories
 with clickable links, the archive strip in the Pam overlay, seed demo
 corpus, owner arbitrations recorded in BACKLOG). Reference:
-`docs/darryl.md`. **Next session: document editing** (indispensable
-number 2, decisions taken: persisted edits, "Edit manually" alongside
-Dwight, context travels; needs its data model slot). The nécessaire
-tier: manager identity/admin & onboarding, Dwight entity suggestions,
-exports & partage. Celebrations overhaul is the agréable tier (TWSS
-and Maire stay off until then). Note for the identity session: the
-Pam overlay archive strip (sync, filing) is currently visible to both
-roles - scoping it to the manager belongs to the roles/identity work.
+`docs/darryl.md`. **DOCUMENT EDITING SHIPPED 2026-07-16** (the full
+session: `edited_documents` table, surface-independent engine, delta
+proposals, pure-reviser Dwight with computed diff, person exception,
+Pam-overlay history strip, first real-Drive sync - owner arbitrations
+in BACKLOG, reference `docs/document_editing.md`). The nécessaire
+tier is next: manager identity/admin & onboarding, Oscar (replaces
+Dwight entity suggestions), exports & partage. Celebrations overhaul
+is the agréable tier (TWSS and Maire stay off until then). Notes for
+the identity session: the Pam overlay strips (sync, filing, note
+history) and the Desk "My documents" are currently visible per view
+role only - proper scoping belongs to the roles/identity work.
 
 **Succession (2026-07-12)**: the owner passed the baton from Fable to
 Opus; the former "pure Fable repo" rule is lifted - build ON this

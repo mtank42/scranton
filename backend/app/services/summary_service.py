@@ -263,7 +263,7 @@ class SummaryService:
         if not sources and not extra_context:
             # Honest and free: no material means an empty file, not an
             # invented one - and zero completion tokens.
-            return self._empty_summary(template, target_label)
+            return self._empty_summary(template, target_label, target_id)
 
         context_lines = [
             f"[{i}] ({source.created_at:%Y-%m-%d}) {source.content}"
@@ -289,6 +289,8 @@ class SummaryService:
             template_id=template.id,
             title=template.title,
             target_label=target_label,
+            target_type=template.target,
+            target_id=target_id if template.target else None,
             generated_at=datetime.now(timezone.utc),
             window_days=template.window_days,
             sections=summary.sections,
@@ -392,13 +394,15 @@ class SummaryService:
 
     @staticmethod
     def _empty_summary(
-        template: SummaryTemplate, target_label: str | None
+        template: SummaryTemplate, target_label: str | None, target_id: int | None = None
     ) -> SummaryResponse:
         """Every section honestly empty, no model call."""
         return SummaryResponse(
             template_id=template.id,
             title=template.title,
             target_label=target_label,
+            target_type=template.target,
+            target_id=target_id if template.target else None,
             generated_at=datetime.now(timezone.utc),
             window_days=template.window_days,
             sections=[

@@ -891,3 +891,41 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
   .viewnav { overflow-x: auto; }
   .role-switch { margin-left: 0; }
 }
+
+/* --- Edited documents: the editor (2026-07-16) --- */
+
+.doc-open { cursor: pointer; }
+.doc-open:hover .source-text { color: var(--cyan); }
+
+.editor-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.editor-head .linklike { align-self: flex-start; }
+
+.news-panel {
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.news-panel .form-row { margin-top: 10px; }
+.news-panel input[type="checkbox"] { accent-color: var(--cyan); }
+.chip.news { color: var(--cyan); border-color: var(--cyan); }
+
+/* Folding sections: the accordion is native <details>. */
+.doc-section { border-bottom: 1px solid var(--grey); padding: 4px 0; }
+.doc-section summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--yellow);
+  padding: 6px 0;
+}
+.doc-section[open] summary { color: var(--white); }
+
+/* The review diff: what Dwight changed, computed, at a glance. */
+.diff-ins { background: rgba(0, 200, 83, 0.18); color: var(--green); border-radius: 3px; }
+.diff-del { background: rgba(230, 57, 70, 0.14); color: var(--red); text-decoration: line-through; border-radius: 3px; }
+.proposal-card { border-color: var(--purple); margin-top: 12px; }
+
+#doc-manual textarea { width: 100%; margin-top: 10px; font-family: var(--mono); font-size: 13px; }
+#doc-actions { margin-top: 12px; }
+#doc-actions input[type="text"] { flex: 1; }

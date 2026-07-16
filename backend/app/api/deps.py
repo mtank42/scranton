@@ -13,6 +13,7 @@ from backend.app.config import get_settings
 from backend.app.services.angela_service import AngelaService
 from backend.app.services.darryl_service import DarrylService
 from backend.app.services.dwight_service import DwightService
+from backend.app.services.editing_service import EditingService
 from backend.app.services.handover_service import HandoverService
 from backend.app.services.ingestion_service import IngestionService
 from backend.app.services.mood_service import MoodService
@@ -82,6 +83,20 @@ def get_darryl_service(request: Request) -> DarrylService:
         # The routing floor is configuration (DARRYL_MIN_CONFIDENCE),
         # a tuning lever like PAM_MIN_SCORE.
         min_confidence=settings.darryl_min_confidence,
+    )
+
+
+def get_editing_service(request: Request) -> EditingService:
+    """Build the document-editing engine on top of Darryl's archivist.
+
+    The engine decides IF a document is filed to the corpus (the person
+    exception lives there); Darryl knows HOW.
+    """
+    state = request.app.state
+    return EditingService(
+        llm=state.llm,
+        session_factory=state.session_factory,
+        darryl=get_darryl_service(request),
     )
 
 
