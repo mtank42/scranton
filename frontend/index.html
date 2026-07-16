@@ -75,6 +75,10 @@
           <h2 id="dwight-title"></h2>
           <p class="view-sub">Type anything. Dwight structures it silently; you decide what enters the memory.</p>
         </div>
+        <!-- Display only: the notes and decisions are already safe in
+             the base, this just declutters the panel (owner, QA
+             2026-07-16). -->
+        <button class="btn btn-ghost erase-panel" data-erase="dwight-result">Erase panel content</button>
         <button class="btn btn-ghost sheet-close" data-close>Close</button>
       </div>
       <div id="dwight-result"></div>
@@ -98,6 +102,7 @@
           <h2 id="pam-title"></h2>
           <p class="view-sub">Plain-language questions over everything validated. Grounded answers, sources included.</p>
         </div>
+        <button class="btn btn-ghost erase-panel" data-erase="pam-thread">Erase panel content</button>
         <button class="btn btn-ghost sheet-close" data-close>Close</button>
       </div>
       <!-- Darryl's strip (2026-07-15): the archivist works in the
@@ -112,6 +117,23 @@
           <button type="button" class="btn btn-ghost" data-close>Done</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Document preview (owner, QA 2026-07-16: read before filing).
+       Shows the extracted text straight from the base - exactly what
+       Pam reasons over - with the Drive link to the original. Stacks
+       ABOVE the Pam sheet: closing it lands back on the thread. -->
+  <div class="overlay" id="doc-overlay" hidden>
+    <div class="sheet">
+      <div class="sheet-head">
+        <div>
+          <h2 id="doc-preview-title"></h2>
+          <p class="view-sub" id="doc-preview-meta"></p>
+        </div>
+        <button class="btn btn-ghost sheet-close" data-close>Close</button>
+      </div>
+      <div id="doc-preview-body"></div>
     </div>
   </div>
 

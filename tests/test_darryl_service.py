@@ -348,3 +348,30 @@ def test_recent_and_unclassified_surfaces(session_factory, roster):
 
     assert len(recent) == 2
     assert [d.title for d in binned] == ["mystery.pdf"]
+
+
+def test_detail_returns_extracted_text(session_factory, roster):
+    """The preview: chunks re-read from SQLite, joined in order."""
+    service, llm, store = build_service(session_factory, FakeDocumentSource([source_doc()]))
+    service.sync()
+    with session_factory() as session:
+        document_id = session.query(Document).one().id
+
+    detail = service.detail(document_id)
+
+    assert detail.title == "Rapport_SEO_mars.pdf"
+    assert "Organic traffic grew 12 percent." in detail.content
+
+
+def test_detail_catalog_only_has_no_content(session_factory, roster):
+    """A spreadsheet previews as None: known by name and link only."""
+    xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    source = FakeDocumentSource(
+        [source_doc(title="Suivi.xlsx", mime_type=xlsx, text=None)]
+    )
+    service, llm, store = build_service(session_factory, source)
+    service.sync()
+    with session_factory() as session:
+        document_id = session.query(Document).one().id
+
+    assert service.detail(document_id).content is None

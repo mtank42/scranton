@@ -115,13 +115,23 @@ documentary memory directly.
 The strip under the Pam sheet head became the HISTORY strip (owner,
 2026-07-15): the five last Dwight notes (raw note snippet + a
 `validated/total` segment counter) ABOVE the five last ingested
-documents (routing badges, `older version` chip, link when there is
-one), the bin behind a one-line toggle, the one-click "file it" picker
-(closed world: known clients and projects), and the Sync button. One
-"Show more" button unfolds 10 more of EACH memory (endpoints
+documents (routing badges, `older version` chip), the bin behind a
+one-line toggle, the one-click "file it" picker (closed world: known
+clients and projects), and the Sync button. Each memory has its OWN
+"Show more" line (owner, QA 2026-07-16) unfolding 10 more (endpoints
 `/dwight/entries/recent` and `/darryl/documents/recent`, limit +
 offset); reopening the overlay folds back to 5. Any strip error hides
 it and never blocks Pam.
+
+**Document preview** (owner, QA 2026-07-16: classify nothing you
+cannot open). Every document title - strip, bin, Pam's cited sources -
+opens an in-app preview sheet (`GET /darryl/documents/{id}`): the
+extracted text re-read from `document_chunks`, exactly what Pam
+reasons over, plus folder, date, routing chips and the "Open in Drive"
+link when the source has one. Scranton never renders original formats:
+text for understanding, Drive for the faithful original. Catalog-only
+formats (spreadsheets) preview as their catalog card - their single
+indexed chunk is bait for Pam, not content.
 
 ## Demo
 

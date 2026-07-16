@@ -645,6 +645,18 @@ class DocumentOut(BaseModel):
     tags: list[DocumentTagOut]
 
 
+class DocumentDetail(DocumentOut):
+    """One document with its extracted text: the preview surface.
+
+    content is re-read from SQLite (document_chunks, the source of
+    truth) - the preview shows exactly what Pam reasons over. None for
+    catalog-only formats (spreadsheets) and failed extractions: those
+    are known by name and link only, the Drive link is the way in.
+    """
+
+    content: str | None = None
+
+
 class DarrylSyncReport(BaseModel):
     """Response for POST /api/v1/darryl/sync: what one pass did.
 

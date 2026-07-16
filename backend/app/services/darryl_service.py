@@ -42,7 +42,12 @@ from backend.app.domain.models import (
     Project,
     utcnow,
 )
-from backend.app.domain.schemas import DarrylRouting, DarrylSyncReport, DocumentOut
+from backend.app.domain.schemas import (
+    DarrylRouting,
+    DarrylSyncReport,
+    DocumentDetail,
+    DocumentOut,
+)
 from backend.app.services.llm_json import LLMContractError, complete_validated
 from backend.app.services.prompts import build_darryl_messages
 
@@ -549,3 +554,24 @@ class DarrylService:
                 .order_by(Document.ingested_at.desc(), Document.id.desc())
             ).all()
             return [DocumentOut.model_validate(document) for document in documents]
+
+    def detail(self, document_id: int) -> DocumentDetail:
+        """One document with its extracted text: the preview.
+
+        The manager reads before filing (owner, QA 2026-07-16: classify
+        nothing you cannot open). Text comes from document_chunks, the
+        source of truth - what the preview shows IS what Pam sees.
+        Catalog-only formats preview as None: their single chunk is a
+        catalog card written for the index, not document content.
+        """
+        with self.session_factory() as session:
+            document = session.get(Document, document_id)
+            if document is None or document.deleted_at is not None:
+                raise DocumentNotFoundError(f"No document with id {document_id}.")
+            detail = DocumentDetail.model_validate(document)
+            if not is_catalog_only(document.mime_type):
+                content = "\n\n".join(
+                    chunk.content for chunk in document.chunks if chunk.content
+                )
+                detail.content = content or None
+            return detail

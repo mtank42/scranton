@@ -9,7 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.adapters.ingestion.gdrive import MissingCredentialsError
 from backend.app.api.deps import get_darryl_service
-from backend.app.domain.schemas import DarrylSyncReport, DocumentClassify, DocumentOut
+from backend.app.domain.schemas import (
+    DarrylSyncReport,
+    DocumentClassify,
+    DocumentDetail,
+    DocumentOut,
+)
 from backend.app.services.darryl_service import (
     DarrylService,
     DocumentNotFoundError,
@@ -50,6 +55,20 @@ def unclassified_documents(
 ) -> list[DocumentOut]:
     """The bin: documents Darryl refused to bet on, awaiting the manager."""
     return service.unclassified()
+
+
+# Declared AFTER the literal /documents/... routes: FastAPI matches in
+# declaration order and 'recent' must never be parsed as a document id.
+@router.get("/documents/{document_id}", response_model=DocumentDetail)
+def document_detail(
+    document_id: int,
+    service: DarrylService = Depends(get_darryl_service),
+) -> DocumentDetail:
+    """One document with its extracted text: the preview surface."""
+    try:
+        return service.detail(document_id)
+    except DocumentNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
 
 @router.post("/documents/{document_id}/classify", response_model=DocumentOut)

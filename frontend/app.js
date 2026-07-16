@@ -186,6 +186,11 @@ function bindOverlays() {
       if (event.target === overlay || event.target.matches("[data-close]")) {
         overlay.hidden = true;
       }
+      // Display only (owner, QA 2026-07-16): notes, decisions and
+      // answers are already safe in the base - this declutters.
+      if (event.target.matches("[data-erase]")) {
+        document.getElementById(event.target.dataset.erase).innerHTML = "";
+      }
     });
   });
 }
@@ -334,7 +339,11 @@ async function submitDwight(event) {
       // The privacy acknowledgment (personal info left out, said out
       // loud) reads like Dwight talking, whether segments came or not.
       const privacy = answer.privacy_note ? dwightBubble(answer.privacy_note) : "";
-      block.innerHTML = (answer.segments.length ? renderSegments(answer.segments) : "") + privacy;
+      // The note itself stays on screen above the proposals (owner, QA
+      // 2026-07-16): input and output side by side, comparable.
+      block.innerHTML =
+        `<div class="thread">${managerBubble(input.value)}</div>` +
+        (answer.segments.length ? renderSegments(answer.segments) : "") + privacy;
     }
     input.value = "";
     input.placeholder = "Anything else to tell Dwight?";
@@ -464,9 +473,12 @@ function sourceRow(source, index) {
   // Two memories, two badges (session 2026-07-15): a validated team
   // note, or a shared document with the link back to the original.
   const isDoc = source.kind === "document";
+  // A document source opens the in-app preview (owner, QA 2026-07-16:
+  // direct access to the cited document); Drive stays one click away
+  // inside it.
   const docName = isDoc
-    ? (source.link
-        ? `<a class="doc-link" href="${esc(source.link)}" target="_blank" rel="noopener">${esc(source.title)}</a>`
+    ? (source.document_id
+        ? `<button class="doc-preview-link" data-doc-preview="${source.document_id}">${esc(source.title)}</button>`
         : `<strong>${esc(source.title)}</strong>`) + " - "
     : "";
   const badge = isDoc
@@ -512,10 +524,7 @@ function noteRow(entry) {
     </div>`;
 }
 
-function docBadges(doc) {
-  if (doc.status === "unclassified") {
-    return `<button class="htag not-filed" data-classify="${doc.id}">not filed - file it</button>`;
-  }
+function docTagChips(doc) {
   return doc.tags
     .map((tag) => {
       const name = state.labels[tag.entity_type]?.[tag.entity_id]
@@ -525,11 +534,18 @@ function docBadges(doc) {
     .join("");
 }
 
+function docBadges(doc) {
+  if (doc.status === "unclassified") {
+    return `<button class="htag not-filed" data-classify="${doc.id}">not filed - file it</button>`;
+  }
+  return docTagChips(doc);
+}
+
 function docRow(doc) {
   const date = doc.modified_at ? doc.modified_at.slice(0, 10) : "";
-  const title = doc.web_view_link
-    ? `<a class="doc-link" href="${esc(doc.web_view_link)}" target="_blank" rel="noopener">${esc(doc.title)}</a>`
-    : esc(doc.title);
+  // The title opens the in-app preview (owner, QA 2026-07-16: read
+  // before filing); the Drive link now lives inside the preview.
+  const title = `<button class="doc-preview-link" data-doc-preview="${doc.id}">${esc(doc.title)}</button>`;
   const version = doc.is_latest ? "" : `<span class="chip">older version</span>`;
   return `
     <div class="doc-row">
@@ -576,29 +592,32 @@ async function loadPamArchive(reset = false) {
     const rows = recent.length
       ? recent.map(docRow).join("")
       : `<p class="silent-line">No documents in the archive yet - share a folder and sync.</p>`;
-    const binButton = bin.length
-      ? `<button class="linklike" data-bin-toggle>${bin.length} document${bin.length > 1 ? "s" : ""} not filed - open the bin</button>`
+    // One 'Show more' PER memory (owner, QA 2026-07-16), each on its
+    // own line; a full page means there may be more below.
+    const noteMore = notes.length === historyDepth.notes
+      ? `<div class="strip-foot"><button class="linklike" data-history-more="notes">Show more notes</button></div>`
       : "";
-    // A full page means there may be more below: keep the button as
-    // long as either memory could go deeper.
-    const moreButton =
-      notes.length === historyDepth.notes || recent.length === historyDepth.docs
-        ? `<button class="linklike" data-history-more>Show more</button>`
-        : "";
+    const docMore = recent.length === historyDepth.docs
+      ? `<div class="strip-foot"><button class="linklike" data-history-more="docs">Show more documents</button></div>`
+      : "";
+    const binLine = bin.length
+      ? `<div class="strip-foot"><button class="linklike" data-bin-toggle>${bin.length} document${bin.length > 1 ? "s" : ""} not filed - open the bin</button></div>`
+      : "";
     container.innerHTML = `
       <div class="archive-head">
         <p class="sources-title">Last notes to ${esc(dwight.display_name)}</p>
       </div>
       ${noteRows}
+      ${noteMore}
       <div class="archive-head">
         <p class="sources-title">${esc(darryl.display_name)} filed these recently</p>
         <button class="btn btn-ghost" data-darryl-sync>Sync the shared folder</button>
       </div>
       <p class="thinking-none" id="archive-feedback"></p>
       ${rows}
-      ${binButton}
+      ${binLine}
       <div class="bin-rows" id="bin-rows" hidden>${bin.map(docRow).join("")}</div>
-      ${moreButton}`;
+      ${docMore}`;
     container.hidden = false;
   } catch {
     container.hidden = true;
@@ -617,10 +636,8 @@ function bindPamArchive() {
       return;
     }
     if (target.matches("[data-history-more]")) {
-      historyDepth = {
-        notes: historyDepth.notes + HISTORY_STEP,
-        docs: historyDepth.docs + HISTORY_STEP,
-      };
+      // Only the clicked memory unfolds: the strips grow independently.
+      historyDepth[target.dataset.historyMore] += HISTORY_STEP;
       await loadPamArchive();
       return;
     }
@@ -663,6 +680,46 @@ function bindPamArchive() {
       }
     }
   };
+}
+
+/* --- Document preview (owner, QA 2026-07-16: read before filing) --- */
+
+/* The preview shows the extracted text re-read from SQLite - exactly
+ * what Pam reasons over - never a rendering of the original format:
+ * Drive displays originals natively, Scranton does not rebuild that. */
+async function openDocPreview(docId) {
+  const title = document.getElementById("doc-preview-title");
+  const meta = document.getElementById("doc-preview-meta");
+  const body = document.getElementById("doc-preview-body");
+  title.textContent = "";
+  meta.textContent = "";
+  body.innerHTML = `<p class="thinking">Opening</p>`;
+  openOverlay("doc-overlay");
+  try {
+    const doc = await api(`/darryl/documents/${docId}`);
+    title.textContent = doc.title;
+    meta.textContent = [
+      doc.folder_path,
+      doc.modified_at ? doc.modified_at.slice(0, 10) : "",
+    ].filter(Boolean).join(" - ");
+    // Chips are informative here, not actionable: filing happens in
+    // the strip, where the picker's handler lives.
+    const chips = doc.status === "unclassified"
+      ? `<span class="htag not-filed">not filed yet</span>`
+      : docTagChips(doc);
+    const version = doc.is_latest ? "" : `<span class="chip">older version</span>`;
+    const drive = doc.web_view_link
+      ? `<a class="btn btn-ghost" href="${esc(doc.web_view_link)}" target="_blank" rel="noopener">Open in Drive</a>`
+      : "";
+    const content = doc.content
+      ? `<div class="doc-content">${esc(doc.content)}</div>`
+      : `<p class="silent-line">${doc.status === "cataloged"
+          ? "Cataloged by name, date and link - spreadsheet content is never extracted."
+          : "No text could be extracted from this file - the original in Drive is the reference."}</p>`;
+    body.innerHTML = `<div class="doc-preview-bar">${chips}${version}${drive}</div>${content}`;
+  } catch (error) {
+    body.innerHTML = `<div class="error-banner">${esc(error.message)}</div>`;
+  }
 }
 
 /* A summary served AS the answer (recadrage): Pam understood that the
@@ -1632,6 +1689,13 @@ async function init() {
         alert(error.message);
       }
     }
+  });
+  // One listener for every preview trigger: the strip, the bin, Pam's
+  // sources and the Desk summaries all render [data-doc-preview].
+  // Document-level and bound once, so dynamic content never rebinds.
+  document.addEventListener("click", (event) => {
+    const trigger = event.target.closest("[data-doc-preview]");
+    if (trigger) openDocPreview(trigger.dataset.docPreview);
   });
   document.getElementById("twss").addEventListener("click", (event) => {
     event.currentTarget.hidden = true;

@@ -707,13 +707,30 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
   border: 1px solid #2a2a2a;
   border-bottom: 0;
   border-radius: 16px 16px 0 0;
-  padding: 22px 24px 26px;
+  /* No bottom padding: the sticky form (or the preview body) owns it,
+     so the feed can slide UNDER the pinned input. */
+  padding: 22px 24px 0;
 }
 
 .sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .sheet-head h2 { font-size: 17px; font-weight: 900; }
 .sheet-close { margin-left: auto; flex: none; }
-.sheet-form { margin-top: 14px; }
+.erase-panel { margin-left: auto; flex: none; }
+.erase-panel ~ .sheet-close { margin-left: 0; }
+
+/* The input follows the conversation AND stays visible (owner, QA
+   2026-07-16: it was born below the fold). Sticky inside the scrolling
+   sheet; the opaque background masks the feed passing underneath. */
+.sheet-form {
+  position: sticky;
+  bottom: 0;
+  margin: 14px -24px 0;
+  padding: 12px 24px 22px;
+  background: #101010;
+  border-top: 1px solid #1f1f1f;
+}
+
+#doc-preview-body { padding-bottom: 26px; }
 
 .report-block { border-bottom: 1px dashed #1f1f1f; padding-bottom: 14px; margin-bottom: 14px; }
 .report-block:last-child { border-bottom: 0; }
@@ -861,6 +878,36 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 
 .doc-link { color: var(--cyan); text-decoration: none; border-bottom: 1px dotted rgba(0, 212, 255, 0.5); }
 .doc-link:hover { border-bottom-style: solid; }
+
+/* A document title as a button: dressed as the .doc-link it replaces
+   (the title now opens the in-app preview, QA 2026-07-16). */
+.doc-preview-link {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; text-align: left;
+  color: var(--cyan);
+  border-bottom: 1px dotted rgba(0, 212, 255, 0.5);
+}
+.doc-preview-link:hover { border-bottom-style: solid; }
+
+/* One line per unfolding gesture (QA 2026-07-16: no more buttons
+   fused together at the strip's foot). */
+.strip-foot { margin: 4px 0 8px; }
+.strip-foot .linklike { margin-left: 0; }
+
+/* The preview body: the extracted text, as stored - the exact material
+   Pam reasons over, so line breaks are preserved, nothing is styled. */
+.doc-preview-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.doc-preview-bar .btn { margin-left: auto; padding: 6px 12px; font-size: 11px; }
+.doc-content {
+  white-space: pre-wrap;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ltgrey);
+  background: color-mix(in srgb, var(--grey) 40%, var(--black));
+  border: 1px solid #232323;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
 
 .chip.doc { color: var(--cyan); }
 
