@@ -188,8 +188,8 @@ function bindOverlays() {
       }
       // Display only (owner, QA 2026-07-16): notes, decisions and
       // answers are already safe in the base - this declutters.
-      if (event.target.matches("[data-erase]")) {
-        document.getElementById(event.target.dataset.erase).innerHTML = "";
+      if (event.target.matches("[data-clear]")) {
+        document.getElementById(event.target.dataset.clear).innerHTML = "";
       }
     });
   });

@@ -715,8 +715,8 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 .sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .sheet-head h2 { font-size: 17px; font-weight: 900; }
 .sheet-close { margin-left: auto; flex: none; }
-.erase-panel { margin-left: auto; flex: none; }
-.erase-panel ~ .sheet-close { margin-left: 0; }
+.clear-panel { margin-left: auto; flex: none; }
+.clear-panel ~ .sheet-close { margin-left: 0; }
 
 /* The input follows the conversation AND stays visible (owner, QA
    2026-07-16: it was born below the fold). Sticky inside the scrolling
