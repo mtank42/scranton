@@ -9,9 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.api.deps import get_editing_service
 from backend.app.domain.schemas import (
+    DiffRequest,
     DocumentDelta,
+    DocumentDiff,
     DocumentRevision,
     DocumentReviseRequest,
+    DraftReviseRequest,
     EditedDocumentCreate,
     EditedDocumentOut,
     EditedDocumentUpdate,
@@ -20,6 +23,7 @@ from backend.app.services.editing_service import (
     EditedDocumentNotFoundError,
     EditingService,
     RevisionProcessingError,
+    diff_spans,
 )
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -40,6 +44,28 @@ def list_documents(
 ) -> list[EditedDocumentOut]:
     """Every persisted document, latest edit first, news badges included."""
     return service.list_documents()
+
+
+# Literal routes before /{document_id} routes: FastAPI matches in
+# declaration order and 'revise' or 'diff' must never parse as an id.
+@router.post("/revise", response_model=DocumentRevision)
+def revise_draft(
+    payload: DraftReviseRequest,
+    service: EditingService = Depends(get_editing_service),
+) -> DocumentRevision:
+    """Dwight revises an UNSAVED draft (C3): the editor opens without
+    persisting anything, the document is born at the first Save."""
+    try:
+        return service.revise_draft(payload.content_md, payload.instruction)
+    except RevisionProcessingError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
+
+
+@router.post("/diff", response_model=DocumentDiff)
+def compute_diff(payload: DiffRequest) -> DocumentDiff:
+    """The review diff for a manual edit: computed server-side so every
+    highlight in the editor comes from the same difflib (owner, C3)."""
+    return DocumentDiff(diff=diff_spans(payload.before, payload.after))
 
 
 @router.get("/{document_id}", response_model=EditedDocumentOut)
@@ -97,10 +123,13 @@ def revise_document(
     payload: DocumentReviseRequest,
     service: EditingService = Depends(get_editing_service),
 ) -> DocumentRevision:
-    """Dwight's revision PROPOSAL with its computed diff - nothing saved."""
+    """Dwight's revision with its computed diff - nothing saved here."""
     try:
         return service.revise(
-            document_id, payload.instruction, payload.include_segment_ids
+            document_id,
+            payload.instruction,
+            payload.include_segment_ids,
+            content_md=payload.content_md,
         )
     except EditedDocumentNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))

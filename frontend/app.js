@@ -27,13 +27,15 @@ const state = {
   entryId: null, // the entry currently discussed in the Dwight overlay
   mayorOverview: null,
   celebrated: false, // Maire celebration: once per page load
-  // Edited documents (2026-07-16): generated results kept at hand for
-  // the save gesture, and the editor's working state.
+  // Edited documents (2026-07-16, editor redesigned C3 2026-07-17):
+  // generated results kept at hand for the save gesture, plus the
+  // editor's working state - ONE canvas that evolves, a session-scoped
+  // undo stack, persistence only at Save.
   deskSummaries: {},
   pamSummaries: [],
-  editorDoc: null,
-  editorProposal: null,
-  editorOpenId: null, // set before switching to the Desk to auto-open
+  editor: null, // {id, meta, doc, canvas, lastSaved, undoStack, pendingWeave, diff, delta}
+  editorOpenId: null, // a Pam 'open' lands here: Desk loads straight into the doc
+  editorDraft: null, // a Pam 'Edit' lands here: Desk opens the unsaved draft
 };
 
 /* --- helpers --- */
@@ -132,7 +134,21 @@ function renderChrome() {
   document.getElementById("pam-title").textContent = pam.display_name;
 }
 
+/* Leaving the editor with unsaved work asks first (owner, C3: he lost
+ * notes to a stray click on two mainstream products that very day).
+ * Confirming clears the editor so the navigation proceeds clean. */
+function confirmEditorLeave() {
+  if (!state.editor || !editorDirty()) {
+    state.editor = null;
+    return true;
+  }
+  const leave = confirm("Unsaved changes on this document will be lost. Leave anyway?");
+  if (leave) state.editor = null;
+  return leave;
+}
+
 function switchRole(role) {
+  if (!confirmEditorLeave()) return;
   state.role = role;
   document.querySelectorAll("#role-switch button").forEach((b) =>
     b.classList.toggle("active", b.dataset.role === role));
@@ -159,6 +175,7 @@ function switchRole(role) {
 }
 
 function switchView(viewId) {
+  if (!confirmEditorLeave()) return;
   document.querySelectorAll(".view").forEach((section) => {
     section.hidden = section.id !== `view-${viewId}`;
   });
@@ -733,8 +750,9 @@ function pamSummaryCard(summary) {
          <p class="summary-text">${esc(section.content).replace(/\n/g, "<br />")}</p>`
     )
     .join("");
-  // The save gesture from a Pam card (editing session, 2026-07-16):
-  // persist, then land on the Desk editor - by hand or with Dwight.
+  // Two intentions, two buttons (owner, C3 2026-07-17): Save when the
+  // generation is already right, Edit to work on it first - the
+  // document is only born at a Save.
   state.pamSummaries.push(summary);
   return `
     <div class="pam-template">
@@ -742,7 +760,9 @@ function pamSummaryCard(summary) {
       ${sections}
       <div class="card-actions">
         <button class="btn btn-primary" data-save-pam="${state.pamSummaries.length - 1}"
-          title="Persist this document and edit it - by hand or with Dwight.">Save and edit</button>
+          title="Keep this document as it is.">Save</button>
+        <button class="btn btn-ghost" data-edit-pam="${state.pamSummaries.length - 1}"
+          title="Open it in the editor - by hand or with Dwight. Nothing saved until you Save.">Edit</button>
       </div>
     </div>`;
 }
@@ -894,12 +914,23 @@ async function loadDesk() {
       save.disabled = true;
       try {
         const doc = await saveSummaryAsDocument(result);
-        await openEditor(doc.id);
-        document.getElementById("desk-mydocs").scrollIntoView({ block: "start" });
+        // Saved as-is (owner, C3): confirm in place, no editor opened.
+        // The Edit button goes with it - editing now means opening THE
+        // saved document, one click away.
+        save.parentElement.querySelector("[data-edit-doc]")?.remove();
+        save.outerHTML =
+          `<button class="btn btn-ghost" data-open-doc="${doc.id}">Saved - open it</button>`;
+        await loadMyDocs();
       } catch (error) {
         save.disabled = false;
         alert(error.message);
       }
+      return;
+    }
+    const edit = event.target.closest("[data-edit-doc]");
+    if (edit) {
+      const result = state.deskSummaries[edit.dataset.editDoc];
+      if (result) openDraftEditor(summaryDraft(result));
       return;
     }
     const button = event.target.closest("[data-desk]");
@@ -916,11 +947,15 @@ async function loadDesk() {
   };
   await loadMyDocs();
   if (state.editorOpenId) {
-    // A Pam-card save lands here: the Desk opens straight on the doc.
+    // Arriving from elsewhere with a saved document to open.
     const docId = state.editorOpenId;
     state.editorOpenId = null;
-    await openEditor(docId);
-    document.getElementById("desk-mydocs").scrollIntoView({ block: "start" });
+    await openSavedEditor(docId);
+  } else if (state.editorDraft) {
+    // Arriving from a Pam card's Edit: the draft opens, nothing saved.
+    const draft = state.editorDraft;
+    state.editorDraft = null;
+    openDraftEditor(draft);
   }
 }
 
@@ -949,8 +984,9 @@ async function renderSummaryInto(containerId, templateId, targetId, button) {
     // Send Angela: plain download links, name from the character map.
     const angela = character("angela");
     const exportBase = `${API}/angela/export/${templateId}${query}${query ? "&" : "?"}format=`;
-    // The save gesture (editing session, 2026-07-16): this generation
-    // becomes a persisted document the manager edits and owns.
+    // Two intentions, two buttons (owner, C3 2026-07-17): Save keeps
+    // the generation as it is; Edit opens the editor on a DRAFT - the
+    // document is only born at a Save, wherever it happens.
     state.deskSummaries[containerId] = result;
     show(
       containerId,
@@ -960,7 +996,9 @@ async function renderSummaryInto(containerId, templateId, targetId, button) {
        </div>
        <div class="export-row">
          <button class="btn btn-primary" data-save-doc="${containerId}"
-                 title="Persist this generation and edit it - by hand or with Dwight.">Save and edit</button>
+                 title="Keep this document as it is.">Save</button>
+         <button class="btn btn-ghost" data-edit-doc="${containerId}"
+                 title="Open it in the editor - by hand or with Dwight. Nothing saved until you Save.">Edit</button>
          <img class="bubble-avatar" src="assets/${esc(angela.avatar_asset)}" alt="" />
          <a class="btn btn-ghost" href="${exportBase}md" download>${esc(angela.display_name)} - .md</a>
          <a class="btn btn-ghost" href="${exportBase}html" download>printable .html</a>
@@ -1025,18 +1063,26 @@ function renderDiff(spans) {
     .join("");
 }
 
-async function saveSummaryAsDocument(result) {
-  const title = [result.title, result.target_label].filter(Boolean).join(" - ");
-  return api("/documents", {
-    method: "POST",
-    body: JSON.stringify({
-      title,
+/* Everything the first Save will need, carried by the draft: 'Edit'
+ * persists nothing (owner, C3) - the document is born at Save time. */
+function summaryDraft(result) {
+  return {
+    meta: {
+      title: [result.title, result.target_label].filter(Boolean).join(" - "),
       template_key: result.template_id,
       target_entity_type: result.target_type,
       target_entity_id: result.target_id,
-      content_md: mdFromSummary(result),
       generated_at: result.generated_at,
-    }),
+    },
+    content: mdFromSummary(result),
+  };
+}
+
+async function saveSummaryAsDocument(result) {
+  const draft = summaryDraft(result);
+  return api("/documents", {
+    method: "POST",
+    body: JSON.stringify({ ...draft.meta, content_md: draft.content }),
   });
 }
 
@@ -1081,89 +1127,252 @@ function newsRow(segment, index) {
     </div>`;
 }
 
-async function openEditor(docId) {
-  const container = document.getElementById("desk-out-mydocs");
-  show("desk-out-mydocs", `<p class="thinking">Opening your document</p>`);
+/* --- The editor (C3, 2026-07-17): one canvas, apply + undo, Save ---
+ *
+ * The standard editor model the owner asked for: the SAME note evolves
+ * in place, every gesture (Dwight, manual, weave) applies to the canvas
+ * with its computed diff vs the previous version, 'Undo last edit'
+ * steps back one gesture per click (session-scoped stack), and Save is
+ * the only gesture that persists - a draft is born at its first Save.
+ */
+
+function editorDirty() {
+  // A draft (lastSaved null) is unsaved content by definition.
+  const ed = state.editor;
+  return !!ed && ed.canvas !== ed.lastSaved;
+}
+
+async function openSavedEditor(docId) {
+  show("desk-body", `<p class="thinking">Opening your document</p>`);
   try {
     const [doc, delta] = await Promise.all([
       api(`/documents/${docId}`),
       api(`/documents/${docId}/delta`),
     ]);
-    state.editorDoc = doc;
-    const dwight = character("dwight");
-    const news = delta.segments.length
-      ? `<div class="news-panel">
-           <p class="sources-title">The memory moved since your edit - ${delta.segments.length} validated point${delta.segments.length > 1 ? "s" : ""} about this subject</p>
-           ${delta.segments.map(newsRow).join("")}
-           <div class="form-row">
-             <input type="text" id="news-instruction"
-                    placeholder="Optional: where or how to weave them in" />
-             <button class="btn btn-primary" data-doc-weave>Weave in with ${esc(dwight.display_name)}</button>
-             <button class="btn btn-ghost" data-doc-dismiss
-                     title="They stay in the team memory - they just stop knocking here.">Dismiss</button>
-           </div>
-         </div>`
-      : "";
-    show(
-      "desk-out-mydocs",
-      `<div class="editor-head">
-         <button class="linklike" data-doc-back>&larr; My documents</button>
-         <p class="summary-subtitle">${esc(doc.title)} - saved ${doc.updated_at.slice(0, 10)}.
-           Your document: it never changes on its own.</p>
-       </div>
-       ${news}
-       <div class="answer-card summary-card" id="doc-body">${renderDocBody(doc.content_md)}</div>
-       <div id="doc-proposal"></div>
-       <div class="form-row" id="doc-actions">
-         <input type="text" id="doc-instruction"
-                placeholder="What should ${esc(dwight.display_name)} change?" />
-         <button class="btn btn-primary" data-doc-revise>Edit with ${esc(dwight.display_name)}</button>
-         <button class="btn btn-ghost" data-doc-manual>Edit manually</button>
-       </div>
-       <div id="doc-manual" hidden>
-         <textarea id="doc-manual-text" rows="14"></textarea>
-         <div class="form-row">
-           <button class="btn btn-primary" data-doc-manual-save>Save</button>
-           <button class="btn btn-ghost" data-doc-manual-cancel>Cancel</button>
-         </div>
-       </div>`
-    );
-    document.getElementById("doc-manual-text").value = doc.content_md;
+    state.editor = {
+      id: doc.id, meta: null, doc,
+      canvas: doc.content_md, lastSaved: doc.content_md,
+      undoStack: [], pendingWeave: 0, diff: null, delta: delta.segments,
+    };
+    renderEditorView();
   } catch (error) {
-    show("desk-out-mydocs", `<div class="error-banner">${esc(error.message)}</div>`);
+    show("desk-body", `<div class="error-banner">${esc(error.message)}</div>`);
   }
 }
 
-function renderProposal(revision, fromNews) {
-  state.editorProposal = { content_md: revision.content_md, fromNews };
-  const dwight = character("dwight");
-  show(
-    "doc-proposal",
-    `<div class="answer-card proposal-card">
-       <p class="sources-title">${esc(dwight.display_name)}'s proposal - his changes, computed, nothing saved yet</p>
-       <p class="summary-text diff-text">${renderDiff(revision.diff)}</p>
-       <div class="card-actions">
-         <button class="btn btn-validate" data-doc-keep>Keep it</button>
-         <button class="btn btn-reject" data-doc-discard>Discard</button>
-       </div>
-     </div>`
-  );
+function openDraftEditor(draft) {
+  state.editor = {
+    id: null, meta: draft.meta, doc: null,
+    canvas: draft.content, lastSaved: null,
+    undoStack: [], pendingWeave: 0, diff: null, delta: [],
+  };
+  renderEditorView();
 }
 
-async function reviseDocument(instruction, segmentIds, button) {
+function renderEditorView() {
+  const ed = state.editor;
+  const dwight = character("dwight");
+  const title = ed.doc ? ed.doc.title : ed.meta.title;
+  const news = ed.delta.length
+    ? `<div class="news-panel">
+         <p class="sources-title">The memory moved since your edit - ${ed.delta.length} validated point${ed.delta.length > 1 ? "s" : ""} about this subject</p>
+         ${ed.delta.map(newsRow).join("")}
+         <div class="form-row">
+           <input type="text" id="news-instruction"
+                  placeholder="Optional: where or how to weave them in" />
+           <button class="btn btn-primary" data-ed-weave>Weave in with ${esc(dwight.display_name)}</button>
+           <button class="btn btn-ghost" data-ed-dismiss
+                   title="They stay in the team memory - they just stop knocking here.">Dismiss</button>
+         </div>
+       </div>`
+    : "";
+  show(
+    "desk-body",
+    `<div class="editor-frame">
+       <div class="editor-head">
+         <button class="linklike" data-ed-back>&larr; My documents</button>
+         <div class="editor-title-row">
+           <span class="desk-title">${esc(title)}</span>
+           <span class="chip" id="ed-status"></span>
+         </div>
+       </div>
+       ${news}
+       <div class="answer-card summary-card" id="ed-canvas"></div>
+       <div id="ed-manual" hidden>
+         <textarea id="ed-manual-text" rows="16"></textarea>
+         <div class="form-row">
+           <button class="btn btn-primary" data-ed-apply>Apply</button>
+           <button class="btn btn-ghost" data-ed-manual-cancel>Cancel</button>
+         </div>
+       </div>
+       <div class="form-row editor-bar" id="ed-actions">
+         <input type="text" id="ed-instruction"
+                placeholder="What should ${esc(dwight.display_name)} change?" />
+         <button class="btn btn-ghost" data-ed-revise>Edit with ${esc(dwight.display_name)}</button>
+         <button class="btn btn-ghost" data-ed-manual>Edit manually</button>
+         <button class="btn btn-ghost" data-ed-undo>Undo last edit</button>
+         <button class="btn btn-primary" data-ed-save>Save</button>
+       </div>
+       <p class="thinking-none" id="ed-feedback"></p>
+     </div>`
+  );
+  renderEditorCanvas();
+  refreshEditorChrome();
+}
+
+function renderEditorCanvas() {
+  const ed = state.editor;
+  const canvas = document.getElementById("ed-canvas");
+  if (ed.diff) {
+    // The last edit, highlighted vs version n-1 (computed diff, owner
+    // invariant): the next gesture or 'Hide changes' clears it.
+    canvas.innerHTML = `
+      <div class="diff-head">
+        <span class="chip">changes vs previous version</span>
+        <button class="linklike" data-ed-hide-diff>Hide changes</button>
+      </div>
+      <p class="summary-text diff-text">${renderDiff(ed.diff)}</p>`;
+  } else {
+    canvas.innerHTML = renderDocBody(ed.canvas);
+  }
+}
+
+/* Status chip, undo visibility, save enablement: recomputed after
+ * every gesture so the chrome always tells the truth. */
+function refreshEditorChrome() {
+  const ed = state.editor;
+  const status = document.getElementById("ed-status");
+  if (!status || !ed) return;
+  const dirty = editorDirty();
+  status.textContent = ed.id
+    ? (dirty ? "unsaved changes" : `saved ${(ed.doc.updated_at || "").slice(0, 10)}`)
+    : "draft - not saved yet";
+  status.classList.toggle("dirty", dirty);
+  document.querySelector("[data-ed-undo]").hidden = ed.undoStack.length === 0;
+  document.querySelector("[data-ed-save]").disabled = !dirty;
+}
+
+function applyEdit(content, diff, isWeave) {
+  const ed = state.editor;
+  ed.undoStack.push({ content: ed.canvas, wasWeave: isWeave });
+  ed.canvas = content;
+  ed.diff = diff;
+  if (isWeave) {
+    // Woven into the canvas: the panel stops knocking now, the
+    // bookmark advances at Save (nothing else is persisted before).
+    ed.pendingWeave += 1;
+    ed.delta = [];
+    document.querySelector(".news-panel")?.remove();
+  }
+  renderEditorCanvas();
+  refreshEditorChrome();
+}
+
+function editorUndo() {
+  const ed = state.editor;
+  const last = ed.undoStack.pop();
+  if (!last) return;
+  ed.canvas = last.content;
+  if (last.wasWeave) ed.pendingWeave = Math.max(0, ed.pendingWeave - 1);
+  // That diff was already seen: the restored version renders clean.
+  ed.diff = null;
+  renderEditorCanvas();
+  refreshEditorChrome();
+}
+
+async function editorRevise(instruction, segmentIds, button) {
+  const ed = state.editor;
   const dwight = character("dwight");
   button.disabled = true;
-  show("doc-proposal", `<p class="thinking">${esc(dwight.display_name)} is revising</p>`);
+  const feedback = document.getElementById("ed-feedback");
+  feedback.textContent = `${dwight.display_name} is revising...`;
   try {
-    const revision = await api(`/documents/${state.editorDoc.id}/revise`, {
-      method: "POST",
-      body: JSON.stringify({ instruction, include_segment_ids: segmentIds }),
-    });
-    renderProposal(revision, segmentIds.length > 0);
+    // A saved document revises through its id (the delta segments live
+    // there); a draft has no id yet and uses the stateless route. Both
+    // start from the CANVAS: unsaved edits always travel.
+    const revision = ed.id
+      ? await api(`/documents/${ed.id}/revise`, {
+          method: "POST",
+          body: JSON.stringify({
+            instruction, include_segment_ids: segmentIds, content_md: ed.canvas,
+          }),
+        })
+      : await api("/documents/revise", {
+          method: "POST",
+          body: JSON.stringify({ content_md: ed.canvas, instruction }),
+        });
+    applyEdit(revision.content_md, revision.diff, segmentIds.length > 0);
+    feedback.textContent = "";
+    const input = document.getElementById("ed-instruction");
+    if (input) input.value = "";
   } catch (error) {
-    show("doc-proposal", `<div class="error-banner">${esc(error.message)}</div>`);
+    feedback.textContent = error.message;
   } finally {
     button.disabled = false;
+  }
+}
+
+function setManualMode(on) {
+  document.getElementById("ed-canvas").hidden = on;
+  document.getElementById("ed-manual").hidden = !on;
+  document.getElementById("ed-actions").hidden = on;
+  if (on) document.getElementById("ed-manual-text").value = state.editor.canvas;
+}
+
+async function editorManualApply(button) {
+  const ed = state.editor;
+  const text = document.getElementById("ed-manual-text").value;
+  if (text === ed.canvas) {
+    setManualMode(false);
+    return;
+  }
+  button.disabled = true;
+  try {
+    // The diff stays computed server-side, same difflib as Dwight's
+    // revisions: one highlighting truth wherever the edit came from.
+    const result = await api("/documents/diff", {
+      method: "POST",
+      body: JSON.stringify({ before: ed.canvas, after: text }),
+    });
+    applyEdit(text, result.diff, false);
+    setManualMode(false);
+  } catch (error) {
+    document.getElementById("ed-feedback").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function editorSave(button) {
+  const ed = state.editor;
+  button.disabled = true;
+  const feedback = document.getElementById("ed-feedback");
+  try {
+    let doc;
+    if (ed.id) {
+      doc = await api(`/documents/${ed.id}/save`, {
+        method: "POST",
+        body: JSON.stringify({ content_md: ed.canvas }),
+      });
+    } else {
+      // The first Save: the draft becomes a real document.
+      doc = await api("/documents", {
+        method: "POST",
+        body: JSON.stringify({ ...ed.meta, content_md: ed.canvas }),
+      });
+      ed.id = doc.id;
+    }
+    if (ed.pendingWeave > 0) {
+      doc = await api(`/documents/${ed.id}/mark-reviewed`, { method: "POST" });
+      ed.pendingWeave = 0;
+    }
+    ed.doc = doc;
+    ed.lastSaved = ed.canvas;
+    feedback.textContent = "Saved.";
+  } catch (error) {
+    feedback.textContent = error.message;
+  } finally {
+    refreshEditorChrome();
   }
 }
 
@@ -1171,75 +1380,60 @@ async function reviseDocument(instruction, segmentIds, button) {
  * routes here). Returns true when the click was an editor action. */
 async function handleEditorClick(target) {
   if (target.matches("[data-open-doc]")) {
-    await openEditor(Number(target.dataset.openDoc));
+    await openSavedEditor(Number(target.dataset.openDoc));
     return true;
   }
-  if (target.matches("[data-doc-back]")) {
-    state.editorDoc = null;
-    await loadMyDocs();
+  if (!state.editor) return false;
+  if (target.matches("[data-ed-back]")) {
+    if (confirmEditorLeave()) await loadDesk();
     return true;
   }
-  if (target.matches("[data-doc-dismiss]")) {
-    target.disabled = true;
-    await api(`/documents/${state.editorDoc.id}/mark-reviewed`, { method: "POST" });
-    await openEditor(state.editorDoc.id);
+  if (target.matches("[data-ed-hide-diff]")) {
+    state.editor.diff = null;
+    renderEditorCanvas();
     return true;
   }
-  if (target.matches("[data-doc-weave]")) {
+  if (target.matches("[data-ed-undo]")) {
+    editorUndo();
+    return true;
+  }
+  if (target.matches("[data-ed-save]")) {
+    await editorSave(target);
+    return true;
+  }
+  if (target.matches("[data-ed-revise]")) {
+    const instruction = document.getElementById("ed-instruction").value.trim();
+    if (!instruction) return true;
+    await editorRevise(instruction, [], target);
+    return true;
+  }
+  if (target.matches("[data-ed-weave]")) {
     const picked = [...document.querySelectorAll("[data-news-pick]:checked")]
       .map((box) => Number(box.value));
     if (!picked.length) return true;
     const instruction =
       document.getElementById("news-instruction").value.trim() ||
       "Weave the selected new points into the right sections.";
-    await reviseDocument(instruction, picked, target);
+    await editorRevise(instruction, picked, target);
     return true;
   }
-  if (target.matches("[data-doc-revise]")) {
-    const instruction = document.getElementById("doc-instruction").value.trim();
-    if (!instruction) return true;
-    await reviseDocument(instruction, [], target);
-    return true;
-  }
-  if (target.matches("[data-doc-keep]")) {
+  if (target.matches("[data-ed-dismiss]")) {
     target.disabled = true;
-    const proposal = state.editorProposal;
-    await api(`/documents/${state.editorDoc.id}/save`, {
-      method: "POST",
-      body: JSON.stringify({ content_md: proposal.content_md }),
-    });
-    if (proposal.fromNews) {
-      // The woven news is triaged: advance the bookmark in the same
-      // gesture, the rest of the delta was the manager's to leave out.
-      await api(`/documents/${state.editorDoc.id}/mark-reviewed`, { method: "POST" });
-    }
-    await openEditor(state.editorDoc.id);
+    await api(`/documents/${state.editor.id}/mark-reviewed`, { method: "POST" });
+    state.editor.delta = [];
+    document.querySelector(".news-panel")?.remove();
     return true;
   }
-  if (target.matches("[data-doc-discard]")) {
-    state.editorProposal = null;
-    show("doc-proposal", "");
+  if (target.matches("[data-ed-manual]")) {
+    setManualMode(true);
     return true;
   }
-  if (target.matches("[data-doc-manual]")) {
-    document.getElementById("doc-manual").hidden = false;
-    document.getElementById("doc-actions").hidden = true;
+  if (target.matches("[data-ed-manual-cancel]")) {
+    setManualMode(false);
     return true;
   }
-  if (target.matches("[data-doc-manual-cancel]")) {
-    document.getElementById("doc-manual").hidden = true;
-    document.getElementById("doc-actions").hidden = false;
-    return true;
-  }
-  if (target.matches("[data-doc-manual-save]")) {
-    target.disabled = true;
-    await api(`/documents/${state.editorDoc.id}/save`, {
-      method: "POST",
-      body: JSON.stringify({
-        content_md: document.getElementById("doc-manual-text").value,
-      }),
-    });
-    await openEditor(state.editorDoc.id);
+  if (target.matches("[data-ed-apply]")) {
+    await editorManualApply(target);
     return true;
   }
   return false;
@@ -1679,15 +1873,24 @@ async function init() {
       if (!summary) return;
       event.target.disabled = true;
       try {
-        const doc = await saveSummaryAsDocument(summary);
-        // Land on the Desk, editor open: one sheet at a time here too.
-        document.getElementById("pam-overlay").hidden = true;
-        state.editorOpenId = doc.id;
-        switchView("desk");
+        await saveSummaryAsDocument(summary);
+        // Satisfied as-is (owner, C3): stay in the Pam thread, just
+        // say where the document lives now.
+        event.target.closest(".card-actions").outerHTML =
+          `<p class="silent-line">Saved to My documents (Michael's Desk).</p>`;
       } catch (error) {
         event.target.disabled = false;
         alert(error.message);
       }
+    }
+    if (event.target.matches("[data-edit-pam]")) {
+      const summary = state.pamSummaries[Number(event.target.dataset.editPam)];
+      if (!summary) return;
+      // One sheet at a time: the draft travels to the Desk editor,
+      // nothing is saved until the manager's Save over there.
+      state.editorDraft = summaryDraft(summary);
+      document.getElementById("pam-overlay").hidden = true;
+      switchView("desk");
     }
   });
   // One listener for every preview trigger: the strip, the bin, Pam's
@@ -1699,6 +1902,11 @@ async function init() {
   });
   document.getElementById("twss").addEventListener("click", (event) => {
     event.currentTarget.hidden = true;
+  });
+  // The browser-level guard (owner, C3): closing or reloading the tab
+  // with unsaved editor work asks first, like any editor would.
+  window.addEventListener("beforeunload", (event) => {
+    if (state.editor && editorDirty()) event.preventDefault();
   });
   // Mayor data first, so the dashboard's ritual card renders on the
   // very first paint (the banner duplicate is gone).

@@ -4,6 +4,9 @@
 > finally owns what the engines generate: he saves a generation, edits
 > it by hand or through Dwight, and the moving memory knocks with
 > proposals instead of rewriting anything behind his back.
+> **Surface redesigned 2026-07-17 (C3)** after the owner's QA verdict
+> ("unusable from the second edit on"): the engine stayed, the editor
+> became the standard model - one canvas, apply + undo, Save.
 
 ## The doctrine
 
@@ -19,13 +22,42 @@ on:
   `memory_reviewed_at` bookmark) arrives as proposals the manager
   triages by dialogue. What he leaves out is dismissed for good for
   THIS document - it stays in Pam's memory.
-- Every Dwight revision is a **proposal with a computed diff**
-  (difflib, word-level): insertions highlighted, deletions struck
-  through. The model never self-reports its changes - the highlighting
-  is guaranteed by the calculation, not by prompt discipline. Saving
-  the proposal is a separate explicit gesture.
+- Every edit carries a **computed diff** (difflib, word-level):
+  insertions highlighted, deletions struck through. The model never
+  self-reports its changes - the highlighting is guaranteed by the
+  calculation, not by prompt discipline. Manual edits go through the
+  same difflib (`POST /documents/diff`): one highlighting truth.
 - **"Edit manually" lives beside "Edit with Dwight" everywhere**
   (owner decision, 2026-07-14): often the hand is faster.
+
+## The editor surface (C3 redesign, owner arbitrations 2026-07-17)
+
+The 2026-07-16 surface stacked up to three copies of the text
+(document + Dwight proposal card + manual textarea) and each "Save and
+edit" created a sibling document - the owner lost edits and called it
+unusable. The C3 model, standard on purpose ("simple, intuitif, pas
+depaysant"):
+
+- **Two intentions, two buttons on every generated card**: "Save"
+  keeps the generation as it is; "Edit" opens the editor on a DRAFT -
+  the document is born at its first Save, wherever that Save happens
+  (`POST /documents/revise` serves drafts, no id needed).
+- **One canvas, full-frame in the Desk**: the open document replaces
+  the Desk content ("<- My documents" to come back). Never two copies
+  of the text on screen.
+- **Apply + undo instead of propose + keep**: a Dwight revision, a
+  manual Apply or a weave lands ON the canvas, highlighted vs version
+  n-1 only. "Undo last edit" steps back one gesture per click
+  (session-scoped stack, survives Save; the base keeps last state
+  only). The doctrine holds: every version is born from a manager
+  gesture, the document still never changes on its own.
+- **Save is the only persisting gesture** and the status chip tells
+  the truth (draft / unsaved changes / saved). Leaving with unsaved
+  work asks first - in-app (view switches) and browser-level
+  (beforeunload).
+- Dwight always revises the CANVAS (unsaved edits travel via
+  `content_md` in the revise body), and the weave advances the memory
+  bookmark at Save time, decremented if the weave is undone.
 
 ## Dwight the pure reviser (owner arbitration, 2026-07-16)
 

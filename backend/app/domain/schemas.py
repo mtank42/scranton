@@ -738,10 +738,40 @@ class DocumentReviseRequest(BaseModel):
     The context travels with the instruction (owner decision,
     2026-07-14): the service hands Dwight the current document, the
     instruction, and the selected news segments - never a bare order.
+
+    content_md carries the editor's canvas when it differs from the
+    saved state (C3, 2026-07-17: edits apply to the canvas and persist
+    only at Save) - None means revise the saved text.
     """
 
     instruction: str = Field(min_length=1)
     include_segment_ids: list[int] = []
+    content_md: str | None = None
+
+
+class DraftReviseRequest(BaseModel):
+    """Request body for POST /api/v1/documents/revise: a draft revision.
+
+    C3 (2026-07-17): 'Edit' opens the editor WITHOUT persisting - the
+    document is born at the first Save. Until then Dwight revises the
+    draft content directly; no id, no delta (nothing saved to move
+    against).
+    """
+
+    content_md: str = Field(min_length=1)
+    instruction: str = Field(min_length=1)
+
+
+class DiffRequest(BaseModel):
+    """Request body for POST /api/v1/documents/diff: a manual edit.
+
+    The diff stays COMPUTED wherever the edit came from (owner, C3):
+    the frontend never diffs by itself, it asks the same difflib that
+    highlights Dwight's revisions.
+    """
+
+    before: str
+    after: str
 
 
 class DiffSpan(BaseModel):
@@ -757,14 +787,21 @@ class DiffSpan(BaseModel):
 
 
 class DocumentRevision(BaseModel):
-    """Response for the revise endpoint: a PROPOSAL, nothing persisted.
+    """Response for the revise endpoints: nothing persisted.
 
-    Saving the proposal is a separate explicit gesture (the /save
-    endpoint): the AI proposes, the human decides.
+    The revision applies to the caller's canvas (C3: apply + Undo, the
+    standard editor model); persisting stays a separate explicit Save.
+    document_id is None for a draft revision - no document exists yet.
     """
 
-    document_id: int
+    document_id: int | None = None
     content_md: str
+    diff: list[DiffSpan]
+
+
+class DocumentDiff(BaseModel):
+    """Response for POST /api/v1/documents/diff: the computed spans."""
+
     diff: list[DiffSpan]
 
 

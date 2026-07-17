@@ -968,11 +968,35 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 }
 .doc-section[open] summary { color: var(--white); }
 
-/* The review diff: what Dwight changed, computed, at a glance. */
+/* The review diff: what the last edit changed, computed, at a glance. */
 .diff-ins { background: rgba(0, 200, 83, 0.18); color: var(--green); border-radius: 3px; }
 .diff-del { background: rgba(230, 57, 70, 0.14); color: var(--red); text-decoration: line-through; border-radius: 3px; }
-.proposal-card { border-color: var(--purple); margin-top: 12px; }
+.diff-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.diff-head .linklike { margin-left: 0; }
 
-#doc-manual textarea { width: 100%; margin-top: 10px; font-family: var(--mono); font-size: 13px; }
-#doc-actions { margin-top: 12px; }
-#doc-actions input[type="text"] { flex: 1; }
+/* C3 (2026-07-17): the document opens full-frame in the Desk - one
+   canvas that evolves, never two copies of the text on screen. */
+.editor-frame { display: flex; flex-direction: column; gap: 4px; }
+.editor-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.chip.dirty { color: var(--orange); }
+
+/* The action bar sticks just above the floating agent bar: on a long
+   document the instruction input and Save never sink below the fold. */
+.editor-bar {
+  position: sticky;
+  bottom: 88px;
+  z-index: 5;
+  background: var(--black);
+  border: 1px solid #232323;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+.editor-bar input[type="text"] { flex: 1; }
+.editor-bar .btn { padding: 10px 16px; font-size: 12px; }
+/* Authored display defeats [hidden] (frontend gotcha): restate the
+   guard for everything the manual mode toggles. */
+.editor-bar[hidden], #ed-canvas[hidden], #ed-manual[hidden] { display: none; }
+
+#ed-manual textarea { width: 100%; margin-top: 10px; font-family: var(--mono); font-size: 13px; }
+#ed-manual .form-row { margin-top: 10px; }

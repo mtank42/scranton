@@ -196,18 +196,22 @@ class EditingService:
     # --- the revision: Dwight the pure reviser ---
 
     def revise(
-        self, document_id: int, instruction: str, include_segment_ids: list[int]
+        self,
+        document_id: int,
+        instruction: str,
+        include_segment_ids: list[int],
+        content_md: str | None = None,
     ) -> DocumentRevision:
-        """One revision PROPOSAL: nothing is persisted here.
+        """One revision over a persisted document: nothing saved here.
 
-        The engine hands Dwight the current document, the instruction
-        and the selected news excerpts - the context travels. The
-        answer comes back with its computed diff; saving it is the
-        caller's explicit next gesture.
+        The engine hands Dwight the current text, the instruction and
+        the selected news excerpts - the context travels. content_md
+        overrides the saved text when the editor's canvas already moved
+        (C3: edits pile on the canvas, Save persists them later).
         """
         with self.session_factory() as session:
             document = self._get(session, document_id)
-            before = document.content_md
+            before = content_md if content_md is not None else document.content_md
             material = []
             if include_segment_ids:
                 selected = session.scalars(
@@ -217,6 +221,23 @@ class EditingService:
                     f"- ({segment.created_at:%Y-%m-%d}) {segment.content}"
                     for segment in selected
                 ]
+        revision = self._dwight_revision(before, instruction, material)
+        revision.document_id = document_id
+        return revision
+
+    def revise_draft(self, content_md: str, instruction: str) -> DocumentRevision:
+        """One revision over an unsaved draft (C3: 'Edit' persists
+        nothing - the document is born at the first Save).
+
+        No id, no delta material: before its first save a draft has no
+        bookmark for the memory to move against.
+        """
+        return self._dwight_revision(content_md, instruction, [])
+
+    def _dwight_revision(
+        self, before: str, instruction: str, material: list[str]
+    ) -> DocumentRevision:
+        """The shared core: one pure-reviser call plus the computed diff."""
         try:
             revision = complete_validated(
                 self.llm,
@@ -228,7 +249,6 @@ class EditingService:
                 "Dwight could not produce a usable revision; try rewording."
             ) from exc
         return DocumentRevision(
-            document_id=document_id,
             content_md=revision.content_md,
             diff=diff_spans(before, revision.content_md),
         )

@@ -230,6 +230,33 @@ def test_revise_returns_a_proposal_with_its_diff(session_factory, ryan):
     assert "Q3 reporting is up to date" in prompt
 
 
+def test_revise_starts_from_the_canvas_override(session_factory, ryan):
+    """C3: unsaved canvas edits travel to Dwight, not the stale save."""
+    engine, llm, _ = build_engine(
+        session_factory, [json.dumps({"content_md": "canvas text, shorter"})]
+    )
+    doc = engine.create(create_payload(ryan))
+    revision = engine.revise(
+        doc.id, "Shorten it.", [], content_md="Canvas text the manager just typed."
+    )
+    prompt = llm.complete_calls[0][1]["content"]
+    assert "Canvas text the manager just typed." in prompt
+    # The diff is against the canvas, not the saved state.
+    rebuilt_before = "".join(s.text for s in revision.diff if s.op in ("equal", "delete"))
+    assert rebuilt_before == "Canvas text the manager just typed."
+
+
+def test_revise_draft_needs_no_document(session_factory):
+    """C3: 'Edit' persists nothing - a draft is revised without an id."""
+    engine, llm, _ = build_engine(
+        session_factory, [json.dumps({"content_md": "Draft, revised."})]
+    )
+    revision = engine.revise_draft("Draft as generated.", "Make it punchy.")
+    assert revision.document_id is None
+    assert revision.content_md == "Draft, revised."
+    assert any(s.op == "insert" for s in revision.diff)
+
+
 # --- the corpus entry and the person exception ---
 
 
