@@ -396,7 +396,12 @@ Deux volets décidés le 2026-07-14 :
 ## Identité du manager, rôle admin & onboarding d'équipe
 
 **Catégorie** : Architecture / Rôles / Onboarding
-**Priorité** : session dédiée (owner, QA 2 2026-07-14 — « comment on commence avec Scranton la 1re fois ? ») — **candidat n°1 post-QA v5 (owner, 2026-07-16)** : chantier jugé LE plus structurant, à faire avec Fable en priorité (règle « le plus difficile d'abord »)
+**Priorité** : **GO OWNER (2026-07-18) — prochaine session, à ouvrir NEUVE.**
+« Le volet admin est essentiel, allons-y. » S'ajoute au périmètre : une
+**page d'accueil + login « un peu stylée »** (l'entrée de l'app — l'UX
+se cadre avec la boussole des slides, comme toujours). Historique de
+priorité : session dédiée demandée dès QA 2 (2026-07-14), candidat n°1
+post-QA v5 (2026-07-16, règle « le plus difficile d'abord »).
 
 > **[2026-07-16] Cadrage élargi par le owner** : le chantier est plus
 > vaste qu'évoqué — il regroupe les questions d'**accès/login**

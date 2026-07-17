@@ -38,6 +38,10 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
    a learning resource. **No em dash** in code/strings (use `-` or `:`).
    No emoji in UI except the Pretzel Day mood palette. Every function has
    a docstring. Routes are `/api/v1/...`. Conventional commits.
+   **UI naming (owner rule, QA v6)**: sentences address the AGENT
+   (`agent_name`: "Edit with Dwight", "What should Dwight change?");
+   buttons, tabs and titles name the ACTION (`display_name`: "Tell
+   Dwight"). Both come from the characters map, never hardcoded.
 5. Commit + push at each milestone; the repo stays demo-ready.
 
 ## Invariants that break silently if violated
@@ -63,7 +67,11 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
   routing). Spreadsheets are cataloged (name, folder, date, link),
   never content-extracted. Versions: `family_key` groups a file's
   versions, only `is_latest` answers by default, ALL versions through
-  the deterministic Pam route ("toutes les versions ...").
+  the deterministic Pam route ("toutes les versions ..."). **Every
+  document title opens the in-app preview** (C2, 2026-07-17: read
+  before filing) - the extracted text re-read from `document_chunks`
+  (exactly what Pam sees) plus "Open in Drive"; Scranton never renders
+  original formats, catalog-only files preview as their catalog card.
 - **SQLite is the source of truth for text.** ChromaDB stores vectors +
   *scalar* metadata only. Retrieval returns ids + scores; text is re-read
   from SQLite. A hit whose id is missing from SQLite is skipped, never
@@ -122,20 +130,28 @@ provider seam. Backend under `backend/app/`, UI under `frontend/`.
   `summary_service.py`). Gathering is **exhaustive SQL over tags, not
   vector top-k** (a file wants everything; search would truncate). A new
   template is a registry entry, not a code path.
-- **An edited document never changes on its own** (editing session,
-  2026-07-16, `docs/document_editing.md`). Templates stay living; the
-  first save persists a snapshot (`edited_documents`, last state only).
-  The memory's movement is PRESENTED as delta proposals (segments newer
-  than `memory_reviewed_at`), never applied; Dwight revises as a PURE
-  reviser (doc + instruction + selected excerpts, zero memory access)
-  and his changes return as a difflib-COMPUTED diff, never
-  self-reported. Saving a client/project document files it into
-  Darryl's corpus (source `scranton`, manager tag 1.0);
-  **person-targeted documents never enter the corpus** (people never
-  flow through Pam). Darryl's sync excludes `source='scranton'` rows -
-  removing that filter would soft-delete every saved document. The
-  engine (`editing_service.py`) is surface-independent: Oscar consumes
-  it next.
+- **An edited document never changes on its own** (editing session
+  2026-07-16, surface redesigned C3 2026-07-17,
+  `docs/document_editing.md`). Templates stay living; the document is
+  born at its first Save (`edited_documents`, last state only) - "Edit"
+  opens a DRAFT and persists nothing. The editor is ONE full-frame
+  canvas: every gesture (Dwight revision, manual Apply, weave) APPLIES
+  to the canvas highlighted vs version n-1, "Undo last edit" steps
+  back one gesture (session-scoped stack, survives Save), Save is the
+  only persisting gesture, unsaved work is guarded (in-app +
+  beforeunload). Every diff is difflib-COMPUTED, never self-reported -
+  manual edits ask `POST /documents/diff`, Dwight revises the CANVAS
+  (content_md override) as a PURE reviser (zero memory access). The
+  memory's movement is PRESENTED as delta proposals (segments newer
+  than `memory_reviewed_at`), never applied. A Desk generate button
+  whose template + target is already saved REOPENS the saved document
+  (owner, QA v6) - never a fresh generation ignoring the edits. Saving
+  a client/project document files it into Darryl's corpus (source
+  `scranton`, manager tag 1.0); **person-targeted documents never
+  enter the corpus** (people never flow through Pam). Darryl's sync
+  excludes `source='scranton'` rows - removing that filter would
+  soft-delete every saved document. The engine (`editing_service.py`)
+  is surface-independent: Oscar consumes it next.
 - **Entity routing is closed-world**: Dwight may only tag entities from
   the roster injected into its prompt. Unknown names are dropped.
 
@@ -217,8 +233,9 @@ Dock launcher (must stay in the repo).
 
 ## Current state (July 2026)
 
-**RECADRAGE EXECUTED IN FULL (2026-07-13), TWO owner QA passes done
-(2026-07-14: 35/37 + lot A, then 36/37 + lot B shipped 2026-07-15).**
+**RECADRAGE EXECUTED IN FULL (2026-07-13), FOUR owner QA passes done
+(QA 1/2 2026-07-14: 35/37 + lot A, 36/37 + lot B; QA v5 2026-07-16
+and v6 2026-07-18: lots C1-C4, sliding-scope checklists).**
 The app IS the recadrage now: one OS, two roles (manager: Dashboard /
 Michael's Desk / Meet Toby; member: My board / Pretzel Day + identity
 picker), Dwight and Pam as floating overlay actions, Pam serving
@@ -240,13 +257,32 @@ corpus, owner arbitrations recorded in BACKLOG). Reference:
 session: `edited_documents` table, surface-independent engine, delta
 proposals, pure-reviser Dwight with computed diff, person exception,
 Pam-overlay history strip, first real-Drive sync - owner arbitrations
-in BACKLOG, reference `docs/document_editing.md`). The nécessaire
-tier is next: manager identity/admin & onboarding, Oscar (replaces
-Dwight entity suggestions), exports & partage. Celebrations overhaul
-is the agréable tier (TWSS and Maire stay off until then). Notes for
-the identity session: the Pam overlay strips (sync, filing, note
-history) and the Desk "My documents" are currently visible per view
-role only - proper scoping belongs to the roles/identity work.
+in BACKLOG, reference `docs/document_editing.md`).
+
+**QA v5/v6 CYCLE DONE (2026-07-16 -> 18, lots C1-C4, 170 tests).**
+The owner's v5 verdict killed the first editing surface ("unusable
+from the second edit"); the engine stayed, the surface was rebuilt on
+his arbitrations (C3: one full-frame canvas, Save/Edit split, apply +
+undo, save-only persistence - see the invariant above). Around it:
+the Dwight thread keeps the manager's note visible, sticky overlay
+inputs, "Clear panel content", one Show more + fold accordion per
+memory in the Pam strip, the document preview (C2), the agent/action
+naming rule wired as `agent_name` (C4), a saved generation reopening
+as the manager's document, and the demo corpus enriched to twelve
+documents (three titles are QA anchors - flagged in seed.py, never
+rename them). QA v6: 19/22, only the real-Drive section left untested.
+The QA checklist (`frontend/qa.html`) is v6 and matches the product.
+
+**NEXT SESSION - GO OWNER (2026-07-18): manager identity/admin &
+onboarding**, opened FRESH. Scope enlarged by the owner: access/login,
+account create/delete, basic roster fields (mail, contact - a data
+model slot, rule 2), scoping of the manager-only surfaces (Pam strips,
+My documents), PLUS a styled landing + login page. The full session
+dossier (technical state of play, Fabrice day-one use case, seven
+questions - the structuring two: what is a session in a local-first
+app, and the V1 multi-user perimeter) is in BACKLOG. Then Oscar and
+exports & partage; celebrations overhaul stays the agréable tier
+(TWSS and Maire off until then).
 
 **Succession (2026-07-12)**: the owner passed the baton from Fable to
 Opus; the former "pure Fable repo" rule is lifted - build ON this

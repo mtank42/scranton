@@ -126,7 +126,7 @@ These are not features. They are constraints that shape every feature.
 | # | Chantier | Contenu arbitré | Effort |
 |---|---|---|---|
 | 1 | **Darryl l'archiviste — le RAG documentaire** — ✅ **LIVRÉ (2026-07-15)** | Un document rangé dans le dossier partagé EST validé par ce geste (spec du 1er jour, réaffirmée 2026-07-15). Darryl indexe doc/ppt/pdf (xls catalogué sans contenu), route en silence (arborescence + monde clos, LLM en appoint), bac « non classé » plutôt que rabattement plausible, surface d'audit minimale (la bande du volet Pam). Une seule Pam sur deux mémoires (collections séparées), sources badgées *mémoire d'équipe* / *document*, **liens cliquables vers les docs dès la V1**. Data model livré : `documents` / `document_chunks` / `document_tags`. Référence : `docs/darryl.md`. | L |
-| 2 | **Édition des documents** | Décisions prises (2026-07-14) : documents édités PERSISTÉS ; « Edit with Dwight » toujours flanqué d'un « Edit manually » ; Desk inclus ; le contexte voyage avec l'instruction. Mini data model dans la session. | M–L |
+| 2 | **Édition des documents** — ✅ **LIVRÉ (2026-07-16, surface refondue C3 le 2026-07-17)** | Moteur surface-indépendant (`editing_service`, table `edited_documents`), delta présenté jamais appliqué, Dwight réviseur pur, diff toujours CALCULÉ. Surface au modèle standard après QA v5 : Save/Edit séparés, un canevas plein cadre, appliquer + Undo, Save seul geste qui persiste, garde-fous unsaved. Une génération sauvée rouvre LE document (QA v6). Référence : `docs/document_editing.md`. | M–L |
 
 Ordre 1→2 recommandé : Darryl vient d'être arbitré à chaud, et éditer
 des documents se conçoit mieux sur de la matière réelle (celle que
@@ -136,7 +136,7 @@ Darryl apporte). Interchangeable au choix du owner en début de session.
 
 | # | Chantier | Contenu | Effort |
 |---|---|---|---|
-| 3 | **Identité manager, admin & onboarding** | Le manager existe : admin, identité à part, crée les comptes, day-one de Scranton. Décisions prises : pas de mood tracking manager, éligible Maire, co-admin plus tard. Session data model. | M |
+| 3 | **Identité manager, admin & onboarding** — **GO owner 2026-07-18, prochaine session** | Cadrage élargi (2026-07-16) : accès/login, création/suppression de comptes, champs roster basiques (mail, contact), scoping des surfaces manager-only, **+ page d'accueil & login stylée (owner, 2026-07-18)**. Décisions prises : le manager est l'admin, identité à part, pas de mood tracking manager, éligible Maire, co-admin plus tard. Session data model. Dossier complet : BACKLOG (état des lieux + use case day-one + 7 questions). | M–L |
 | 4 | **Oscar — tableau de bord des opérations & naissance des entités** (cadrage owner 2026-07-15, remplace « Dwight propose de nouvelles entités ») | Le manager gère les entités. Statuts **prospect** (template client) et **piste** (projets non signés) — une entité de plein droit dès la 1re mention, jamais de limbes ; Dwight drafte et route vers le manager. Nouvelle vue manager Oscar, 3 onglets : Clients / Projets / Prospects & pistes — tout voir, interroger Pam, éditer (main ou Dwight) en contexte, valider les drafts. Les équipiers voient leurs projets/clients sur leur board. Inclut la granularité du rejet (QA 2). Session data model requise (statuts sur clients/projects). Dossier : BACKLOG « Oscar ». | L |
 | 5 | **Exports & partage** | Formats utiles (à instruire sur cas réels), ODJ d'équipe sur le My board de chaque équipier + suggestions d'items, brief 1:1 partagé. Dépend de la persistance (chantier 2). | M |
 
