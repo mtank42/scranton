@@ -65,10 +65,11 @@
 <body>
   <header>
     <h1>SCRANTON<span>_</span> Checklist QA</h1>
-    <p class="sub">Passe v5 (2026-07-16) : ce qui a été validé en QA 1 et 2 est sorti de la
-      checklist (sa non-régression est automatisée) — il reste une <strong>passe éclair</strong>,
-      puis les nouveautés jamais testées : <strong>le volet Pam deux mémoires</strong> (Darryl +
-      historique) et <strong>l'édition des documents</strong>.<br />
+    <p class="sub">Passe v6 (2026-07-17) : périmètre glissant — le validé des passes précédentes
+      est sorti (non-régression automatisée, 170 tests). Au menu : <strong>les corrections de vos
+      remarques v5</strong> (lot C1), <strong>l'aperçu des documents</strong> (lot C2), et
+      <strong>l'éditeur refondu</strong> (C3 — vos arbitrages : une note qui évolue, diff à chaque
+      geste, Undo, Save).<br />
       Environnement jetable : la base et la mémoire de ce test sont recréées à
       chaque lancement, <strong>vos données réelles ne sont jamais touchées</strong>
       (sauf section 4, optionnelle, qui lit votre vrai Drive).
@@ -96,52 +97,48 @@
  * Snippets: {copy: "text"} rendered as a copy-paste block. */
 const SECTIONS = [
   {
-    id: "smoke",
-    title: "1. Passe éclair — le produit déjà validé",
-    note: "QA 1 et 2 (14-15/07) ont validé le produit recadré ; la non-régression est automatisée (166 tests à chaque commit). On ne revérifie ici que le VIVANT — ce qui dépend du vrai modèle — en 4 points. Rôle manager.",
+    id: "c1",
+    title: "1. Les retouches du volet — vos remarques v5 (lot C1)",
+    note: "Vos six remarques de la passe v5 ont été traitées le 17/07. On vérifie chaque correction, dans l'ordre où vous les aviez rencontrées. Rôle manager.",
     flow: [
-      ["s1", "Au chargement : le shell.", "« SCRANTON - MANAGER VIEW », onglets <strong>Dashboard / Michael's Desk / Meet Toby</strong>, boutons flottants <strong>+ Tell Dwight</strong> / <strong>? Ask Pam</strong> en bas"],
       { copy: "Lackawanna County Schools confirme 40 caisses de plus sur le contrat cardstock Q3. Ryan s'est endormi en réunion, il a l'air épuisé, ça m'inquiète." },
-      ["s2", "Tell Dwight : envoyer la note ci-dessus, puis <strong>valider</strong> Lackawanna et <strong>rejeter</strong> le segment Ryan.", "Segments <strong>en français</strong>, cold pour le fait / warm pour Ryan, tags lisibles avec confiance en toutes lettres ; cartes validated/rejected, aucune blague TWSS"],
-      { copy: "Pourquoi Ryan est-il épuisé ?" },
-      ["s3", "La porte : poser la question ci-dessus à Ask Pam.", "La mémoire n'a <strong>rien</strong> — le segment rejeté n'existe pas pour Pam"],
-      { copy: "Qu'est-ce que Lackawanna nous a confirmé pour le Q3 ?" },
-      ["s4", "Poser la question ci-dessus.", "Réponse française exacte, citation [n], <strong>seules les sources citées</strong> s'affichent"]
+      ["c1a", "Tell Dwight : envoyer la note ci-dessus.", "VOTRE note reste affichée en bulle <strong>au-dessus des propositions</strong> (fil de discussion : input et output comparables) ; la zone de saisie reste <strong>toujours visible en bas</strong> du volet, même quand le fil s'allonge (plus de below the fold)"],
+      ["c1b", "En-tête du volet : « Clear panel content ». Même chose côté ? Ask Pam après un échange.", "Le fil s'efface, <strong>rien n'est perdu</strong> : la note reste dans l'historique du volet Pam, les décisions en base ; le bandeau d'historique, lui, ne bouge pas"],
+      ["c1c", "Volet Pam : regarder le pied de chaque mémoire du bandeau.", "<strong>Un « Show more » PAR mémoire</strong> (« Show more notes » / « Show more documents »), chacun sur sa propre ligne ; « open the bin » sur sa ligne aussi — plus de boutons fusionnés ; à la réouverture, replié à 5"]
     ]
   },
   {
-    id: "darryl",
-    title: "2. Le volet Pam — deux mémoires et l'historique",
-    note: "JAMAIS passé en QA : Darryl l'archiviste et l'historique du volet ont été livrés après votre QA 2. Le seed plante 4 documents : la famille Contrat papier recyclé (V1 + V2_DEF) chez Prince Family Paper, un tableur Lackawanna catalogué, et des notes d'entrepôt au bac. Ouvrez ? Ask Pam.",
+    id: "c2",
+    title: "2. L'aperçu des documents (lot C2)",
+    note: "Votre verdict v5 : « si je ne peux pas ouvrir le doc, je ne vais rien classer ». Désormais chaque titre de document s'ouvre — l'aperçu montre le texte extrait relu de la base, exactement ce que Pam voit ; Drive reste la référence pour l'original. Ouvrez ? Ask Pam.",
     flow: [
-      ["da1", "Regarder le bandeau sous l'en-tête du volet.", "Les <strong>5 dernières notes Dwight</strong> (extrait + compteur « validés/total » + date) AU-DESSUS des <strong>documents récents de Darryl</strong> (badges de classement) + le bouton Sync"],
-      ["da2", "Cliquer « Show more », puis fermer et rouvrir le volet.", "Chaque clic déplie <strong>10 de plus</strong> par mémoire (le bouton disparaît à l'épuisement) ; à la réouverture, tout est <strong>replié à 5</strong>"],
-      ["da3", "La ligne « 1 document not filed - open the bin » : ouvrir le bac et classer les notes d'entrepôt vers un client.", "Le badge « not filed » devient un menu, <strong>un clic classe</strong>, le document sort du bac avec son nouveau tag"],
+      ["p1", "Cliquer le titre « Contrat_papier_recycle_V2_DEF.md » dans le bandeau.", "Une popin d'aperçu : <strong>le texte du document</strong>, dossier, date, chip de classement ; « Close » revient au volet (les documents du corpus démo n'ont pas de lien Drive — les vôtres auront « Open in Drive »)"],
+      ["p2", "Ouvrir le bac, cliquer le titre des notes d'entrepôt AVANT de classer.", "L'aperçu s'ouvre avec la chip <strong>« not filed yet »</strong> : on lit d'abord, on classe ensuite (le classement un clic n'a pas changé)"],
+      ["p3", "Cliquer le tableur « Suivi_Lackawanna_County_Schools.xlsx ».", "La <strong>fiche catalogue</strong> seulement : « spreadsheet content is never extracted » — jamais de contenu pour un tableur"],
       { copy: "Que dit le contrat papier recyclé signé avec Prince Family Paper ?" },
-      ["da4", "Poser la question ci-dessus.", "Réponse groundée citant le document avec badge <strong>document</strong> (nom du fichier) — et c'est la <strong>V2_DEF qui répond</strong>, jamais la V1 (une famille, une voix)"],
-      { copy: "Toutes les versions du contrat papier recyclé" },
-      ["da5", "Poser la question ci-dessus (route déterministe, zéro LLM).", "Les <strong>DEUX versions listées</strong>, l'ancienne marquée « older version »"],
-      ["da6", "Chercher le tableur Lackawanna (bandeau ou question à Pam).", "Il existe par <strong>nom, dossier, date</strong> (catalogué) — son contenu n'est jamais extrait ni cité"]
+      ["p4", "Poser la question ci-dessus, puis cliquer le <strong>nom du document</strong> dans les sources citées.", "L'aperçu s'ouvre <strong>par-dessus le volet Pam</strong> ; « Close » retombe sur le fil de conversation — l'accès direct aux sources que vous attendiez"]
     ]
   },
   {
     id: "editing",
-    title: "3. Édition des documents — LA nouveauté",
-    note: "Le cœur de cette passe (session 2026-07-16). Doctrine : votre document ne change JAMAIS tout seul ; la mémoire qui bouge se PRÉSENTE, vous tranchez par le dialogue ; chaque retouche de Dwight s'affiche en diff calculé. Rôle manager, Michael's Desk.",
+    title: "3. L'éditeur refondu (C3) — vos arbitrages",
+    note: "Votre verdict v5 (« inutilisable dès le deuxième edit ») a déclenché la refonte. Le modèle est maintenant le standard que vous avez décrit : UNE note qui évolue, le diff visible entre version n et n-1 à chaque geste (Dwight ou manuel), « Undo last edit », et Save comme seul geste qui persiste. La doctrine tient : le document ne change jamais tout seul. Rôle manager, Michael's Desk.",
     flow: [
-      ["e1", "1:1 preparation → Ryan → « Brief me », puis <strong>« Save and edit »</strong> sous le document.", "Le brief devient VOTRE document : l'éditeur s'ouvre dans le bloc <strong>My documents</strong>, sections repliables, actions « Edit with Tell Dwight » / « Edit manually »"],
-      ["e2", "Cliquer le titre d'une section.", "Elle se <strong>replie/déplie</strong> (l'accordéon du 1:1 : on replie ce qui est traité)"],
-      ["e3", "« Edit manually » : corriger une tournure à la main, Save.", "Le texte revient <strong>au caractère près</strong> avec votre correction, date de sauvegarde mise à jour"],
+      ["e1", "1:1 preparation → Ryan → « Brief me ».", "La carte générée porte <strong>deux boutons séparés</strong> : « Save » (garder tel quel) et « Edit » (travailler dessus) — plus de « Save and edit » contradictoire"],
+      ["e2", "Cliquer « Save ».", "Le bouton devient <strong>« Saved - open it »</strong>, le document apparaît dans My documents ; <strong>aucun éditeur ne s'ouvre</strong> ; pas de document jumeau"],
+      ["e3", "« Saved - open it » (ou la ligne dans My documents).", "Le document s'ouvre <strong>plein cadre</strong> (le Desk devient le document, « ← My documents » pour revenir) ; chip <strong>« saved » + date</strong>, Save grisé, pas d'Undo : rien à sauver, rien à annuler"],
+      ["e4", "« Edit manually » : modifier une phrase, puis « Apply ».", "Une seule vue, jamais deux copies : le texte revient avec <strong>le diff surligné vs la version précédente</strong> (« Hide changes » pour lire propre) ; chip « unsaved changes », <strong>« Undo last edit » apparaît</strong>, Save s'active"],
+      ["e5", "« Undo last edit ».", "La version précédente revient, propre ; chip repasse à « saved », Save se grise — <strong>un clic = un geste annulé</strong>"],
       { copy: "Enlève la section Signals to watch, et reformule l'intro de Manager observations en une phrase." },
-      ["e4", "« Edit with Tell Dwight » avec la consigne ci-dessus.", "Une <strong>proposition en diff</strong> : ajouts surlignés en vert, suppressions barrées en rouge — rien d'autre ne bouge (réviseur pur). « Keep it » l'applique, « Discard » la jette"],
+      ["e6", "« Edit with Tell Dwight » avec la consigne ci-dessus.", "La révision <strong>s'applique directement</strong> au document, diff à l'appui (vert = ajouts, barré rouge = retraits, calculé jamais auto-déclaré) — plus de « Keep it / Discard » : <strong>Undo est votre porte de sortie</strong>"],
+      ["e7", "« Save », puis re-cliquer « Undo last edit ».", "Chip « saved » et feedback « Saved. » ; <strong>Undo marche encore après Save</strong> (la pile vit le temps de la session) et le document repasse en « unsaved changes »"],
+      ["e8", "Avec des modifications non sauvées : cliquer l'onglet Dashboard.", "Une <strong>confirmation demande avant de perdre le travail</strong> ; annuler reste sur le document (même garde-fou au rechargement de l'onglet, via le navigateur)"],
       { copy: "Ryan a fini le reporting Q3, tout est à jour. Il a signé le renouvellement Prince Family Paper." },
-      ["e5", "Faire bouger la mémoire : Tell Dwight avec la note ci-dessus, <strong>valider</strong> les segments Ryan. Revenir sur My documents.", "Le brief de Ryan porte un badge <strong>« N new since your edit »</strong> — le document, lui, n'a pas bougé"],
-      ["e6", "Ouvrir le document.", "Un panneau « The memory moved » <strong>présente les nouveautés</strong> une par une (cochées par défaut), avec « Weave in with Tell Dwight » et « Dismiss »"],
-      ["e7", "« Weave in » (consigne facultative), puis « Keep it » sur le diff.", "Les points cochés sont <strong>tissés au bon endroit</strong> (diff vert à l'appui) ; après Keep it, le panneau nouveautés a disparu"],
+      ["e9", "Faire bouger la mémoire : Tell Dwight avec la note ci-dessus, <strong>valider</strong> les segments. Rouvrir le brief de Ryan (badge « N new »).", "Le panneau « The memory moved » présente les nouveautés ; <strong>« Weave in » tisse sur le canevas</strong>, diff à l'appui, le panneau disparaît ; « Save » termine le geste (le document, lui, n'avait pas bougé tout seul)"],
       { copy: "Fais-moi le point sur Prince Family Paper" },
-      ["e8", "Ask Pam : question ci-dessus, puis <strong>« Save and edit »</strong> sous la carte template.", "Le volet se ferme, l'app bascule sur le Desk, <strong>l'éditeur est ouvert</strong> sur la fiche client — même moteur, autre surface"],
-      ["e9", "Rouvrir ? Ask Pam et regarder les documents récents de Darryl.", "La fiche client sauvegardée <strong>est entrée au corpus</strong> (elle apparaît, taguée Prince Family Paper) — sauvegarder EST le geste de classement"],
-      ["e10", "Chercher le brief 1:1 de Ryan dans ce même bandeau et dans les sources de Pam.", "<strong>Absent, toujours</strong> : un document ciblant une personne n'entre jamais dans la mémoire de Pam (l'humain vit sur le Desk et chez Toby)"]
+      ["e10", "Ask Pam : question ci-dessus → « Save » sous la carte template.", "<strong>On reste dans le volet</strong> : « Saved to My documents (Michael's Desk). » — satisfait, pas de détour par l'éditeur"],
+      ["e11", "Reposer la question → « Edit » cette fois.", "Le volet se ferme, le Desk s'ouvre <strong>plein cadre sur le brouillon</strong>, chip « draft - not saved yet » : le document ne naîtra qu'à votre Save ; après Save, la fiche client <strong>entre au corpus Darryl</strong> (visible au bandeau du volet Pam)"],
+      ["e12", "Chercher le brief 1:1 de Ryan dans ce même bandeau et dans les sources de Pam.", "<strong>Absent, toujours</strong> : un document ciblant une personne n'entre jamais dans la mémoire de Pam (l'humain vit sur le Desk et chez Toby)"]
     ]
   },
   {
@@ -150,13 +147,13 @@ const SECTIONS = [
     note: "Le Sync du volet Pam lit le VRAI dossier partagé configuré : les documents de démo, absents de ce dossier, seront soft-supprimés — faites cette section en dernier. Test des FORMATS réels (pas du routage : sans vos clients dans les noms, le bac est la destination normale). Déposez d'abord quelques vrais fichiers (PDF, Word, un tableur, deux versions d'un même document) dans le dossier partagé.",
     flow: [
       ["v1", "Volet Pam → « Sync the shared folder ».", "Rapport chiffré (added/updated/removed), aucun crash ; PDF/Word indexés, <strong>tableurs catalogués</strong> (jamais extraits), images ignorées sans erreur"],
-      ["v2", "Regarder le bandeau et le bac après le sync.", "Vos fichiers listés avec <strong>liens cliquables vers le Drive</strong> ; deux versions d'un même nom = une famille, l'ancienne « older version » ; sans signal de routage, direction <strong>le bac</strong> — classement en un clic"],
-      ["v3", "Poser à Pam une question dont la réponse est dans un de vos fichiers.", "Réponse citant le document, badge <strong>document</strong>, lien vers l'original"]
+      ["v2", "Regarder le bandeau et le bac après le sync.", "Vos fichiers listés, chaque titre ouvre <strong>l'aperçu avec « Open in Drive »</strong> ; deux versions d'un même nom = une famille, l'ancienne « older version » ; sans signal de routage, direction <strong>le bac</strong> — on lit dans l'aperçu, on classe en un clic"],
+      ["v3", "Poser à Pam une question dont la réponse est dans un de vos fichiers.", "Réponse citant le document, badge <strong>document</strong> ; le nom ouvre l'aperçu, l'original est à un clic (« Open in Drive »)"]
     ]
   }
 ];
 
-const STORE_KEY = "scranton-qa-v5";
+const STORE_KEY = "scranton-qa-v6";
 const state = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
 const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state));
 
