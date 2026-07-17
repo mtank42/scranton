@@ -135,8 +135,12 @@ indexed chunk is bait for Pam, not content.
 
 ## Demo
 
-The seed plants four corpus documents: a Prince Family Paper version
-family (only the DEF answers by default), a cataloged spreadsheet
-routed to Lackawanna, and one bin item to file. The former seed member
-Darryl is now **Val** (same warehouse, different foreman): the
-character key `darryl` belongs to the agent.
+The seed plants twelve corpus documents (enriched 2026-07-17, the
+owner found four 'rabougri'): two version families (the recycled
+paper contract at Prince Family Paper, the delivery routes plan on
+the project side - only the latest of each answers by default), two
+cataloged spreadsheets, two bin items to file, and coverage of every
+client. The v6 QA checklist cites three titles by name - never rename
+them (flagged in seed.py). The former seed member Darryl is now
+**Val** (same warehouse, different foreman): the character key
+`darryl` belongs to the agent.

@@ -416,12 +416,73 @@ Deux volets décidés le 2026-07-14 :
 - **Mais il a le droit d'être Maire de Scranton** 🙂 — son anniversaire existe donc quelque part.
 - Plus tard : **co-admin** (passer un membre co-admin en cas d'absence du manager).
 
-### Questions à résoudre
+### État des lieux technique (préparé le 2026-07-17, avant session)
 
-1. Data model : une identité manager à part = probablement une table ou un rôle → session data model dédiée (règle 2).
-2. Premier lancement : le workflow d'initialisation (créer le manager, créer l'équipe, importer un roster ?) — le « day one » de Scranton.
-3. Lien avec la création d'entités par Dwight (nouveau collaborateur mentionné dans une note → proposer la création du compte ?).
-4. Anniversaire du manager sans mood tracking : où le déclare-t-il ?
+Ce que le code fait AUJOURD'HUI — le point de départ, pas une doctrine :
+
+- **Aucune authentification nulle part** : l'API est ouverte (pas de
+  session, pas de mot de passe, pas de token) ; le « rôle » est un
+  bouton d'interface (`state.role`) que n'importe qui peut basculer.
+  L'« identité » équipier est un simple `<select>` sur le roster
+  (`state.selfId`, premier membre par défaut) — une déclaration, pas
+  une preuve. Conséquence assumée du POC mono-poste ; c'est LE sujet.
+- **Le manager n'existe pas** : aucune ligne, aucune table, aucun nom.
+  Il est « celui qui n'a pas choisi d'identité ». Son anniversaire n'a
+  nulle part où vivre (décision Maire de Scranton en attente de ça).
+- **`team_members` est minimal** : `full_name`, `role`, `is_active`,
+  `birthday` (jour+mois), `personal_profile` (texte libre), pas de
+  mail ni contact. Les départs basculent `is_active` (jamais de
+  DELETE) ; aucune création par l'UI — le seed est le seul chemin.
+- **Surfaces à scoper (visibles aujourd'hui par simple bascule de
+  vue)** : les bandeaux du volet Pam (historique notes + archive
+  Darryl + bac + sync), l'aperçu documents, « My documents » et
+  l'éditeur du Desk, les briefs du Desk, Meet Toby. Tout ceci est
+  manager-only EN INTENTION, rien ne l'impose.
+- **Les secrets vivent dans `.env`** (clé Mistral, OAuth Drive) et les
+  données dans `data/` en clair — local-first : la machine du manager
+  EST le périmètre de sécurité actuel.
+
+### Use case d'ouverture de session (à jouer avant le schéma)
+
+Le « day one » : Fabrice installe Scranton sur son poste. Premier
+lancement — que voit-il ? (créer SON identité manager : nom,
+anniversaire ; pas de mood tracking pour lui). Il crée sa boîte et son
+équipe : Kevin, mail et contact compris. Kevin ouvre Scranton (même
+poste ? autre poste ? — trancher le périmètre V1) : que voit-il, que
+prouve-t-il ? Fabrice quitte son bureau : qu'est-ce qui empêche un
+passant d'ouvrir Meet Toby ? Six mois après, Kevin part : Fabrice
+désactive le compte — qu'advient-il de ses données (la doctrine
+handover existe déjà) ? Et le jour où Fabrice est absent : co-admin
+(décision « plus tard » à confirmer).
+
+### Questions pour la session (data model comprise)
+
+1. **Data model (le créneau dédié, règle 2)** : identité manager à
+   part — table `users` unifiée avec rôle, ou table `managers`
+   séparée de `team_members` ? Champs roster à ajouter (mail, contact
+   — lesquels exactement ?). Où vivent les credentials (hash local ?).
+   L'anniversaire du manager (éligible Maire, pas de mood).
+2. **Qu'est-ce qu'une session dans une app local-first ?** Un mot de
+   passe local par profil ? Un simple verrou d'écran par rôle (PIN) ?
+   Rien du tout en V1 mono-poste (l'OS protège le poste) ? Le curseur
+   sécurité/friction est UN arbitrage owner, pas technique.
+3. **Périmètre V1 du multi-utilisateur** : Scranton reste-t-il
+   mono-poste (l'équipier passe sur le poste du manager pour son
+   Pretzel Day, comme aujourd'hui) ou vise-t-on déjà l'accès depuis
+   les postes des équipiers (serveur local d'équipe → tout change :
+   réseau, sessions, secrets) ? Structurant pour tout le reste.
+4. **Premier lancement / onboarding** : le workflow d'initialisation
+   (créer le manager, créer l'équipe, importer un roster ?) — et que
+   devient le seed (un mode démo à part ?).
+5. **Création/suppression de comptes par l'admin** : l'UI de gestion
+   du roster (créer, désactiver, modifier les champs basiques) — et
+   le lien avec la création d'entités par Dwight (nouveau
+   collaborateur mentionné dans une note → proposer la création ?).
+6. **Le scoping des surfaces** (la dette notée depuis Darryl) : une
+   fois l'identité réelle, chaque surface déclare son rôle — la liste
+   de l'état des lieux ci-dessus est le périmètre à couvrir.
+7. **Co-admin** (décision « plus tard », 2026-07-14) : hors scope V1
+   sauf avis contraire — mais le schéma ne doit pas l'empêcher.
 
 ---
 
