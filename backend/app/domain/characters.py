@@ -15,35 +15,48 @@ from typing import TypedDict
 
 
 class Character(TypedDict):
-    """One product character: how a feature presents itself to the user."""
+    """One product character: how a feature presents itself to the user.
+
+    display_name is the ACTION (the feature: 'Tell Dwight', 'Ask Pam');
+    agent_name is the PERSON ('Dwight', 'Pam') - the owner's distinction
+    (QA v6, 2026-07-17): sentences talk to the agent, buttons and tabs
+    name the action. 'Edit with Dwight', never 'Edit with Tell Dwight'.
+    """
 
     display_name: str
+    agent_name: str
     avatar_asset: str
 
 
 CHARACTERS: dict[str, Character] = {
     "dwight": {
         "display_name": "Tell Dwight",
+        "agent_name": "Dwight",
         "avatar_asset": "dwight-removebg-preview.png",
     },
     "pam": {
         "display_name": "Ask Pam",
+        "agent_name": "Pam",
         "avatar_asset": "pam-removebg-preview.png",
     },
     "jim": {
         "display_name": "Whisper Jim",
+        "agent_name": "Jim",
         "avatar_asset": "jim-removebg-preview.png",
     },
     "michael": {
         "display_name": "Michael's Desk",
+        "agent_name": "Michael",
         "avatar_asset": "michael-removebg-preview.png",
     },
     "angela": {
         "display_name": "Send Angela",
+        "agent_name": "Angela",
         "avatar_asset": "angela-removebg-preview.png",
     },
     "toby": {
         "display_name": "Meet Toby",
+        "agent_name": "Toby",
         "avatar_asset": "toby-removebg-preview.png",
     },
     # The invisible archivist (session 2026-07-15): no view of his own,
@@ -51,6 +64,7 @@ CHARACTERS: dict[str, Character] = {
     # does not render one; the asset joins when the owner provides it.
     "darryl": {
         "display_name": "Darryl",
+        "agent_name": "Darryl",
         "avatar_asset": "",
     },
 }

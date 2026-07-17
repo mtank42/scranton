@@ -58,6 +58,14 @@ depaysant"):
 - Dwight always revises the CANVAS (unsaved edits travel via
   `content_md` in the revise body), and the weave advances the memory
   bookmark at Save time, decremented if the weave is undone.
+- **A generation you saved reopens as YOUR document** (owner, QA v6):
+  a Desk generate button whose template + target already has a saved
+  document opens that document (delta panel included) instead of a
+  fresh generation that would silently ignore the edits.
+- Wording rule (owner, QA v6): sentences address the AGENT ('Edit
+  with Dwight', 'What should Dwight change?'), buttons and tabs name
+  the ACTION ('Tell Dwight'). `agent_name` in the characters map;
+  never hardcode either. The weave button says 'Add with Dwight'.
 
 ## Dwight the pure reviser (owner arbitration, 2026-07-16)
 

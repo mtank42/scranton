@@ -66,7 +66,15 @@ function show(container, html) {
 }
 
 function character(key) {
-  return state.characters[key] || { display_name: key, avatar_asset: "" };
+  return state.characters[key] || { display_name: key, agent_name: key, avatar_asset: "" };
+}
+
+/* The person, not the feature (owner, QA v6): sentences address the
+ * AGENT ('What should Dwight change?'), buttons and tabs name the
+ * ACTION ('Tell Dwight'). */
+function agentName(key) {
+  const entry = character(key);
+  return entry.agent_name || entry.display_name;
 }
 
 /* --- the OS chrome: roles, views, actions --- */
@@ -335,7 +343,7 @@ async function submitDwight(event) {
   button.disabled = true;
   const result = document.getElementById("dwight-result");
   result.insertAdjacentHTML("beforeend",
-    `<div class="report-block" data-open><p class="thinking">Dwight is structuring</p></div>`);
+    `<div class="report-block" data-open><p class="thinking">${esc(agentName("dwight"))} is structuring</p></div>`);
   const block = result.lastElementChild;
   try {
     // source_type stays server-side vocabulary; the picker was UI
@@ -521,6 +529,10 @@ function sourceRow(source, index) {
 const HISTORY_FIRST = 5;
 const HISTORY_STEP = 10;
 let historyDepth = { notes: HISTORY_FIRST, docs: HISTORY_FIRST };
+// The accordion (owner, QA v6): each memory folds from its header line
+// - the way back after 'Show more'. Folding also resets the depth, so
+// unfolding starts at 5 again.
+let historyFold = { notes: false, docs: false };
 
 function snippet(text, max = 140) {
   return text.length > max ? text.slice(0, max - 3).trimEnd() + "..." : text;
@@ -593,8 +605,10 @@ function classifyPicker(docId) {
 async function loadPamArchive(reset = false) {
   const container = document.getElementById("pam-archive");
   const darryl = character("darryl");
-  const dwight = character("dwight");
-  if (reset) historyDepth = { notes: HISTORY_FIRST, docs: HISTORY_FIRST };
+  if (reset) {
+    historyDepth = { notes: HISTORY_FIRST, docs: HISTORY_FIRST };
+    historyFold = { notes: false, docs: false };
+  }
   try {
     const [notes, recent, bin] = await Promise.all([
       api(`/dwight/entries/recent?limit=${historyDepth.notes}`),
@@ -603,7 +617,7 @@ async function loadPamArchive(reset = false) {
     ]);
     const noteRows = notes.length
       ? notes.map(noteRow).join("")
-      : `<p class="silent-line">No notes yet - tell ${esc(dwight.display_name)} what happened.</p>`;
+      : `<p class="silent-line">No notes yet - tell ${esc(agentName("dwight"))} what happened.</p>`;
     // The header and the sync button stay even on an empty corpus:
     // the FIRST sync has to start somewhere.
     const rows = recent.length
@@ -620,21 +634,33 @@ async function loadPamArchive(reset = false) {
     const binLine = bin.length
       ? `<div class="strip-foot"><button class="linklike" data-bin-toggle>${bin.length} document${bin.length > 1 ? "s" : ""} not filed - open the bin</button></div>`
       : "";
+    // Each memory folds from its header (owner, QA v6: the way back
+    // after Show more); the sync feedback line stays visible folded.
+    const foldButton = (key) =>
+      `<button class="linklike fold-toggle" data-fold="${key}">${historyFold[key] ? "Show" : "Hide"}</button>`;
     container.innerHTML = `
       <div class="archive-head">
-        <p class="sources-title">Last notes to ${esc(dwight.display_name)}</p>
+        <p class="sources-title">Last notes to ${esc(agentName("dwight"))}</p>
+        ${foldButton("notes")}
       </div>
-      ${noteRows}
-      ${noteMore}
+      <div ${historyFold.notes ? "hidden" : ""}>
+        ${noteRows}
+        ${noteMore}
+      </div>
       <div class="archive-head">
         <p class="sources-title">${esc(darryl.display_name)} filed these recently</p>
-        <button class="btn btn-ghost" data-darryl-sync>Sync the shared folder</button>
+        <span class="archive-head-actions">
+          <button class="btn btn-ghost" data-darryl-sync>Sync the shared folder</button>
+          ${foldButton("docs")}
+        </span>
       </div>
       <p class="thinking-none" id="archive-feedback"></p>
-      ${rows}
-      ${binLine}
-      <div class="bin-rows" id="bin-rows" hidden>${bin.map(docRow).join("")}</div>
-      ${docMore}`;
+      <div ${historyFold.docs ? "hidden" : ""}>
+        ${rows}
+        ${binLine}
+        <div class="bin-rows" id="bin-rows" hidden>${bin.map(docRow).join("")}</div>
+        ${docMore}
+      </div>`;
     container.hidden = false;
   } catch {
     container.hidden = true;
@@ -658,9 +684,17 @@ function bindPamArchive() {
       await loadPamArchive();
       return;
     }
+    if (target.matches("[data-fold]")) {
+      const key = target.dataset.fold;
+      historyFold[key] = !historyFold[key];
+      // Folding is also 'show less': the next unfold starts at 5.
+      if (historyFold[key]) historyDepth[key] = HISTORY_FIRST;
+      await loadPamArchive();
+      return;
+    }
     if (target.matches("[data-darryl-sync]")) {
       target.disabled = true;
-      target.textContent = "Darryl is filing...";
+      target.textContent = `${agentName("darryl")} is filing...`;
       try {
         const report = await api("/darryl/sync", { method: "POST" });
         await loadPamArchive();
@@ -774,7 +808,7 @@ async function submitPam(event) {
   const thread = document.getElementById("pam-thread");
   button.disabled = true;
   thread.insertAdjacentHTML("beforeend", managerBubble(input.value));
-  thread.insertAdjacentHTML("beforeend", `<p class="thinking" id="pam-wait">Pam is remembering</p>`);
+  thread.insertAdjacentHTML("beforeend", `<p class="thinking" id="pam-wait">${esc(agentName("pam"))} is remembering</p>`);
   try {
     const result = await api("/pam/query", {
       method: "POST",
@@ -938,10 +972,30 @@ async function loadDesk() {
     const targetSelect = button.dataset.target
       ? document.getElementById(button.dataset.target)
       : null;
+    const targetId = targetSelect ? Number(targetSelect.value) : null;
+    // A generation you already made your own reopens as YOUR document
+    // (owner, QA v6): the saved text plus the delta panel - never a
+    // fresh generation that silently ignores your edits.
+    button.disabled = true;
+    try {
+      const existing = (await api("/documents")).find(
+        (doc) =>
+          doc.template_key === button.dataset.desk &&
+          (doc.target_entity_id ?? null) === targetId
+      );
+      if (existing) {
+        await openSavedEditor(existing.id);
+        return;
+      }
+    } catch {
+      // The check is best-effort: a fresh generation stays available.
+    } finally {
+      button.disabled = false;
+    }
     await renderSummaryInto(
       `desk-out-${button.dataset.out}`,
       button.dataset.desk,
-      targetSelect ? Number(targetSelect.value) : null,
+      targetId,
       button
     );
   };
@@ -961,7 +1015,7 @@ async function loadDesk() {
 
 async function renderSummaryInto(containerId, templateId, targetId, button) {
   button.disabled = true;
-  show(containerId, `<p class="thinking">Dwight and Pam are assembling</p>`);
+  show(containerId, `<p class="thinking">${esc(agentName("dwight"))} and ${esc(agentName("pam"))} are assembling</p>`);
   try {
     const query = targetId ? `?target_id=${targetId}` : "";
     const result = await api(`/summaries/${templateId}${query}`);
@@ -1171,7 +1225,6 @@ function openDraftEditor(draft) {
 
 function renderEditorView() {
   const ed = state.editor;
-  const dwight = character("dwight");
   const title = ed.doc ? ed.doc.title : ed.meta.title;
   const news = ed.delta.length
     ? `<div class="news-panel">
@@ -1179,8 +1232,8 @@ function renderEditorView() {
          ${ed.delta.map(newsRow).join("")}
          <div class="form-row">
            <input type="text" id="news-instruction"
-                  placeholder="Optional: where or how to weave them in" />
-           <button class="btn btn-primary" data-ed-weave>Weave in with ${esc(dwight.display_name)}</button>
+                  placeholder="Optional: where or how to add them" />
+           <button class="btn btn-primary" data-ed-weave>Add with ${esc(agentName("dwight"))}</button>
            <button class="btn btn-ghost" data-ed-dismiss
                    title="They stay in the team memory - they just stop knocking here.">Dismiss</button>
          </div>
@@ -1190,7 +1243,10 @@ function renderEditorView() {
     "desk-body",
     `<div class="editor-frame">
        <div class="editor-head">
-         <button class="linklike" data-ed-back>&larr; My documents</button>
+         <div class="editor-nav-row">
+           <button class="linklike" data-ed-back>&larr; My documents</button>
+           <button class="btn btn-ghost" data-ed-close>Close</button>
+         </div>
          <div class="editor-title-row">
            <span class="desk-title">${esc(title)}</span>
            <span class="chip" id="ed-status"></span>
@@ -1207,8 +1263,8 @@ function renderEditorView() {
        </div>
        <div class="form-row editor-bar" id="ed-actions">
          <input type="text" id="ed-instruction"
-                placeholder="What should ${esc(dwight.display_name)} change?" />
-         <button class="btn btn-ghost" data-ed-revise>Edit with ${esc(dwight.display_name)}</button>
+                placeholder="What should ${esc(agentName("dwight"))} change?" />
+         <button class="btn btn-ghost" data-ed-revise>Edit with ${esc(agentName("dwight"))}</button>
          <button class="btn btn-ghost" data-ed-manual>Edit manually</button>
          <button class="btn btn-ghost" data-ed-undo>Undo last edit</button>
          <button class="btn btn-primary" data-ed-save>Save</button>
@@ -1282,10 +1338,9 @@ function editorUndo() {
 
 async function editorRevise(instruction, segmentIds, button) {
   const ed = state.editor;
-  const dwight = character("dwight");
   button.disabled = true;
   const feedback = document.getElementById("ed-feedback");
-  feedback.textContent = `${dwight.display_name} is revising...`;
+  feedback.textContent = `${agentName("dwight")} is revising...`;
   try {
     // A saved document revises through its id (the delta segments live
     // there); a draft has no id yet and uses the stateless route. Both
@@ -1379,12 +1434,18 @@ async function editorSave(button) {
 /* One delegated handler for every editor gesture (desk-body onclick
  * routes here). Returns true when the click was an editor action. */
 async function handleEditorClick(target) {
-  if (target.matches("[data-open-doc]")) {
-    await openSavedEditor(Number(target.dataset.openDoc));
+  // closest, not matches: the title of a My documents row is a <strong>
+  // inside the clickable div - clicking the text must open too (owner
+  // bug report, QA v6).
+  const opener = target.closest("[data-open-doc]");
+  if (opener) {
+    await openSavedEditor(Number(opener.dataset.openDoc));
     return true;
   }
   if (!state.editor) return false;
-  if (target.matches("[data-ed-back]")) {
+  // Back and Close do the same thing (owner ask, QA v6: a way OUT once
+  // saved): land on the document list, unsaved-work guard included.
+  if (target.matches("[data-ed-back]") || target.matches("[data-ed-close]")) {
     if (confirmEditorLeave()) await loadDesk();
     return true;
   }

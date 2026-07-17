@@ -864,6 +864,10 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 
 .archive-head { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
 .archive-head .btn { padding: 6px 12px; font-size: 11px; }
+/* The per-memory accordion control (QA v6) sits at the right of the
+   header line, next to Sync on the documents side. */
+.archive-head-actions { display: flex; align-items: center; gap: 12px; }
+.fold-toggle { margin-left: 0; flex: none; }
 
 .doc-row {
   display: flex;
@@ -977,6 +981,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 /* C3 (2026-07-17): the document opens full-frame in the Desk - one
    canvas that evolves, never two copies of the text on screen. */
 .editor-frame { display: flex; flex-direction: column; gap: 4px; }
+.editor-nav-row { display: flex; align-items: center; justify-content: space-between; }
+.editor-nav-row .linklike { margin-left: 0; }
+.editor-nav-row .btn { padding: 7px 14px; font-size: 11px; }
 .editor-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
 .chip.dirty { color: var(--orange); }
 

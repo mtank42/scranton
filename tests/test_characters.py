@@ -21,5 +21,10 @@ def test_every_character_is_fully_described():
     """
     for key, character in CHARACTERS.items():
         assert character["display_name"], key
+        # The person behind the action (owner, QA v6): sentences say
+        # 'Dwight', buttons and tabs say 'Tell Dwight'.
+        assert character["agent_name"], key
+        assert "Tell" not in character["agent_name"]
+        assert "Ask" not in character["agent_name"]
         if key != "darryl":
             assert character["avatar_asset"].endswith(".png"), key
