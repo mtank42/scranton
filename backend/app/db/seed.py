@@ -198,31 +198,89 @@ MOOD_STORYLINES: dict[str, list[MoodLevel | None]] = {
 }
 WEEKS = 12
 
-# Darryl's demo corpus (session 2026-07-15): a version family on Prince
-# Family Paper (only the DEF answers by default), a cataloged
-# spreadsheet, and one unclassified document so the bin has something
-# to file. One entry per document: (days_ago, title, mime, folder,
-# status, is_latest, family, client_name_or_None, chunk_text).
+# Darryl's demo corpus (2026-07-15, enriched 2026-07-17 - the owner
+# called four documents 'rabougri'): two version families (only the
+# latest answers by default), two cataloged spreadsheets, two bin
+# items, every client and one project covered. One entry per document:
+# (days_ago, title, mime, folder, status, is_latest, family,
+# (entity_kind, entity_name) or None, chunk_text).
+# QA anchors - the v6 checklist cites these titles, NEVER rename them:
+# Contrat_papier_recycle_V2_DEF.md, Suivi_Lackawanna_County_Schools.xlsx,
+# notes_entrepot_vrac.md.
 MD = "text/markdown"
+PDF = "application/pdf"
+DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 DOCUMENTS = [
     (60, "Contrat_papier_recycle_V1.md", MD, "Clients/Prince Family Paper",
-     DocumentStatus.INDEXED, False, "contrat papier recycle", "Prince Family Paper",
+     DocumentStatus.INDEXED, False, "contrat papier recycle",
+     ("client", "Prince Family Paper"),
      "Recycled paper trial, draft terms: 15 boxes monthly, pricing to be "
      "confirmed with accounting before signature."),
     (9, "Contrat_papier_recycle_V2_DEF.md", MD, "Clients/Prince Family Paper",
-     DocumentStatus.INDEXED, True, "contrat papier recycle", "Prince Family Paper",
+     DocumentStatus.INDEXED, True, "contrat papier recycle",
+     ("client", "Prince Family Paper"),
      "Recycled paper trial, signed: 20 boxes monthly starting next month, "
      "delivery on the first Tuesday of each month, renewal reviewed after "
      "one quarter."),
+    (7, "CR_appel_Prince_premiere_livraison.md", MD,
+     "Clients/Prince Family Paper",
+     DocumentStatus.INDEXED, True, "cr appel prince premiere livraison",
+     ("client", "Prince Family Paper"),
+     "Call notes with Prince Family Paper: first recycled paper delivery "
+     "confirmed for the first Tuesday, contact praised our responsiveness "
+     "and asked whether a bulk discount applies from 30 boxes monthly."),
     (14, "Suivi_Lackawanna_County_Schools.xlsx", XLSX, "Clients",
      DocumentStatus.CATALOGED, True, "suivi lackawanna county schools",
-     "Lackawanna County Schools",
+     ("client", "Lackawanna County Schools"),
      "Cataloged file: Suivi_Lackawanna_County_Schools.xlsx (folder: Clients)"),
+    (40, "CR_reunion_Lackawanna_rentree.docx", DOCX,
+     "Clients/Lackawanna County Schools",
+     DocumentStatus.INDEXED, True, "cr reunion lackawanna rentree",
+     ("client", "Lackawanna County Schools"),
+     "Back-to-school planning meeting with Lackawanna County Schools: "
+     "cardstock volumes confirmed for Q3, deliveries only on Tuesday "
+     "mornings during term, the procurement office prefers email over "
+     "phone for every follow-up."),
+    (45, "Devis_Stone_and_Son_letterhead.pdf", PDF,
+     "Clients/Stone & Son Suit Warehouse",
+     DocumentStatus.INDEXED, True, "devis stone and son letterhead",
+     ("client", "Stone & Son Suit Warehouse"),
+     "Quote for Stone & Son Suit Warehouse: 5000 letterhead sheets on "
+     "90g ivory stock, three pricing tiers by volume, embossed logo "
+     "option quoted separately, offer valid 30 days."),
+    (26, "Grille_tarifs_Prince_2026.xlsx", XLSX, "Clients/Prince Family Paper",
+     DocumentStatus.CATALOGED, True, "grille tarifs prince 2026",
+     ("client", "Prince Family Paper"),
+     "Cataloged file: Grille_tarifs_Prince_2026.xlsx "
+     "(folder: Clients/Prince Family Paper)"),
+    (35, "Plan_tournees_livraison_draft.md", MD, "Projets/Delivery routes",
+     DocumentStatus.INDEXED, False, "plan tournees livraison",
+     ("project", "Delivery routes overhaul"),
+     "Delivery routes overhaul, first draft: three routes around the "
+     "business park, morning slots only, the south loop looks overloaded."),
+    (18, "Plan_tournees_livraison_V2.md", MD, "Projets/Delivery routes",
+     DocumentStatus.INDEXED, True, "plan tournees livraison",
+     ("project", "Delivery routes overhaul"),
+     "Delivery routes overhaul, revised plan: four routes, Keystone "
+     "Logistics takes the north loop as subcontractor, fuel costs "
+     "reviewed monthly, go-live after the Q3 rush."),
+    (12, "Brief_rentree_Lackawanna.docx", DOCX,
+     "Clients/Lackawanna County Schools",
+     DocumentStatus.INDEXED, True, "brief rentree lackawanna",
+     ("client", "Lackawanna County Schools"),
+     "Sales brief for the school season: Lackawanna volumes up, cardstock "
+     "is the growth line, watch the invoicing error flagged by accounting "
+     "and confirm the fix before the next billing cycle."),
     (3, "notes_entrepot_vrac.md", MD, "Divers",
      DocumentStatus.UNCLASSIFIED, True, "notes entrepot vrac", None,
      "Warehouse loose notes: pallet turnaround ideas, forklift maintenance "
      "calendar, and the mezzanine storage question to settle."),
+    (2, "Menu_traiteur_pretzel_day.md", MD, "Divers",
+     DocumentStatus.UNCLASSIFIED, True, "menu traiteur pretzel day", None,
+     "Caterer menu options for the next office pretzel day: classic "
+     "salted, cinnamon sugar, and a savory cheese tray, quote per head "
+     "with delivery before noon."),
 ]
 
 
@@ -337,7 +395,7 @@ def seed(
         # leave them (routing tags at 1.0, one bin item, one catalog
         # entry, the version family with only the DEF as latest).
         chunks: list[DocumentChunk] = []
-        for age, title, mime, folder, doc_status, latest, family, client_name, text in DOCUMENTS:
+        for age, title, mime, folder, doc_status, latest, family, entity, text in DOCUMENTS:
             document = Document(
                 title=title,
                 mime_type=mime,
@@ -354,12 +412,16 @@ def seed(
             )
             session.add(document)
             session.flush()
-            if client_name:
+            if entity:
+                # Routed as a real sync would have: client or project,
+                # resolved by name against the roster planted above.
+                kind, name = entity
+                target = clients[name] if kind == "client" else projects[name]
                 session.add(
                     DocumentTag(
                         document_id=document.id,
-                        entity_type=EntityType.CLIENT,
-                        entity_id=clients[client_name].id,
+                        entity_type=EntityType.CLIENT if kind == "client" else EntityType.PROJECT,
+                        entity_id=target.id,
                         proposed_by=DocumentProposedBy.DARRYL,
                         confidence=1.0,
                     )
