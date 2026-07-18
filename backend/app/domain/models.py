@@ -3,9 +3,10 @@
 These tables are a direct mapping of the data model validated in
 May 2026 (SCRANTON_CONTEXT.md section 5; handover_validations added in
 the dedicated 2026-07-08 session; documents, document_chunks and
-document_tags added in the Darryl session, 2026-07-15). The model is
-frozen: do not add, remove or rename fields without a dedicated
-session with the owner.
+document_tags added in the Darryl session, 2026-07-15; edited_documents
+in the editing session, 2026-07-16; users and sessions in the identity
+session, 2026-07-18). The model is frozen: do not add, remove or rename
+fields without a dedicated session with the owner.
 
 Two design principles are baked into the schema and must survive here:
 - Raw entries are immutable: only segments are processed and routed.
@@ -126,6 +127,17 @@ class ProposedBy(str, enum.Enum):
 
     DWIGHT = "dwight"
     MANAGER = "manager"
+
+
+class UserRole(str, enum.Enum):
+    """What a login account may do (users.role).
+
+    Two values today; the future co-admin (owner decision 2026-07-14,
+    'later') will be one more value here, not a schema migration.
+    """
+
+    MANAGER = "manager"
+    MEMBER = "member"
 
 
 class RelationshipType(str, enum.Enum):
@@ -539,3 +551,75 @@ class EditedDocument(Base):
     # this moment are 'what's new' at the next opening. Dismissed news
     # is dismissed for good - it stays in Pam's memory regardless.
     memory_reviewed_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+# --- Identity and sessions (identity session, 2026-07-18) ---
+
+
+class User(Base):
+    """A login account: who may enter Scranton.
+
+    The privacy-first pivot (owner, 2026-07-18): every person reaches
+    Scranton from their own machine and proves who they are - the
+    declared identity picker of the POC is gone. The manager is a user
+    WITHOUT a roster row (team_member_id is NULL): his 'identity apart'
+    (owner decision 2026-07-14) is this shape, not a separate table, so
+    a future co-admin is a role change and not a data move.
+
+    Deactivation flips is_active (rows are never deleted, like the
+    roster) and cuts login immediately: existing sessions are revoked
+    by the service at the same time.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # The email is BOTH the login and the roster contact channel (owner
+    # arbitration 2026-07-18: mail only, no extra contact fields).
+    # Stored lowercase so lookups are case-insensitive by construction.
+    email: Mapped[str] = mapped_column(String(255), unique=True)
+    # argon2id hash, never the password itself (services/auth_service.py).
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[UserRole] = mapped_column(as_db_enum(UserRole))
+    # NULL for the manager; members link to their roster row, which
+    # keeps carrying their name, birthday and personal profile.
+    team_member_id: Mapped[int | None] = mapped_column(ForeignKey("team_members.id"))
+    # Manager-only identity fields (he has no roster row to carry them).
+    # The birthday keeps the day-not-age invariant (year BIRTHDAY_YEAR):
+    # the manager is eligible Maire de Scranton, but has no mood tracking
+    # (owner decision 2026-07-14).
+    full_name: Mapped[str | None] = mapped_column(String(120))
+    birthday: Mapped[date | None]
+    # Admin-created accounts get a provisional password: the first login
+    # forces a change, so the admin never keeps a working credential.
+    must_change_password: Mapped[bool] = mapped_column(default=False)
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    team_member: Mapped[TeamMember | None] = relationship()
+
+
+class AuthSession(Base):
+    """A logged-in browser: opaque token, long expiry, revocable.
+
+    The cookie carries a random token; only its SHA-256 lands here, so
+    a stolen database cannot impersonate anyone (same doctrine as the
+    password hashes). Logout sets revoked_at; deactivating a user
+    revokes every session they own. The long lifetime (default 30
+    days, SESSION_TTL_DAYS) is the owner's comfort arbitration
+    (2026-07-18) - logout and account deactivation are the mitigations
+    for a shared or lost machine.
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    # Naive UTC, like every datetime SQLite stores (see the gotcha in
+    # CLAUDE.md): comparisons must use naive UTC on both sides.
+    expires_at: Mapped[datetime]
+    revoked_at: Mapped[datetime | None]
+
+    user: Mapped[User] = relationship()

@@ -5,12 +5,14 @@ them on app.state. Dependencies only assemble: this is what lets tests
 swap any seam through app.dependency_overrides without patching.
 """
 
-from fastapi import Request
+from fastapi import Depends, HTTPException, Request, status
 
 from backend.app.adapters.documents.factory import build_document_source
 from backend.app.adapters.ingestion.factory import build_ingestion_source
 from backend.app.config import get_settings
+from backend.app.domain.schemas import CurrentUserOut
 from backend.app.services.angela_service import AngelaService
+from backend.app.services.auth_service import AuthService
 from backend.app.services.darryl_service import DarrylService
 from backend.app.services.dwight_service import DwightService
 from backend.app.services.editing_service import EditingService
@@ -21,6 +23,38 @@ from backend.app.services.pam_service import PamService
 from backend.app.services.summary_service import SummaryService
 from backend.app.services.team_service import TeamService
 from backend.app.services.toby_service import TobyService
+
+
+# The session cookie (identity session, 2026-07-18). Lives here, next
+# to the dependencies that read it: routers import the name, never
+# hardcode the string.
+SESSION_COOKIE = "scranton_session"
+
+
+def get_auth_service(request: Request) -> AuthService:
+    """Build an AuthService wired to the app-level session factory."""
+    return AuthService(
+        session_factory=request.app.state.session_factory,
+        ttl_days=get_settings().session_ttl_days,
+    )
+
+
+def get_current_user(
+    request: Request,
+    service: AuthService = Depends(get_auth_service),
+) -> CurrentUserOut:
+    """The logged-in user behind the request's cookie, or 401.
+
+    This is the foundation the per-role guards build on (lot 2 of the
+    identity session): a route that depends on this cannot be reached
+    anonymously.
+    """
+    user = service.current_user(request.cookies.get(SESSION_COOKIE))
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not logged in."
+        )
+    return user
 
 
 def get_dwight_service(request: Request) -> DwightService:

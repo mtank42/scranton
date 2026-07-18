@@ -825,3 +825,66 @@ class IngestSummary(BaseModel):
     entry_ids: list[int] = []
     clarifications: int = 0
     failures: int = 0
+
+
+# --- Auth API surface (identity session, 2026-07-18) ---
+
+
+class AuthStatus(BaseModel):
+    """Response for GET /api/v1/auth/status: what the landing shows.
+
+    initialized False means no manager account exists yet: the entry
+    screen is the first-run setup, not the login form.
+    """
+
+    initialized: bool
+
+
+class SetupIn(BaseModel):
+    """Request body for POST /api/v1/auth/setup (first run only).
+
+    The email doubles as the login (owner arbitration 2026-07-18: mail
+    only). A light shape check is enough here: the email is a login
+    identifier we store, not an address we deliver to - full RFC
+    validation would add a dependency for no protection.
+    """
+
+    email: str = Field(pattern=r".+@.+\..+")
+    # 8 characters is the floor, not a policy statement: length is the
+    # one constraint that measurably helps, composition rules do not.
+    password: str = Field(min_length=8)
+    full_name: str = Field(min_length=1)
+    birthday: date | None = None
+
+
+class LoginIn(BaseModel):
+    """Request body for POST /api/v1/auth/login."""
+
+    email: str
+    password: str
+
+
+class ChangePasswordIn(BaseModel):
+    """Request body for POST /api/v1/auth/change-password.
+
+    The current password is required even with a valid session cookie:
+    an unattended machine must not be enough to take over an account.
+    """
+
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+
+class CurrentUserOut(BaseModel):
+    """The logged-in identity, as the frontend sees it.
+
+    role drives which views exist; must_change_password True forces the
+    password screen before anything else (admin-created accounts).
+    """
+
+    id: int
+    email: str
+    role: str
+    full_name: str | None
+    team_member_id: int | None
+    must_change_password: bool

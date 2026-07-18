@@ -50,9 +50,12 @@ from backend.app.domain.models import (
     SourceType,
     Stakeholder,
     TeamMember,
+    User,
+    UserRole,
     ValidationStatus,
     ViewType,
 )
+from backend.app.services.auth_service import hash_password
 from backend.app.services.dwight_service import flatten_segment_metadata
 
 
@@ -62,6 +65,12 @@ def days_ago(days: int) -> datetime:
 
 
 # --- The dataset (names reserved for fictitious users, SCRANTON_CONTEXT §3) ---
+
+# Demo credentials (printed by the seed so a demo is one command away;
+# real deployments create their accounts through the first-run setup).
+MANAGER_EMAIL = "michael@dundermifflin.com"
+MANAGER_PASSWORD = "worldsbestboss"
+MEMBER_PASSWORD = "pretzelday"
 
 TEAM = [
     ("Ryan", "Junior salesman"),
@@ -321,6 +330,38 @@ def seed(
         session.add_all([*members.values(), *clients.values()])
         session.flush()
 
+        # Login accounts (identity session, 2026-07-18): the demo manager
+        # and one account per roster member. Passwords are hashed once per
+        # distinct value and reused (argon2 is slow on purpose; six
+        # identical demo passwords do not need six hashes). Demo accounts
+        # skip the forced first-login change: a demo must open, not nag.
+        manager_hash = hash_password(MANAGER_PASSWORD)
+        member_hash = hash_password(MEMBER_PASSWORD)
+        session.add(
+            User(
+                email=MANAGER_EMAIL,
+                password_hash=manager_hash,
+                role=UserRole.MANAGER,
+                full_name="Michael Scott",
+                # Eligible Maire de Scranton (owner decision 2026-07-14);
+                # J-6 puts him in the upcoming-birthdays reminder window.
+                birthday=(datetime.now(timezone.utc) + timedelta(days=6))
+                .date()
+                .replace(year=BIRTHDAY_YEAR),
+            )
+        )
+        session.add_all(
+            [
+                User(
+                    email=f"{name.lower()}@dundermifflin.com",
+                    password_hash=member_hash,
+                    role=UserRole.MEMBER,
+                    team_member_id=member.id,
+                )
+                for name, member in members.items()
+            ]
+        )
+
         projects = {}
         for name, client_name in PROJECTS:
             projects[name] = Project(
@@ -465,7 +506,9 @@ def seed(
         return (
             f"Seeded {len(TEAM)} members, {len(CLIENTS)} clients, "
             f"{len(SEGMENTS)} entries, {len(validated_segments)} segments embedded, "
-            f"{len(DOCUMENTS)} corpus documents."
+            f"{len(DOCUMENTS)} corpus documents.\n"
+            f"Demo accounts: {MANAGER_EMAIL} / {MANAGER_PASSWORD} (manager), "
+            f"<firstname>@dundermifflin.com / {MEMBER_PASSWORD} (members)."
         )
 
 

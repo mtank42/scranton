@@ -57,6 +57,14 @@ class Settings:
     # bin instead of betting (owner arbitration, 2026-07-15: silent
     # routing when sure, never a plausible guess). A tuning lever.
     darryl_min_confidence: float = 0.75
+    # How long a login session lives (identity session, 2026-07-18).
+    # Long on purpose (owner arbitration: comfort over friction, logout
+    # and account deactivation are the mitigations). A tuning lever.
+    session_ttl_days: int = 30
+    # Secure flag on the session cookie. False for the MVP (plain HTTP
+    # on the team's local network - documented limitation); any hosted
+    # deployment must serve HTTPS and set this to true.
+    session_cookie_secure: bool = False
 
 
 def get_settings() -> Settings:
@@ -89,4 +97,7 @@ def get_settings() -> Settings:
         darryl_source=os.getenv("DARRYL_SOURCE", "gdrive"),
         darryl_local_dir=os.getenv("DARRYL_LOCAL_DIR", ""),
         darryl_min_confidence=float(os.getenv("DARRYL_MIN_CONFIDENCE", "0.75")),
+        session_ttl_days=int(os.getenv("SESSION_TTL_DAYS", "30")),
+        session_cookie_secure=os.getenv("SESSION_COOKIE_SECURE", "").lower()
+        in {"1", "true", "yes"},
     )

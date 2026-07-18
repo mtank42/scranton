@@ -35,6 +35,10 @@ EXPECTED_TABLES = {
     # The manager's clean notebook, added in the document-editing
     # session (2026-07-16).
     "edited_documents",
+    # Login accounts and browser sessions, added in the identity
+    # session (2026-07-18, the privacy-first pivot).
+    "users",
+    "sessions",
 }
 
 
