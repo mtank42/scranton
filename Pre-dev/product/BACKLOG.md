@@ -396,7 +396,40 @@ Deux volets décidés le 2026-07-14 :
 ## Identité du manager, rôle admin & onboarding d'équipe
 
 **Catégorie** : Architecture / Rôles / Onboarding
-**Priorité** : **GO OWNER (2026-07-18) — prochaine session, à ouvrir NEUVE.**
+**Statut** : **CONSTRUIT (session du 2026-07-18, lots 1-4, 196 tests).**
+Référence : `docs/identity.md`.
+
+### Arbitrages owner de la session (2026-07-18) — à ne pas re-débattre
+
+1. **PIVOT DE DOCTRINE : privacy-first, PAS mono-poste.** « Surtout pas
+   du mono-poste !!!! Ça fait bien longtemps qu'on s'est éloigné du
+   local-first pour passer au privacy-first, et encore, avec de la
+   souplesse (G Drive, LLM non locaux). » Chaque utilisateur accède
+   depuis SON poste (smartphone : futur plus lointain) ; connecter les
+   solutions existantes (stockage, IA, communication, compta) est
+   incontournable. « Oui, ça va être lourd mais incontournable. »
+2. **Login par profil** (manager ET équipiers) — conséquence directe
+   du multi-poste.
+3. **Déploiement V1 : auto-hébergé, prêt pour l'hébergé** (option 1
+   « peut-être suffisante pour un MVP ») ; limite assumée : serveur =
+   une machine de l'équipe. La discussion cloud reste ouverte.
+4. **Onboarding : mot de passe provisoire + changement forcé** à la
+   première connexion, transmis de vive voix — zéro infra mail.
+5. **Data model : table `users` unifiée** (+ `sessions`) — le manager
+   est un user SANS fiche équipier ; le co-admin futur = une valeur de
+   rôle. Zéro modification des 13 tables existantes.
+6. **Champs roster : mail SEUL** (login + canal de contact).
+7. **Session longue (~30 jours) avec logout** — curseur confort
+   assumé ; logout et désactivation sont les mitigations.
+8. **Le seed crée les comptes démo** (identifiants affichés en sortie).
+9. **Vue Admin dédiée** (4e onglet manager).
+10. Décidé en construction, à confirmer si contesté : Dwight
+    manager-only (la capture équipier = V2, les entrées n'ont pas
+    d'auteur), Pam ouverte aux deux rôles (cold-only par invariant,
+    strips/aperçus/save-edit manager-only), profil personnel écrit par
+    son propriétaire SEUL.
+
+**Priorité d'origine** : **GO OWNER (2026-07-18) — prochaine session, à ouvrir NEUVE.**
 « Le volet admin est essentiel, allons-y. » S'ajoute au périmètre : une
 **page d'accueil + login « un peu stylée »** (l'entrée de l'app — l'UX
 se cadre avec la boussole des slides, comme toujours). Historique de

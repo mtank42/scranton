@@ -155,9 +155,9 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 
 ---
 
-## 5. Data model — validated May 2026 (+ handover session July 2026, + Darryl session 2026-07-15)
+## 5. Data model — validated May 2026 (+ handover session July 2026, + Darryl session 2026-07-15, + editing session 2026-07-16, + identity session 2026-07-18)
 
-### SQLite tables (9 + 3)
+### SQLite tables (9 + 3 + 1 + 2)
 
 | Table | Role |
 |---|---|
@@ -173,12 +173,15 @@ Decision deferred to Month 4. POC runs on Mac Mini locally first.
 | `documents` | Darryl's corpus (dedicated session, 2026-07-15). One row per shared document: identity (`origin_ref`, unique), `web_view_link`, `folder_path`, `content_sha256`, `status` (indexed / cataloged / unclassified), version family (`family_key`, `is_latest`), soft delete (`deleted_at`). |
 | `document_chunks` | Retrievable slices of a document — the corpus counterpart of `entry_segments`. SQLite stays the source of truth for text. |
 | `document_tags` | Document-level routing (client / project only): `proposed_by` darryl / manager, `confidence` (1.0 for deterministic signals and manager decisions). |
+| `edited_documents` | The manager's clean notebook (editing session, 2026-07-16). A generated document made his own at first Save: last state only, `memory_reviewed_at` bookmark for delta proposals, target entity (person-targeted docs never enter Darryl's corpus). |
+| `users` | Login accounts (identity session, 2026-07-18). Email as login (unique, lowercase), argon2id `password_hash`, `role` manager / member (co-admin = a future value), `team_member_id` nullable FK — NULL for the manager (identity apart); manager-only `full_name` and `birthday` (day+month, eligible Maire, no mood tracking). `must_change_password` for admin-created accounts, `is_active` cuts login. |
+| `sessions` | Logged-in browsers (identity session, 2026-07-18). SHA-256 `token_hash` of the cookie token (never the token), `expires_at` (default 30 days, `SESSION_TTL_DAYS`), `revoked_at` (logout, deactivation, password change). |
 
 ### Key fields
 
 **`team_members`**
 - `birthday` — date, used by Pam for the Maire de Scranton ritual and manager reminders
-- `personal_profile` — free text or structured table (TBD in session): interests, passions, favorites. Owned and controlled by the team member. The manager cannot modify it. In POC (no auth): manager enters it on behalf. In V2: team member owns it directly.
+- `personal_profile` — free text or structured table (TBD in session): interests, passions, favorites. Owned and controlled by the team member. The manager cannot modify it — enforced server-side since the identity session (2026-07-18): each member edits their own profile through their own login; the POC's manager-on-behalf entry is over.
 
 **`entries`**
 - `raw_content` — original text, never touched after creation

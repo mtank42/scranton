@@ -2,7 +2,7 @@
 
 > One smart notepad. Zero bureaucracy. 100% team.
 
-A managerial OS for proximity managers in SMEs — local-first, Mistral-powered, anti-surveillance.
+A managerial OS for proximity managers in SMEs — privacy-first, Mistral-powered, anti-surveillance.
 
 Inspired by the worst manager on American TV. Built for the best.
 
@@ -69,11 +69,15 @@ editor: one canvas, computed diffs, undo, Save as the only persisting
 gesture; [docs/document_editing.md](docs/document_editing.md)). Four owner
 QA passes drove the polish; only the real-Drive QA section remains open.
 
-**Next.** Manager identity, admin role & team onboarding (owner GO,
-2026-07-18): access and login with a styled landing page, account
-management, the missing roster fields, and real scoping of the
-manager-only surfaces. Then Oscar (the operations board) and
-exports & sharing.
+**Done too (2026-07-18).** Manager identity, admin role & team
+onboarding — the privacy-first pivot: Scranton is a client-server web
+app, every person logs in from their own machine. Real accounts
+(argon2id), a styled landing, server-side scoping of every surface,
+and an Admin view where the manager creates the team (provisional
+password shown once, first login forces a change);
+[docs/identity.md](docs/identity.md).
+
+**Next.** Oscar (the operations board) and exports & sharing.
 
 ---
 
@@ -99,6 +103,9 @@ pytest                                   # offline test suite, no API key needed
 
 # Optional: load the Dunder Mifflin demo dataset (3 months of history,
 # real embeddings at seed time - needs MISTRAL_API_KEY in .env).
+# The seed also creates the demo accounts and prints their credentials
+# (michael@dundermifflin.com is the manager). A FRESH database shows
+# the first-run setup screen instead: create your own manager account.
 python -m backend.app.db.seed --reset    # --reset wipes db + vector index first
 
 pytest -m integration                    # real-API smoke tests + golden Ask Pam queries
