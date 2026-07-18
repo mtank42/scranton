@@ -888,3 +888,49 @@ class CurrentUserOut(BaseModel):
     full_name: str | None
     team_member_id: int | None
     must_change_password: bool
+
+
+# --- Admin API surface (identity session, lot 3) ---
+
+
+class AdminMemberOut(BaseModel):
+    """One roster row as the Admin view sees it: account included.
+
+    has_account False marks a roster row that predates the identity
+    session; giving it an email (update) creates its account.
+    """
+
+    member_id: int
+    full_name: str
+    role: str | None
+    email: str | None
+    is_active: bool
+    has_account: bool
+
+
+class AdminAccountCreated(BaseModel):
+    """A created (or reset) account, with its provisional password.
+
+    The password's ONLY exposure: never stored in clear, never shown
+    again - the admin reads it to the member, first login replaces it.
+    """
+
+    member: AdminMemberOut
+    provisional_password: str
+
+
+class AdminMemberCreate(BaseModel):
+    """Request body for POST /api/v1/admin/members."""
+
+    full_name: str = Field(min_length=1)
+    role: str | None = None
+    email: str = Field(pattern=r".+@.+\..+")
+
+
+class AdminMemberUpdate(BaseModel):
+    """Request body for PUT /api/v1/admin/members/{id}: the
+    professional fields only (member-owned data has its own flow)."""
+
+    full_name: str = Field(min_length=1)
+    role: str | None = None
+    email: str = Field(pattern=r".+@.+\..+")

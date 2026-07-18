@@ -26,18 +26,27 @@
     </div>
   </header>
 
-  <!-- The entry: login, first-run setup, or the forced password change.
-       Functional shell for lot 2; the styled landing is lot 3. -->
+  <!-- The entry (identity session, lot 3): landing + login in one
+       screen, worded from the deck's cover (the UX compass). Three
+       form modes: login, first-run setup, forced password change. -->
   <div class="auth-screen" id="auth-screen" hidden>
-    <div class="auth-card">
-      <div class="logo">SCRANTON<span class="logo-dot">_</span></div>
-      <h2 id="auth-title"></h2>
-      <p class="view-sub" id="auth-sub"></p>
-      <form id="auth-form" class="capture-form">
-        <div id="auth-fields"></div>
-        <p class="error-banner" id="auth-error" hidden></p>
-        <button type="submit" class="btn btn-primary" id="auth-submit"></button>
-      </form>
+    <div class="auth-stage">
+      <div class="auth-brand">
+        <div class="logo auth-logo">SCRANTON<span class="logo-dot">_</span></div>
+        <p class="auth-kicker">Management OS</p>
+        <p class="auth-tagline">One smart notepad.<br />Zero bureaucracy.<br />100% team.</p>
+        <p class="view-sub">Inspired by the worst manager on American TV. Built for the best.</p>
+        <div class="auth-cast" id="auth-cast"></div>
+      </div>
+      <div class="auth-card">
+        <h2 id="auth-title"></h2>
+        <p class="view-sub" id="auth-sub"></p>
+        <form id="auth-form" class="capture-form">
+          <div id="auth-fields"></div>
+          <p class="error-banner" id="auth-error" hidden></p>
+          <button type="submit" class="btn btn-primary" id="auth-submit"></button>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -65,6 +74,14 @@
           <p class="view-sub">Team health, from what each person chose to say. Facts and quotes, never scores.</p>
         </header>
         <div id="toby-body" class="placeholder">Loading</div>
+      </section>
+      <!-- Admin (identity session, lot 3): the manager creates the
+           accounts. A provisional password is shown exactly once. -->
+      <section id="view-admin" class="view" hidden>
+        <header class="view-header slim">
+          <p class="view-sub">Your team's accounts. You create them, they own their password from the first login.</p>
+        </header>
+        <div id="admin-body" class="placeholder">Loading</div>
       </section>
 
       <!-- Team member views -->

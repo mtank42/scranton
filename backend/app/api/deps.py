@@ -11,6 +11,7 @@ from backend.app.adapters.documents.factory import build_document_source
 from backend.app.adapters.ingestion.factory import build_ingestion_source
 from backend.app.config import get_settings
 from backend.app.domain.schemas import CurrentUserOut
+from backend.app.services.admin_service import AdminService
 from backend.app.services.angela_service import AngelaService
 from backend.app.services.auth_service import AuthService
 from backend.app.services.darryl_service import DarrylService
@@ -37,6 +38,11 @@ def get_auth_service(request: Request) -> AuthService:
         session_factory=request.app.state.session_factory,
         ttl_days=get_settings().session_ttl_days,
     )
+
+
+def get_admin_service(request: Request) -> AdminService:
+    """Build an AdminService wired to the app-level session factory."""
+    return AdminService(session_factory=request.app.state.session_factory)
 
 
 def get_current_user(

@@ -18,7 +18,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.app.domain.models import BIRTHDAY_YEAR, TeamMember
+from backend.app.domain.models import BIRTHDAY_YEAR, TeamMember, User, UserRole
 from backend.app.domain.schemas import MayorOverview, MemberOut, ProfileUpdate, UpcomingBirthday
 from backend.app.services.mood_service import MemberNotFoundError
 
@@ -91,10 +91,34 @@ class TeamService:
         mayor = None
         upcoming: list[UpcomingBirthday] = []
         with self.session_factory() as session:
-            members = session.scalars(
-                select(TeamMember)
-                .where(TeamMember.is_active.is_(True), TeamMember.birthday.is_not(None))
+            members = list(
+                session.scalars(
+                    select(TeamMember).where(
+                        TeamMember.is_active.is_(True), TeamMember.birthday.is_not(None)
+                    )
+                )
+            )
+            # The manager has the right to be Maire de Scranton too
+            # (owner decision 2026-07-14). His birthday lives on his
+            # users row (no roster row: identity apart); id 0 marks a
+            # display-only entry, never a roster reference.
+            managers = session.scalars(
+                select(User).where(
+                    User.role == UserRole.MANAGER,
+                    User.is_active.is_(True),
+                    User.birthday.is_not(None),
+                )
             ).all()
+            members.extend(
+                TeamMember(
+                    id=0,
+                    full_name=manager.full_name or manager.email,
+                    role="Manager",
+                    is_active=True,
+                    birthday=manager.birthday,
+                )
+                for manager in managers
+            )
             for member in members:
                 delta = (next_occurrence(member.birthday, today) - today).days
                 if delta == 0:

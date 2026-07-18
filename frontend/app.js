@@ -98,6 +98,7 @@ function roleViews() {
       { id: "dashboard", label: "Dashboard", icon: null, load: loadDashboard },
       { id: "desk", label: character("michael").display_name, icon: character("michael").avatar_asset, load: loadDesk },
       { id: "toby", label: character("toby").display_name, icon: character("toby").avatar_asset, load: loadToby },
+      { id: "admin", label: "Admin", icon: null, load: loadAdmin },
     ];
   }
   return [
@@ -1619,6 +1620,179 @@ async function loadToby() {
   );
 }
 
+/* --- Manager: Admin (identity session, lot 3) --- */
+
+/* The one-time password display: lives in memory only, dismissed on
+ * sight. It is the provisional password's ONLY exposure - the server
+ * never returns it again. */
+let adminNotice = null; // {name, password}
+let adminEditingId = null;
+let adminAccounts = [];
+
+async function loadAdmin() {
+  show("admin-body", `<p class="thinking">Loading accounts</p>`);
+  try {
+    adminAccounts = await api("/admin/members");
+    renderAdmin();
+  } catch (error) {
+    show("admin-body", `<div class="error-banner">${esc(error.message)}</div>`);
+  }
+}
+
+function adminRow(account) {
+  if (adminEditingId === account.member_id) {
+    return `
+      <div class="admin-row editing">
+        <form class="form-row" data-admin-save="${account.member_id}">
+          <input name="full_name" value="${esc(account.full_name)}" required />
+          <input name="role" value="${esc(account.role || "")}" placeholder="Role" />
+          <input name="email" type="email" value="${esc(account.email || "")}"
+            placeholder="Email - their login" required />
+          <button class="btn btn-primary">Save</button>
+          <button type="button" class="btn btn-ghost" data-admin-cancel>Cancel</button>
+        </form>
+      </div>`;
+  }
+  const status = !account.has_account
+    ? `<span class="chip">no account</span>`
+    : account.is_active
+      ? `<span class="chip cold">active</span>`
+      : `<span class="chip warm">deactivated</span>`;
+  const toggle = account.is_active
+    ? `<button class="btn btn-ghost" data-admin-deactivate="${account.member_id}">Deactivate</button>`
+    : `<button class="btn btn-ghost" data-admin-reactivate="${account.member_id}">Reactivate</button>`;
+  const reset = account.has_account
+    ? `<button class="btn btn-ghost" data-admin-reset="${account.member_id}">Reset password</button>`
+    : "";
+  return `
+    <div class="admin-row">
+      <div class="admin-who">
+        <strong>${esc(account.full_name)}</strong>
+        <span class="ms">${esc(account.role || "")}</span>
+        <span class="ms">${esc(account.email || "no email yet")}</span>
+      </div>
+      ${status}
+      <div class="admin-actions">
+        <button class="btn btn-ghost" data-admin-edit="${account.member_id}">Edit</button>
+        ${reset}
+        ${toggle}
+      </div>
+    </div>`;
+}
+
+function renderAdmin() {
+  const notice = adminNotice
+    ? `<div class="card admin-notice">
+         <p class="card-content">Provisional password for <strong>${esc(adminNotice.name)}</strong>:
+           <code class="one-time">${esc(adminNotice.password)}</code></p>
+         <p class="ms">Shown once - pass it on yourself. Their first login replaces it.</p>
+         <div class="card-actions">
+           <button class="btn btn-ghost" data-admin-dismiss>Got it</button>
+         </div>
+       </div>`
+    : "";
+  show(
+    "admin-body",
+    `${notice}
+     <div class="card">
+       <p class="sources-title">Add a team member</p>
+       <form class="form-row admin-create" data-admin-create>
+         <input name="full_name" placeholder="Full name" required />
+         <input name="role" placeholder="Role (optional)" />
+         <input name="email" type="email" placeholder="Email - their login" required />
+         <button class="btn btn-primary">Create the account</button>
+       </form>
+     </div>
+     <p class="sources-title">The roster - departures stay listed, never deleted</p>
+     ${adminAccounts.map(adminRow).join("")}`
+  );
+
+  const body = document.getElementById("admin-body");
+  // onclick, not addEventListener: the container survives view
+  // switches and listeners would accumulate (CLAUDE.md gotcha).
+  body.onclick = async (event) => {
+    const t = event.target;
+    if (t.matches("[data-admin-dismiss]")) {
+      adminNotice = null;
+      renderAdmin();
+    }
+    if (t.matches("[data-admin-edit]")) {
+      adminEditingId = Number(t.dataset.adminEdit);
+      renderAdmin();
+    }
+    if (t.matches("[data-admin-cancel]")) {
+      adminEditingId = null;
+      renderAdmin();
+    }
+    if (t.matches("[data-admin-deactivate]")) {
+      const id = Number(t.dataset.adminDeactivate);
+      const who = adminAccounts.find((a) => a.member_id === id);
+      if (!confirm(`Deactivate ${who.full_name}? Their access stops immediately; the data stays (handover doctrine).`)) return;
+      await adminCall(`/admin/members/${id}/deactivate`, "Deactivation failed");
+    }
+    if (t.matches("[data-admin-reactivate]")) {
+      await adminCall(`/admin/members/${Number(t.dataset.adminReactivate)}/reactivate`, "Reactivation failed");
+    }
+    if (t.matches("[data-admin-reset]")) {
+      const id = Number(t.dataset.adminReset);
+      const who = adminAccounts.find((a) => a.member_id === id);
+      if (!confirm(`Reset ${who.full_name}'s password? Their sessions close and the old password dies.`)) return;
+      await adminCall(`/admin/members/${id}/reset-password`, "Reset failed", who.full_name);
+    }
+  };
+  body.onsubmit = async (event) => {
+    const form = event.target.closest("form");
+    if (!form) return;
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(form).entries());
+    if (!payload.role) payload.role = null;
+    try {
+      if (form.matches("[data-admin-create]")) {
+        const created = await api("/admin/members", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        adminNotice = {
+          name: created.member.full_name,
+          password: created.provisional_password,
+        };
+      } else if (form.matches("[data-admin-save]")) {
+        const id = Number(form.dataset.adminSave);
+        const updated = await api(`/admin/members/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        // Giving an email to a pre-identity row creates the account:
+        // the one-time password rides the same response shape.
+        if (updated.provisional_password) {
+          adminNotice = {
+            name: updated.member.full_name,
+            password: updated.provisional_password,
+          };
+        }
+        adminEditingId = null;
+      }
+      await loadAdmin();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+}
+
+/* One admin action: POST, surface the one-time password when the
+ * response carries one, re-render from the server's truth. */
+async function adminCall(path, failureLabel, noticeName) {
+  try {
+    const result = await api(path, { method: "POST" });
+    if (noticeName && result.provisional_password) {
+      adminNotice = { name: noticeName, password: result.provisional_password };
+    }
+    await loadAdmin();
+  } catch (error) {
+    alert(`${failureLabel}: ${error.message}`);
+  }
+}
+
 /* --- Team member: My board --- */
 
 async function loadMyBoard() {
@@ -1961,6 +2135,24 @@ async function showAuth(mode) {
   }
   const spec = AUTH_MODES[mode];
   document.getElementById("auth-screen").hidden = false;
+  // The cast strip: avatars from the character map (config/ui is
+  // public branding), never hardcoded names - the rebrand seam holds
+  // on the landing too.
+  if (!Object.keys(state.characters).length) {
+    try {
+      state.characters = (await api("/config/ui")).characters;
+    } catch {
+      state.characters = {};
+    }
+  }
+  document.getElementById("auth-cast").innerHTML = Object.values(state.characters)
+    .filter((entry) => entry.avatar_asset)
+    .map(
+      (entry) =>
+        `<img class="cast-avatar" src="assets/${esc(entry.avatar_asset)}"
+           alt="" title="${esc(entry.display_name)}" />`
+    )
+    .join("");
   document.getElementById("auth-title").textContent = spec.title;
   document.getElementById("auth-sub").textContent = spec.sub;
   document.getElementById("auth-submit").textContent = spec.submit;

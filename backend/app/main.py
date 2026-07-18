@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.adapters.llm.factory import build_llm
 from backend.app.adapters.vectorstore.chroma import ChromaStore
 from backend.app.api.v1 import (
+    admin,
     angela,
     auth,
     config,
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
+    app.include_router(admin.router, prefix="/api/v1")
     app.include_router(dwight.router, prefix="/api/v1")
     app.include_router(pam.router, prefix="/api/v1")
     app.include_router(mood.router, prefix="/api/v1")

@@ -77,6 +77,55 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow-y: auto;
+}
+
+.auth-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 430px) minmax(0, 430px);
+  gap: 56px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* One column when the room is missing (the smartphone future). */
+@media (max-width: 940px) {
+  .auth-stage { grid-template-columns: minmax(0, 430px); }
+}
+
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 420px;
+}
+
+.auth-logo { font-size: 34px; letter-spacing: 6px; }
+
+.auth-kicker {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.auth-tagline {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.auth-cast { display: flex; gap: 10px; margin-top: 10px; }
+
+.cast-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--grey);
+  object-fit: cover;
+  background: #121212;
 }
 
 .auth-card {
@@ -1045,3 +1094,50 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--c
 
 #ed-manual textarea { width: 100%; margin-top: 10px; font-family: var(--mono); font-size: 13px; }
 #ed-manual .form-row { margin-top: 10px; }
+
+/* --- Admin view (identity session, lot 3) --- */
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--grey);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.admin-who {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-who .ms { color: var(--midgrey); font-size: 13px; }
+
+.admin-actions { display: flex; gap: 8px; }
+
+.admin-row.editing form { flex: 1; }
+.admin-row.editing input,
+.admin-create input {
+  background: #121212;
+  color: var(--white);
+  border: 1px solid var(--grey);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-notice { border-color: var(--yellow); }
+.one-time {
+  font-family: var(--mono);
+  color: var(--yellow);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  padding-left: 6px;
+}
