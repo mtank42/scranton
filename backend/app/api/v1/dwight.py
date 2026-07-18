@@ -6,7 +6,7 @@ name: display names live in the character config map only.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.api.deps import get_dwight_service
+from backend.app.api.deps import get_dwight_service, require_manager
 from backend.app.domain.schemas import (
     CaptureResponse,
     EntryCreate,
@@ -25,7 +25,11 @@ from backend.app.services.dwight_service import (
     SegmentNotProposedError,
 )
 
-router = APIRouter(prefix="/dwight", tags=["dwight"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/dwight", tags=["dwight"], dependencies=[Depends(require_manager)]
+)
 
 
 @router.post("/entries", response_model=CaptureResponse, status_code=status.HTTP_201_CREATED)

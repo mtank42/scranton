@@ -7,7 +7,7 @@ entity files will call the same ones tomorrow.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.app.api.deps import get_editing_service
+from backend.app.api.deps import get_editing_service, require_manager
 from backend.app.domain.schemas import (
     DiffRequest,
     DocumentDelta,
@@ -26,7 +26,11 @@ from backend.app.services.editing_service import (
     diff_spans,
 )
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/documents", tags=["documents"], dependencies=[Depends(require_manager)]
+)
 
 
 @router.post("", response_model=EditedDocumentOut, status_code=status.HTTP_201_CREATED)

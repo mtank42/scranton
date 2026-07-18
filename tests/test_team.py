@@ -56,19 +56,15 @@ def test_profile_update_on_ghost_member_fails(session_factory):
         TeamService(session_factory).update_profile(999, ProfileUpdate())
 
 
-def test_team_endpoints(app, client):
-    """HTTP roundtrip: list roster, update a profile, 404 on ghosts."""
-    with app.state.session_factory() as session:
-        member = TeamMember(full_name="Kelly", role="Customer service")
-        session.add(member)
-        session.commit()
-        member_id = member.id
+def test_team_endpoints(member_login, client):
+    """HTTP roundtrip: list roster, update YOUR profile (identity session)."""
+    member_client, member_id = member_login(name="Kelly")
 
     roster = client.get("/api/v1/team/members")
     assert roster.status_code == 200
     assert roster.json()[0]["full_name"] == "Kelly"
 
-    updated = client.put(
+    updated = member_client.put(
         f"/api/v1/team/members/{member_id}/profile",
         json={"personal_profile": "Collects lip gloss.", "birthday": "1990-02-14"},
     )
@@ -76,6 +72,39 @@ def test_team_endpoints(app, client):
     # Year erased on the wire too: the API never echoes an age back.
     assert updated.json()["birthday"] == "2000-02-14"
 
+    # Someone else's profile - or a ghost's - is a 403 before being a
+    # 404: the route only ever accepts YOUR id.
     assert (
-        client.put("/api/v1/team/members/999/profile", json={}).status_code == 404
+        member_client.put("/api/v1/team/members/999/profile", json={}).status_code
+        == 403
     )
+    # The manager no longer writes profiles on behalf (member-owned).
+    assert (
+        client.put(
+            f"/api/v1/team/members/{member_id}/profile", json={}
+        ).status_code
+        == 403
+    )
+
+
+def test_roster_is_shaped_by_role(member_login, client):
+    """A member sees names, not the room's profiles and birthdays."""
+    member_client, member_id = member_login(name="Kelly")
+    other_client, other_id = member_login(name="Ryan")
+    member_client.put(
+        f"/api/v1/team/members/{member_id}/profile",
+        json={"personal_profile": "Collects lip gloss.", "birthday": "1990-02-14"},
+    )
+
+    # The manager reads the full rows (the profile is shared WITH him).
+    manager_view = {m["id"]: m for m in client.get("/api/v1/team/members").json()}
+    assert manager_view[member_id]["personal_profile"] == "Collects lip gloss."
+
+    # Another member sees Kelly's name, never her profile fields.
+    other_view = {m["id"]: m for m in other_client.get("/api/v1/team/members").json()}
+    assert other_view[member_id]["full_name"] == "Kelly"
+    assert other_view[member_id]["personal_profile"] is None
+    assert other_view[member_id]["birthday"] is None
+    # Their own row stays complete.
+    kelly_view = {m["id"]: m for m in member_client.get("/api/v1/team/members").json()}
+    assert kelly_view[member_id]["personal_profile"] == "Collects lip gloss."

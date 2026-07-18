@@ -118,8 +118,74 @@ def app(monkeypatch, tmp_path):
     return create_app()
 
 
+# The manager credentials every API test runs under (identity session,
+# lot 2: the API is behind auth, so the default client logs in once).
+MANAGER_EMAIL = "manager@test.local"
+MANAGER_PASSWORD = "test-password-123"
+
+
 @pytest.fixture
 def client(app):
-    """HTTP client on the fresh app instance (lifespan runs on enter)."""
+    """HTTP client logged in as the manager (lifespan runs on enter).
+
+    The API is behind authentication since the identity session: this
+    fixture runs the first-run setup and keeps the session cookie, so
+    every existing test exercises its route as the manager instead of
+    re-implementing login. Anonymous behavior is tested through
+    anon_client.
+    """
+    with TestClient(app) as test_client:
+        test_client.post(
+            "/api/v1/auth/setup",
+            json={
+                "email": MANAGER_EMAIL,
+                "password": MANAGER_PASSWORD,
+                "full_name": "Test Manager",
+            },
+        )
+        yield test_client
+
+
+@pytest.fixture
+def anon_client(app):
+    """HTTP client with no session: the outside world's view of the API."""
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def member_login(app, client):
+    """Factory: a roster member with an account, logged in.
+
+    Returns (client, member_id) for a freshly created member. Depends
+    on the manager client so the lifespan (and the schema) exist; the
+    extra TestClient shares the app but keeps its own cookie jar, like
+    a second browser on another desk.
+    """
+    from backend.app.domain.models import TeamMember, User, UserRole
+    from backend.app.services.auth_service import hash_password
+
+    def make(name: str = "Pam", password: str = "pretzelday99"):
+        email = f"{name.lower()}@test.local"
+        with app.state.session_factory() as session:
+            member = TeamMember(full_name=name, role="Office administrator")
+            session.add(member)
+            session.flush()
+            session.add(
+                User(
+                    email=email,
+                    password_hash=hash_password(password),
+                    role=UserRole.MEMBER,
+                    team_member_id=member.id,
+                )
+            )
+            session.commit()
+            member_id = member.id
+        member_client = TestClient(app)
+        response = member_client.post(
+            "/api/v1/auth/login", json={"email": email, "password": password}
+        )
+        assert response.status_code == 200
+        return member_client, member_id
+
+    return make

@@ -171,73 +171,116 @@ def test_change_password_requires_the_current_one(auth):
 # --- API: the HTTP contract ---
 
 
-def test_api_first_run_flow(client):
+def test_api_first_run_flow(anon_client):
     """status -> setup -> cookie-backed me -> the door closes."""
-    assert client.get("/api/v1/auth/status").json() == {"initialized": False}
-    response = client.post(
+    assert anon_client.get("/api/v1/auth/status").json() == {"initialized": False}
+    response = anon_client.post(
         "/api/v1/auth/setup",
         json={"email": "m@x.fr", "password": "longenough", "full_name": "Michael"},
     )
     assert response.status_code == 200
     # The TestClient keeps the httponly cookie like a browser would.
-    me = client.get("/api/v1/auth/me")
+    me = anon_client.get("/api/v1/auth/me")
     assert me.status_code == 200
     assert me.json()["role"] == "manager"
-    assert client.get("/api/v1/auth/status").json() == {"initialized": True}
-    again = client.post(
+    assert anon_client.get("/api/v1/auth/status").json() == {"initialized": True}
+    again = anon_client.post(
         "/api/v1/auth/setup",
         json={"email": "x@y.fr", "password": "longenough", "full_name": "X"},
     )
     assert again.status_code == 409
 
 
-def test_api_me_requires_a_session(client):
+def test_api_me_requires_a_session(anon_client):
     """No cookie, no identity: 401."""
-    assert client.get("/api/v1/auth/me").status_code == 401
+    assert anon_client.get("/api/v1/auth/me").status_code == 401
 
 
-def test_api_login_logout(client):
+def test_api_login_logout(anon_client):
     """Login sets the cookie, logout kills it."""
-    client.post(
+    anon_client.post(
         "/api/v1/auth/setup",
         json={"email": "m@x.fr", "password": "longenough", "full_name": "Michael"},
     )
-    client.post("/api/v1/auth/logout")
-    assert client.get("/api/v1/auth/me").status_code == 401
-    bad = client.post(
+    anon_client.post("/api/v1/auth/logout")
+    assert anon_client.get("/api/v1/auth/me").status_code == 401
+    bad = anon_client.post(
         "/api/v1/auth/login", json={"email": "m@x.fr", "password": "wrong-pass"}
     )
     assert bad.status_code == 401
-    good = client.post(
+    good = anon_client.post(
         "/api/v1/auth/login", json={"email": "M@X.FR", "password": "longenough"}
     )
     assert good.status_code == 200
-    assert client.get("/api/v1/auth/me").status_code == 200
+    assert anon_client.get("/api/v1/auth/me").status_code == 200
 
 
-def test_api_change_password(client):
+def test_api_change_password(anon_client):
     """Wrong current password is a 400; the session stays valid."""
-    client.post(
+    anon_client.post(
         "/api/v1/auth/setup",
         json={"email": "m@x.fr", "password": "longenough", "full_name": "Michael"},
     )
-    bad = client.post(
+    bad = anon_client.post(
         "/api/v1/auth/change-password",
         json={"current_password": "nope-nope", "new_password": "brand-new-pass"},
     )
     assert bad.status_code == 400
-    good = client.post(
+    good = anon_client.post(
         "/api/v1/auth/change-password",
         json={"current_password": "longenough", "new_password": "brand-new-pass"},
     )
     assert good.status_code == 200
-    assert client.get("/api/v1/auth/me").status_code == 200
+    assert anon_client.get("/api/v1/auth/me").status_code == 200
 
 
-def test_api_short_password_rejected(client):
+def test_api_short_password_rejected(anon_client):
     """The 8-character floor is enforced at the schema edge (422)."""
-    response = client.post(
+    response = anon_client.post(
         "/api/v1/auth/setup",
         json={"email": "m@x.fr", "password": "short", "full_name": "Michael"},
     )
     assert response.status_code == 422
+
+
+# --- The scoping map (lot 2): who reaches what ---
+
+
+def test_manager_surfaces_refuse_members_and_anonymous(member_login, anon_client):
+    """The owner's scoping list, enforced server-side.
+
+    One representative route per manager-only surface: Toby (warm
+    layer), the Desk briefs and generation, Dwight capture, Darryl's
+    archive, the edited documents, handover, exports.
+    """
+    member_client, _ = member_login()
+    manager_only = [
+        ("GET", "/api/v1/toby/overview"),
+        ("GET", "/api/v1/summaries/weekly_review"),
+        ("GET", "/api/v1/dwight/entries/recent"),
+        ("GET", "/api/v1/darryl/documents/recent"),
+        ("GET", "/api/v1/documents"),
+        ("GET", "/api/v1/handover/1"),
+        ("GET", "/api/v1/angela/export/weekly_review"),
+    ]
+    for method, path in manager_only:
+        assert member_client.request(method, path).status_code == 403, path
+        assert anon_client.request(method, path).status_code == 401, path
+
+
+def test_shared_surfaces_require_a_session(member_login, anon_client):
+    """Pam, the catalog, the mayor and the roster: any logged-in user,
+    but never anonymous."""
+    member_client, _ = member_login()
+    shared = [
+        ("GET", "/api/v1/team/mayor"),
+        ("GET", "/api/v1/team/members"),
+        ("GET", "/api/v1/summaries"),
+        ("GET", "/api/v1/mood/checkins"),
+    ]
+    for method, path in shared:
+        assert member_client.request(method, path).status_code == 200, path
+        assert anon_client.request(method, path).status_code == 401, path
+    # The UI branding and liveness stay public: the login page needs them.
+    assert anon_client.get("/api/v1/config/ui").status_code == 200
+    assert anon_client.get("/api/v1/health").status_code == 200

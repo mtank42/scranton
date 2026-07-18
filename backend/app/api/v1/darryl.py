@@ -8,7 +8,7 @@ unclassified bin) and the manager's one-click corrections.
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.adapters.ingestion.gdrive import MissingCredentialsError
-from backend.app.api.deps import get_darryl_service
+from backend.app.api.deps import get_darryl_service, require_manager
 from backend.app.domain.schemas import (
     DarrylSyncReport,
     DocumentClassify,
@@ -21,7 +21,11 @@ from backend.app.services.darryl_service import (
     UnknownEntityError,
 )
 
-router = APIRouter(prefix="/darryl", tags=["darryl"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/darryl", tags=["darryl"], dependencies=[Depends(require_manager)]
+)
 
 
 @router.post("/sync", response_model=DarrylSyncReport)

@@ -20,8 +20,9 @@ const CELEBRATIONS = false;
 
 const state = {
   characters: {},
+  user: null, // the session identity (/auth/me) - role and self derive from it
   role: "manager",
-  selfId: null, // who I am, in the team-member role (identity, not proxy)
+  selfId: null, // my roster id when I am a team member (from the session)
   members: [],
   labels: { team_member: {}, project: {}, client: {} },
   entryId: null, // the entry currently discussed in the Dwight overlay
@@ -46,10 +47,20 @@ async function api(path, options = {}) {
     ...options,
   });
   if (!response.ok) {
+    // A 401 mid-session means the session died (logout elsewhere,
+    // expiry, deactivation): reload to land on the login screen. Never
+    // during boot - init() handles its own 401 to pick the right screen.
+    if (response.status === 401 && state.user) {
+      window.location.reload();
+    }
     const body = await response.json().catch(() => ({}));
     throw new Error(body.detail || `${response.status} ${response.statusText}`);
   }
   return response.json();
+}
+
+function isManager() {
+  return state.role === "manager";
 }
 
 /* Escape everything user- or model-authored before it touches innerHTML. */
@@ -96,32 +107,31 @@ function roleViews() {
 }
 
 function renderChrome() {
-  // Role switch
-  document.getElementById("role-switch").onclick = (event) => {
-    const button = event.target.closest("button[data-role]");
-    if (button) switchRole(button.dataset.role);
+  // The session chip: who I am, and the only way out (identity
+  // session: the role switch and identity picker are gone).
+  document.getElementById("user-chip").hidden = false;
+  document.getElementById("user-name").textContent =
+    state.user.full_name || state.user.email;
+  document.getElementById("logout-btn").onclick = async () => {
+    if (!confirmEditorLeave()) return;
+    await fetch(`${API}/auth/logout`, { method: "POST" });
+    window.location.reload();
   };
 
-  // Identity: who am I when acting as a team member. Never a proxy -
-  // in the member role every write is about YOURSELF.
-  const identity = document.getElementById("identity");
-  identity.innerHTML = state.members
-    .map((m) => `<option value="${m.id}">${esc(m.full_name)}</option>`)
-    .join("");
-  state.selfId = state.members.length ? state.members[0].id : null;
-  identity.onchange = () => {
-    state.selfId = Number(identity.value);
-    switchRole("member");
-  };
-
-  // The agents, everywhere: Dwight and Pam act, Jim waits for V2.
+  // The agents: Pam answers any logged-in user (cold-only by
+  // invariant); Tell Dwight is the manager's capture pipeline - the
+  // validation gate is his gesture, so members do not get the button
+  // (their own capture is the V2 multi-user story).
   const dwight = character("dwight");
   const pam = character("pam");
   const jim = character("jim");
+  const dwightButton = isManager()
+    ? `<button class="abtn dw" data-overlay="dwight-overlay">
+         <img src="assets/${esc(dwight.avatar_asset)}" alt="" />+ ${esc(dwight.display_name)}
+       </button>`
+    : "";
   document.getElementById("action-bar").innerHTML = `
-    <button class="abtn dw" data-overlay="dwight-overlay">
-      <img src="assets/${esc(dwight.avatar_asset)}" alt="" />+ ${esc(dwight.display_name)}
-    </button>
+    ${dwightButton}
     <button class="abtn pm" data-overlay="pam-overlay">
       <img src="assets/${esc(pam.avatar_asset)}" alt="" />? ${esc(pam.display_name)}
     </button>
@@ -155,16 +165,13 @@ function confirmEditorLeave() {
   return leave;
 }
 
-function switchRole(role) {
-  if (!confirmEditorLeave()) return;
-  state.role = role;
-  document.querySelectorAll("#role-switch button").forEach((b) =>
-    b.classList.toggle("active", b.dataset.role === role));
-  document.getElementById("identity").hidden = role !== "member";
-  const self = state.members.find((m) => m.id === state.selfId);
+/* Enter the session's role: build the nav and land on its first view.
+ * Called once at boot - the role is a server fact now, not a button. */
+function enterRole() {
   document.getElementById("window-title").textContent =
-    role === "manager" ? "SCRANTON - MANAGER VIEW"
-      : `SCRANTON - TEAM MEMBER VIEW${self ? ` (${self.full_name})` : ""}`;
+    isManager()
+      ? "SCRANTON - MANAGER VIEW"
+      : `SCRANTON - TEAM MEMBER VIEW (${state.user.full_name || state.user.email})`;
 
   const views = roleViews();
   document.getElementById("viewnav").innerHTML = views
@@ -200,8 +207,9 @@ function openOverlay(id) {
   const overlay = document.getElementById(id);
   overlay.hidden = false;
   // The history strip loads with the overlay and reopens folded back
-  // to the last 5 of each memory (owner, 2026-07-15).
-  if (id === "pam-overlay") loadPamArchive(true);
+  // to the last 5 of each memory (owner, 2026-07-15). Manager-only
+  // (the scoping list): a member session gets the bare Pam thread.
+  if (id === "pam-overlay" && isManager()) loadPamArchive(true);
   overlay.querySelector("textarea, input")?.focus();
 }
 
@@ -501,8 +509,10 @@ function sourceRow(source, index) {
   // A document source opens the in-app preview (owner, QA 2026-07-16:
   // direct access to the cited document); Drive stays one click away
   // inside it.
+  // The in-app preview is a manager surface (scoping list): a member
+  // sees the cited title, not a door to the corpus reader.
   const docName = isDoc
-    ? (source.document_id
+    ? (source.document_id && isManager()
         ? `<button class="doc-preview-link" data-doc-preview="${source.document_id}">${esc(source.title)}</button>`
         : `<strong>${esc(source.title)}</strong>`) + " - "
     : "";
@@ -786,18 +796,22 @@ function pamSummaryCard(summary) {
     .join("");
   // Two intentions, two buttons (owner, C3 2026-07-17): Save when the
   // generation is already right, Edit to work on it first - the
-  // document is only born at a Save.
+  // document is only born at a Save. Manager gestures: a member reads
+  // the answer, the notebook is not theirs.
   state.pamSummaries.push(summary);
-  return `
-    <div class="pam-template">
-      <p class="tpl-label">${esc(label.toUpperCase())}</p>
-      ${sections}
-      <div class="card-actions">
+  const actions = isManager()
+    ? `<div class="card-actions">
         <button class="btn btn-primary" data-save-pam="${state.pamSummaries.length - 1}"
           title="Keep this document as it is.">Save</button>
         <button class="btn btn-ghost" data-edit-pam="${state.pamSummaries.length - 1}"
           title="Open it in the editor - by hand or with Dwight. Nothing saved until you Save.">Edit</button>
-      </div>
+      </div>`
+    : "";
+  return `
+    <div class="pam-template">
+      <p class="tpl-label">${esc(label.toUpperCase())}</p>
+      ${sections}
+      ${actions}
     </div>`;
 }
 
@@ -1610,11 +1624,14 @@ async function loadToby() {
 async function loadMyBoard() {
   show("myboard-body", `<p class="thinking">Loading your board</p>`);
   try {
-    const overview = await api("/toby/overview?days=1");
-    const me = overview.members.find((m) => m.team_member_id === state.selfId);
+    // Your own check-ins, not the team overview: Toby is manager-only
+    // since the identity session, and your board only ever needed YOU.
+    const checkins = await api("/mood/checkins?days=1");
+    const mine = checkins.filter((c) => c.team_member_id === state.selfId);
+    const latest = mine.length ? mine[mine.length - 1] : null;
     const member = state.members.find((m) => m.id === state.selfId) || {};
-    const moodCard = me?.latest_mood
-      ? `<div class="mv mood-text">${moodDisplay(me.latest_mood)}</div><div class="ms">today</div>`
+    const moodCard = latest
+      ? `<div class="mv mood-text">${moodDisplay(latest.mood_level)}</div><div class="ms">today</div>`
       : `<div class="mv mood-text">-</div><div class="ms">no check-in yet today</div>`;
     show(
       "myboard-body",
@@ -1901,9 +1918,108 @@ function twss(options = {}) {
   twssTimer = setTimeout(() => { overlay.hidden = true; }, duration);
 }
 
+/* --- the entry: login, first-run setup, forced password change --- */
+
+/* One form, three modes. The screen owns the page until a session
+ * exists; bootApp() only runs behind it. Functional shell for lot 2 -
+ * the styled landing is lot 3 of the identity session. */
+const AUTH_MODES = {
+  setup: {
+    title: "Welcome to Scranton",
+    sub: "First run: create the manager account. You will create your team from the Admin view.",
+    submit: "Create my account",
+    fields: [
+      ["full_name", "text", "Your name"],
+      ["email", "email", "Email - this is your login"],
+      ["password", "password", "Password (8 characters or more)"],
+    ],
+  },
+  login: {
+    title: "Welcome back",
+    sub: "Scranton runs on trust, not on open doors.",
+    submit: "Log in",
+    fields: [
+      ["email", "email", "Email"],
+      ["password", "password", "Password"],
+    ],
+  },
+  change: {
+    title: "Choose your password",
+    sub: "Your account came with a provisional password. Make it yours before entering.",
+    submit: "Save and enter",
+    fields: [
+      ["current_password", "password", "Provisional password"],
+      ["new_password", "password", "Your new password (8 characters or more)"],
+    ],
+  },
+};
+
+async function showAuth(mode) {
+  if (!mode) {
+    const status = await api("/auth/status");
+    mode = status.initialized ? "login" : "setup";
+  }
+  const spec = AUTH_MODES[mode];
+  document.getElementById("auth-screen").hidden = false;
+  document.getElementById("auth-title").textContent = spec.title;
+  document.getElementById("auth-sub").textContent = spec.sub;
+  document.getElementById("auth-submit").textContent = spec.submit;
+  document.getElementById("auth-fields").innerHTML = spec.fields
+    .map(
+      ([name, type, label]) =>
+        `<label class="auth-label">${esc(label)}
+           <input name="${name}" type="${type}" required ${type === "password" ? 'minlength="8"' : ""} />
+         </label>`
+    )
+    .join("");
+  // Login passwords are whatever they are; only NEW passwords carry
+  // the 8-character floor.
+  if (mode === "login") {
+    document.querySelector('#auth-fields input[name="password"]').removeAttribute("minlength");
+  }
+  if (mode === "change") {
+    document.querySelector('#auth-fields input[name="current_password"]').removeAttribute("minlength");
+  }
+  document.querySelector("#auth-fields input").focus();
+
+  const form = document.getElementById("auth-form");
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const error = document.getElementById("auth-error");
+    error.hidden = true;
+    const payload = Object.fromEntries(new FormData(form).entries());
+    const route = { setup: "/auth/setup", login: "/auth/login", change: "/auth/change-password" }[mode];
+    try {
+      const me = await api(route, { method: "POST", body: JSON.stringify(payload) });
+      if (me.must_change_password) return showAuth("change");
+      document.getElementById("auth-screen").hidden = true;
+      await bootApp(me);
+    } catch (failure) {
+      error.textContent = failure.message;
+      error.hidden = false;
+    }
+  };
+}
+
 /* --- boot --- */
 
 async function init() {
+  // Who am I? 401 means nobody: show the entry screen (login, or the
+  // first-run setup when no manager exists yet).
+  let me = null;
+  try {
+    me = await api("/auth/me");
+  } catch {
+    return showAuth();
+  }
+  if (me.must_change_password) return showAuth("change");
+  await bootApp(me);
+}
+
+async function bootApp(me) {
+  state.user = me;
+  state.role = me.role;
+  state.selfId = me.team_member_id;
   const [config, members, catalog] = await Promise.all([
     api("/config/ui"),
     api("/team/members"),
@@ -1972,7 +2088,7 @@ async function init() {
   // Mayor data first, so the dashboard's ritual card renders on the
   // very first paint (the banner duplicate is gone).
   await loadMayor();
-  switchRole("manager");
+  enterRole();
 }
 
 init();

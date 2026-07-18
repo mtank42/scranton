@@ -7,11 +7,15 @@ segments await validation like any hand-typed note.
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.app.adapters.ingestion.gdrive import MissingCredentialsError
-from backend.app.api.deps import get_gdrive_ingestion_service
+from backend.app.api.deps import get_gdrive_ingestion_service, require_manager
 from backend.app.domain.schemas import IngestSummary
 from backend.app.services.ingestion_service import IngestionService
 
-router = APIRouter(prefix="/ingest", tags=["ingest"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_manager)]
+)
 
 
 @router.post("/gdrive", response_model=IngestSummary)

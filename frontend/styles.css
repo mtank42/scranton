@@ -28,7 +28,7 @@ body {
   padding: 22px 20px 110px; /* room for the floating agent bar */
 }
 
-/* --- Top bar: logo, role switch, identity --- */
+/* --- Top bar: logo, session chip --- */
 
 .topbar {
   max-width: 1020px;
@@ -49,36 +49,74 @@ body {
 .logo-dot { color: var(--yellow); animation: blink 1.4s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 
-.role-switch {
-  display: flex;
-  border: 1px solid var(--grey);
-  border-radius: 8px;
-  overflow: hidden;
+.user-chip {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.role-switch button {
+/* Authored display defeats [hidden] (CLAUDE.md gotcha): restate it. */
+.user-chip[hidden] { display: none; }
+
+#user-name {
   font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.08em;
-  padding: 9px 18px;
-  background: transparent;
   color: var(--midgrey);
-  border: 0;
-  cursor: pointer;
 }
 
-.role-switch button.active { background: var(--yellow); color: var(--black); font-weight: 700; }
+/* The entry screen (identity session, lot 2): owns the page until a
+ * session exists. The styled landing is lot 3. */
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: #060606;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
 
-.identity {
+.auth-card {
+  width: min(420px, 100%);
+  background: #101010;
+  border: 1px solid var(--grey);
+  border-radius: 14px;
+  padding: 34px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-card h2 { font-weight: 900; letter-spacing: 0.02em; }
+
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--midgrey);
+  margin-bottom: 12px;
+}
+
+.auth-label input {
   background: #121212;
   color: var(--white);
   border: 1px solid var(--grey);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   font-family: var(--sans);
   font-size: 14px;
 }
+
+.auth-label input:focus { outline: 1px solid var(--yellow); }
+
+/* Authored display defeats [hidden] (CLAUDE.md gotcha): restate it. */
+.auth-screen[hidden] { display: none; }
 
 /* --- The OS window: one app, role-based views --- */
 

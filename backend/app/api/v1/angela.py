@@ -6,7 +6,7 @@ lives in the character config map only.
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from backend.app.api.deps import get_angela_service
+from backend.app.api.deps import get_angela_service, require_manager
 from backend.app.services.angela_service import AngelaService, UnknownFormatError
 from backend.app.services.summary_service import (
     SummaryProcessingError,
@@ -15,7 +15,11 @@ from backend.app.services.summary_service import (
     UnknownTemplateError,
 )
 
-router = APIRouter(prefix="/angela", tags=["angela"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/angela", tags=["angela"], dependencies=[Depends(require_manager)]
+)
 
 
 @router.get("/export/{template_id}")

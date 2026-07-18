@@ -47,11 +47,15 @@ def test_checkin_for_unknown_member_fails_cleanly(session_factory):
         )
 
 
-def test_api_checkin_roundtrip(app, client):
-    """POST then GET through HTTP, including the palette value wire format."""
-    member_id = seed_member(app.state.session_factory)
+def test_api_checkin_roundtrip(member_login, client):
+    """POST then GET through HTTP, including the palette value wire format.
 
-    created = client.post(
+    A check-in is a member gesture since the identity session: the
+    member posts for themself, the manager reads the history.
+    """
+    member_client, member_id = member_login()
+
+    created = member_client.post(
         "/api/v1/mood/checkins",
         json={"team_member_id": member_id, "mood_level": "pretzel_day"},
     )
@@ -63,19 +67,47 @@ def test_api_checkin_roundtrip(app, client):
     assert len(listed.json()) == 1
 
 
-def test_api_unknown_member_is_404_and_bad_level_is_422(app, client):
-    """Error contract: missing member 404, invalid palette value 422."""
+def test_api_checkin_is_always_your_own(member_login, client):
+    """The session identity rules: someone else's id is a 403, the
+    manager (no member self) is a 403, a bad palette value stays 422."""
+    member_client, member_id = member_login()
     assert (
-        client.post(
+        member_client.post(
             "/api/v1/mood/checkins", json={"team_member_id": 999, "mood_level": "flow"}
         ).status_code
-        == 404
+        == 403
     )
-    member_id = seed_member(app.state.session_factory)
+    # The manager has no mood tracking (owner decision 2026-07-14).
     assert (
         client.post(
+            "/api/v1/mood/checkins",
+            json={"team_member_id": member_id, "mood_level": "flow"},
+        ).status_code
+        == 403
+    )
+    assert (
+        member_client.post(
             "/api/v1/mood/checkins",
             json={"team_member_id": member_id, "mood_level": "angry"},
         ).status_code
         == 422
     )
+
+
+def test_api_member_history_is_forced_to_self(member_login):
+    """Whatever the query says, a member only reads their own history."""
+    member_client, member_id = member_login()
+    other_client, other_id = member_login(name="Kelly")
+    member_client.post(
+        "/api/v1/mood/checkins",
+        json={"team_member_id": member_id, "mood_level": "flow"},
+    )
+    other_client.post(
+        "/api/v1/mood/checkins",
+        json={"team_member_id": other_id, "mood_level": "stuck"},
+    )
+    listed = other_client.get(
+        "/api/v1/mood/checkins", params={"member_id": member_id}
+    )
+    assert listed.status_code == 200
+    assert [checkin["team_member_id"] for checkin in listed.json()] == [other_id]

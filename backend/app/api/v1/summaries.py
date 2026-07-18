@@ -6,8 +6,8 @@ powered by Dwight and Pam together (SCRANTON_CONTEXT section 3).
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from backend.app.api.deps import get_summary_service
-from backend.app.domain.schemas import SummaryCatalog, SummaryResponse
+from backend.app.api.deps import get_current_user, get_summary_service, require_manager
+from backend.app.domain.schemas import CurrentUserOut, SummaryCatalog, SummaryResponse
 from backend.app.services.summary_service import (
     SummaryProcessingError,
     SummaryService,
@@ -20,8 +20,16 @@ router = APIRouter(prefix="/summaries", tags=["summaries"])
 
 
 @router.get("", response_model=SummaryCatalog)
-def get_catalog(service: SummaryService = Depends(get_summary_service)) -> SummaryCatalog:
-    """The six templates and every pickable target, in one call."""
+def get_catalog(
+    service: SummaryService = Depends(get_summary_service),
+    user: CurrentUserOut = Depends(get_current_user),
+) -> SummaryCatalog:
+    """The six templates and every pickable target, in one call.
+
+    Open to any logged-in user: the UI boots its entity labels from the
+    target lists (names only, cold data). Generation below stays
+    manager-only.
+    """
     return service.catalog()
 
 
@@ -30,6 +38,7 @@ def generate_summary(
     template_id: str,
     target_id: int | None = Query(default=None),
     service: SummaryService = Depends(get_summary_service),
+    user: CurrentUserOut = Depends(require_manager),
 ) -> SummaryResponse:
     """Build one living summary now, from the validated memory.
 

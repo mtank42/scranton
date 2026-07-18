@@ -1,16 +1,20 @@
 """Meet Toby endpoint: the aggregated team health view (manager-only).
 
-Manager-only is structural in the POC (single user, no auth): the seam
-for real access control is V2 multi-user.
+Manager-only is enforced server-side since the identity session
+(2026-07-18): the warm layer never reaches a member session.
 """
 
 from fastapi import APIRouter, Depends, Query
 
-from backend.app.api.deps import get_toby_service
+from backend.app.api.deps import get_toby_service, require_manager
 from backend.app.domain.schemas import TobyOverview
 from backend.app.services.toby_service import TobyService
 
-router = APIRouter(prefix="/toby", tags=["toby"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/toby", tags=["toby"], dependencies=[Depends(require_manager)]
+)
 
 
 @router.get("/overview", response_model=TobyOverview)

@@ -15,16 +15,31 @@
 <body>
   <!-- One OS, role-based views (recadrage 2026-07-12, slide 08):
        the agents are omnipresent ACTIONS at the bottom, never tabs. -->
+  <!-- Identity comes from the SESSION (identity session, 2026-07-18):
+       the POC's role switch and identity picker are gone - you are who
+       you logged in as, views follow. -->
   <header class="topbar">
     <div class="logo">SCRANTON<span class="logo-dot">_</span></div>
-    <div class="role-switch" id="role-switch">
-      <button data-role="manager" class="active">Manager</button>
-      <button data-role="member">Team member</button>
+    <div class="user-chip" id="user-chip" hidden>
+      <span id="user-name"></span>
+      <button class="btn btn-ghost" id="logout-btn">Log out</button>
     </div>
-    <!-- Multi-role on one machine (POC): the member picks WHO THEY ARE,
-         then acts only for themselves. Never proxy data entry. -->
-    <select id="identity" class="identity" hidden></select>
   </header>
+
+  <!-- The entry: login, first-run setup, or the forced password change.
+       Functional shell for lot 2; the styled landing is lot 3. -->
+  <div class="auth-screen" id="auth-screen" hidden>
+    <div class="auth-card">
+      <div class="logo">SCRANTON<span class="logo-dot">_</span></div>
+      <h2 id="auth-title"></h2>
+      <p class="view-sub" id="auth-sub"></p>
+      <form id="auth-form" class="capture-form">
+        <div id="auth-fields"></div>
+        <p class="error-banner" id="auth-error" hidden></p>
+        <button type="submit" class="btn btn-primary" id="auth-submit"></button>
+      </form>
+    </div>
+  </div>
 
   <main class="os-window">
     <div class="pbar">

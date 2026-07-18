@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from backend.app.adapters.export.base import ExportFile
 from backend.app.adapters.export.handover import HANDOVER_RENDERERS
-from backend.app.api.deps import get_handover_service
+from backend.app.api.deps import get_handover_service, require_manager
 from backend.app.domain.schemas import (
     HandoverDossier,
     HandoverSelectionUpdate,
@@ -27,7 +27,11 @@ from backend.app.services.handover_service import (
 )
 from backend.app.services.mood_service import MemberNotFoundError
 
-router = APIRouter(prefix="/handover", tags=["handover"])
+# Manager-only surface (identity session, lot 2): the guard sits on
+# the router, so every route in this file inherits it.
+router = APIRouter(
+    prefix="/handover", tags=["handover"], dependencies=[Depends(require_manager)]
+)
 
 # The endpoint error contract of the consent trail: not-found is 404,
 # a move the state machine forbids is 409, a bad selection is 422.

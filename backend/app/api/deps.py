@@ -57,6 +57,40 @@ def get_current_user(
     return user
 
 
+def require_manager(
+    user: CurrentUserOut = Depends(get_current_user),
+) -> CurrentUserOut:
+    """Manager-only gate (lot 2 of the identity session).
+
+    Until now 'manager-only' was a UI intention anyone could flip; this
+    dependency makes it a server fact: the warm layer (Toby, the Desk),
+    the corpus surfaces and the capture pipeline answer 403 to members.
+    """
+    if user.role != "manager":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Manager only."
+        )
+    return user
+
+
+def require_member(
+    user: CurrentUserOut = Depends(get_current_user),
+) -> CurrentUserOut:
+    """Member-self gate: actions that only make sense FOR YOURSELF.
+
+    Pretzel Day check-ins and the personal profile are member-owned
+    (data ownership split): the manager has no mood tracking (owner
+    decision 2026-07-14) and no business writing someone's profile now
+    that members hold their own session.
+    """
+    if user.team_member_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Team members only.",
+        )
+    return user
+
+
 def get_dwight_service(request: Request) -> DwightService:
     """Build a DwightService wired to the app-level adapters."""
     state = request.app.state
