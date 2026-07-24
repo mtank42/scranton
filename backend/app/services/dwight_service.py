@@ -66,6 +66,14 @@ class EntryNotPendingError(Exception):
     """The entry is not awaiting clarification: nothing to reply to."""
 
 
+class NotYourEntryError(Exception):
+    """The emitter validation doctrine, enforced: each person submits
+    and decides THEIR OWN entries (day-one data model,
+    entries.submitted_by_id; live since the identity session). Not
+    even the manager decides someone else's proposals - the gate to
+    the shared memory belongs to whoever wrote the note."""
+
+
 class SegmentNotProposedError(Exception):
     """The segment was already decided: only proposals can be reworked."""
 
@@ -131,17 +139,22 @@ class DwightService:
         )
         return self._finalize(entry_id, proposal)
 
-    def reply(self, entry_id: int, message: str) -> CaptureResponse:
+    def reply(
+        self, entry_id: int, message: str, *, emitter_id: int | None = None
+    ) -> CaptureResponse:
         """Continue the clarification dialogue on a pending entry.
 
-        The manager's answer is folded into the reprocessing context
+        The emitter's answer is folded into the reprocessing context
         transiently; if Dwight is still unsure, another clarification
-        comes back and the thread continues.
+        comes back and the thread continues. emitter_id is the
+        session's team_member_id (None = the manager): only the
+        entry's author continues its dialogue.
         """
         with self.session_factory() as session:
             entry = session.get(Entry, entry_id)
             if entry is None:
                 raise EntryNotFoundError(f"No entry with id {entry_id}.")
+            self._ensure_emitter(entry, emitter_id)
             if entry.processing_status != ProcessingStatus.PENDING:
                 raise EntryNotPendingError(
                     f"Entry {entry_id} is not awaiting clarification."
@@ -219,17 +232,20 @@ class DwightService:
 
     # --- rework loop ---
 
-    def rework(self, segment_id: int, comment: str) -> SegmentOut:
+    def rework(
+        self, segment_id: int, comment: str, *, emitter_id: int | None = None
+    ) -> SegmentOut:
         """Reject a proposed segment and get a corrected replacement.
 
         The rejected row stays as audit trail; the replacement arrives
-        as a new proposal at the same position. The manager can rework
+        as a new proposal at the same position. The emitter can rework
         again, validate, or bail out with a plain reject.
         """
         with self.session_factory() as session:
             segment = session.get(EntrySegment, segment_id)
             if segment is None:
                 raise SegmentNotFoundError(f"No segment with id {segment_id}.")
+            self._ensure_emitter(segment.entry, emitter_id)
             if segment.validation_status != ValidationStatus.PROPOSED:
                 raise SegmentNotProposedError(
                     f"Segment {segment_id} was already decided: rework applies to proposals."
@@ -257,6 +273,18 @@ class DwightService:
             return SegmentOut.model_validate(replacement)
 
     # --- shared building blocks ---
+
+    @staticmethod
+    def _ensure_emitter(entry: Entry, emitter_id: int | None) -> None:
+        """Refuse any gesture on someone else's entry (emitter doctrine).
+
+        emitter_id is the session's team_member_id, None for the
+        manager; entries store the same shape in submitted_by_id.
+        """
+        if entry.submitted_by_id != emitter_id:
+            raise NotYourEntryError(
+                "This note belongs to its author: only they decide on it."
+            )
 
     @staticmethod
     def _add_segment(
@@ -327,18 +355,25 @@ class DwightService:
     # --- validation ---
 
     def validate_segment(
-        self, segment_id: int, status: ValidationStatus
+        self,
+        segment_id: int,
+        status: ValidationStatus,
+        *,
+        emitter_id: int | None = None,
     ) -> SegmentOut:
-        """Record the manager's decision on one proposed segment.
+        """Record the emitter's decision on one proposed segment.
 
         Validation is the gate to Ask Pam's memory: only a VALIDATED
         segment is embedded and indexed. A REJECTED segment stays in
-        SQLite (audit trail) but never reaches the vector store.
+        SQLite (audit trail) but never reaches the vector store. The
+        gate belongs to whoever wrote the note (emitter validation,
+        day-one doctrine): emitter_id must match the entry's author.
         """
         with self.session_factory() as session:
             segment = session.get(EntrySegment, segment_id)
             if segment is None:
                 raise SegmentNotFoundError(f"No segment with id {segment_id}.")
+            self._ensure_emitter(segment.entry, emitter_id)
             segment.validation_status = status
             for tag in segment.tags:
                 tag.validated = status == ValidationStatus.VALIDATED
@@ -358,18 +393,31 @@ class DwightService:
 
     # --- history ---
 
-    def history(self, limit: int = 5, offset: int = 0) -> list[EntryHistoryOut]:
+    def history(
+        self,
+        limit: int = 5,
+        offset: int = 0,
+        *,
+        emitter_id: int | None = None,
+    ) -> list[EntryHistoryOut]:
         """Past notes, newest first: the Pam overlay history strip.
 
         Until now the Dwight thread was per session (nothing survived a
         reload); this is the durable trail the owner asked for
-        (2026-07-15). Counting segments in Python is fine at strip
-        scale: the page is 5 to 15 rows, each with a handful of
-        segments already loaded by the relationship.
+        (2026-07-15). Scoped to ONE emitter (the session's identity):
+        your thread shows your notes - the shared memory only ever
+        receives what each author validated. Counting segments in
+        Python is fine at strip scale: the page is 5 to 15 rows, each
+        with a handful of segments already loaded by the relationship.
         """
         with self.session_factory() as session:
             entries = session.scalars(
                 select(Entry)
+                .where(
+                    Entry.submitted_by_id.is_(None)
+                    if emitter_id is None
+                    else Entry.submitted_by_id == emitter_id
+                )
                 .order_by(Entry.created_at.desc(), Entry.id.desc())
                 .limit(limit)
                 .offset(offset)

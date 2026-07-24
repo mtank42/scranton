@@ -110,7 +110,8 @@ class EntryCreate(BaseModel):
 
     raw_content: str = Field(min_length=1)
     source_type: SourceType = SourceType.NOTE
-    # Null means the manager submits directly (the POC case).
+    # The author. OVERWRITTEN from the session by the route (identity
+    # is proven, never claimed); None means the manager.
     submitted_by_id: int | None = None
 
 

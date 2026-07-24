@@ -119,20 +119,18 @@ function renderChrome() {
     window.location.reload();
   };
 
-  // The agents: Pam answers any logged-in user (cold-only by
-  // invariant); Tell Dwight is the manager's capture pipeline - the
-  // validation gate is his gesture, so members do not get the button
-  // (their own capture is the V2 multi-user story).
+  // The agents, everywhere: Tell Dwight is the base of the product
+  // (owner, 2026-07-19) - EVERY member files their daily report and
+  // feeds the team memory, each author validating their own
+  // proposals (emitter doctrine, enforced server-side). Pam answers
+  // any logged-in user (cold-only by invariant).
   const dwight = character("dwight");
   const pam = character("pam");
   const jim = character("jim");
-  const dwightButton = isManager()
-    ? `<button class="abtn dw" data-overlay="dwight-overlay">
-         <img src="assets/${esc(dwight.avatar_asset)}" alt="" />+ ${esc(dwight.display_name)}
-       </button>`
-    : "";
   document.getElementById("action-bar").innerHTML = `
-    ${dwightButton}
+    <button class="abtn dw" data-overlay="dwight-overlay">
+      <img src="assets/${esc(dwight.avatar_asset)}" alt="" />+ ${esc(dwight.display_name)}
+    </button>
     <button class="abtn pm" data-overlay="pam-overlay">
       <img src="assets/${esc(pam.avatar_asset)}" alt="" />? ${esc(pam.display_name)}
     </button>
@@ -1821,7 +1819,8 @@ async function loadMyBoard() {
            <button class="btn btn-primary" data-goto="pretzel">Open Pretzel Day</button>
          </div>
        </div>
-       <p class="view-sub">Personal notes and actions arrive with multi-user capture (V2).</p>`
+       <p class="view-sub">Your daily report goes through <strong>+ ${esc(character("dwight").display_name)}</strong> below:
+         tell it what happened, then validate what enters the team memory - your words, your call.</p>`
     );
     document.getElementById("myboard-body").onclick = (event) => {
       const button = event.target.closest("[data-goto]");

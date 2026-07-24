@@ -250,14 +250,14 @@ def test_manager_surfaces_refuse_members_and_anonymous(member_login, anon_client
     """The owner's scoping list, enforced server-side.
 
     One representative route per manager-only surface: Toby (warm
-    layer), the Desk briefs and generation, Dwight capture, Darryl's
-    archive, the edited documents, handover, exports.
+    layer), the Desk briefs and generation, Darryl's archive, the
+    edited documents, handover, exports. Tell Dwight is NOT here: the
+    capture pipeline belongs to the whole team (owner, 2026-07-19).
     """
     member_client, _ = member_login()
     manager_only = [
         ("GET", "/api/v1/toby/overview"),
         ("GET", "/api/v1/summaries/weekly_review"),
-        ("GET", "/api/v1/dwight/entries/recent"),
         ("GET", "/api/v1/darryl/documents/recent"),
         ("GET", "/api/v1/documents"),
         ("GET", "/api/v1/handover/1"),
@@ -269,14 +269,15 @@ def test_manager_surfaces_refuse_members_and_anonymous(member_login, anon_client
 
 
 def test_shared_surfaces_require_a_session(member_login, anon_client):
-    """Pam, the catalog, the mayor and the roster: any logged-in user,
-    but never anonymous."""
+    """Pam, Dwight's thread, the catalog, the mayor and the roster:
+    any logged-in user, but never anonymous."""
     member_client, _ = member_login()
     shared = [
         ("GET", "/api/v1/team/mayor"),
         ("GET", "/api/v1/team/members"),
         ("GET", "/api/v1/summaries"),
         ("GET", "/api/v1/mood/checkins"),
+        ("GET", "/api/v1/dwight/entries/recent"),
     ]
     for method, path in shared:
         assert member_client.request(method, path).status_code == 200, path

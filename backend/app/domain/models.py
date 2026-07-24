@@ -88,8 +88,10 @@ class DataType(str, enum.Enum):
 class ValidationStatus(str, enum.Enum):
     """Emitter validation of a proposed segment.
 
-    In the POC the single manager validates everything; in V2 each team
-    member validates their own submissions.
+    Each emitter validates their OWN submissions - live since the
+    identity session (2026-07-19): the session stamps the author and
+    only the author decides. This was the day-one design (the POC's
+    single manager was the degenerate case, not the doctrine).
     """
 
     PROPOSED = "proposed"
@@ -252,8 +254,9 @@ class Entry(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     raw_content: Mapped[str] = mapped_column(Text)
     source_type: Mapped[SourceType] = mapped_column(as_db_enum(SourceType))
-    # Null means the manager submitted directly. A value anticipates V2
-    # multi-user, where team members submit (and validate) their own entries.
+    # Null means the manager submitted directly. Members submit (and
+    # validate) their own entries - stamped from the session since the
+    # identity session (2026-07-19), exactly what this column was for.
     submitted_by_id: Mapped[int | None] = mapped_column(ForeignKey("team_members.id"))
     processing_status: Mapped[ProcessingStatus] = mapped_column(
         as_db_enum(ProcessingStatus), default=ProcessingStatus.PENDING

@@ -423,11 +423,19 @@ Référence : `docs/identity.md`.
    assumé ; logout et désactivation sont les mitigations.
 8. **Le seed crée les comptes démo** (identifiants affichés en sortie).
 9. **Vue Admin dédiée** (4e onglet manager).
-10. Décidé en construction, à confirmer si contesté : Dwight
-    manager-only (la capture équipier = V2, les entrées n'ont pas
-    d'auteur), Pam ouverte aux deux rôles (cold-only par invariant,
-    strips/aperçus/save-edit manager-only), profil personnel écrit par
-    son propriétaire SEUL.
+10. Décidé en construction : Pam ouverte aux deux rôles (cold-only
+    par invariant, strips/aperçus/save-edit manager-only), profil
+    personnel écrit par son propriétaire SEUL. ~~Dwight manager-only~~
+    → **CONTESTÉ ET CORRIGÉ (owner, 2026-07-19)** : « Tell Dwight est
+    pour tout le monde : c'est la base, ça permet à toute l'équipe de
+    faire son daily report et de nourrir la mémoire de l'équipe. »
+    Corrigé le jour même : capture ouverte à tous, doctrine de
+    l'ÉMETTEUR (le modèle du jour un — `entries.submitted_by_id`) :
+    la session estampille l'auteur, chacun ne voit et ne valide que
+    SES propositions — pas même le manager ne décide sur la note d'un
+    autre. La méprise venait d'un docstring d'époque POC lu comme
+    « capture équipier = V2 » alors que le modèle validé disait
+    l'inverse ; les deux docstrings pièges sont réécrits.
 
 **Priorité d'origine** : **GO OWNER (2026-07-18) — prochaine session, à ouvrir NEUVE.**
 « Le volet admin est essentiel, allons-y. » S'ajoute au périmètre : une

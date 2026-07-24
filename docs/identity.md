@@ -64,13 +64,23 @@ The data follows the handover doctrine, untouched.
 | Guard | Perimeter |
 |---|---|
 | none (public) | `/auth/status` `/auth/setup` `/auth/login`, `/config/ui` (branding for the landing), `/health` |
-| `get_current_user` | Pam Q&A, summaries CATALOG (the UI's entity labels), `/team/mayor`, `/team/members` (shaped: members see names, the manager sees full rows), own mood history |
+| `get_current_user` | **Tell Dwight (capture, thread, validation - emitter-scoped, see below)**, Pam Q&A, summaries CATALOG (the UI's entity labels), `/team/mayor`, `/team/members` (shaped: members see names, the manager sees full rows), own mood history |
 | `require_member` (self only) | Pretzel Day check-in (always your own), personal profile writes (owner-only - the manager-on-behalf era ended with the POC) |
-| `require_manager` | Dwight, Toby, Darryl, edited documents, handover, Angela, ingest, summary generation, the Admin surface |
+| `require_manager` | Toby, Darryl, edited documents, handover, Angela, ingest, summary generation, the Admin surface |
 
-Member capture through Dwight is a V2 story (entries carry no author
-today; the validation gate is the manager's gesture) - the Tell
-Dwight button simply does not render for a member session.
+**Tell Dwight is the base of the product** (owner correction,
+2026-07-19: "c'est la base, ça permet à toute l'équipe de faire son
+daily report et de nourrir la mémoire de l'équipe"): every logged-in
+user captures. The EMITTER doctrine rules it - the day-one data model
+had `entries.submitted_by_id` for exactly this:
+
+- the session stamps the author (a submitted_by_id in the payload is
+  overwritten: identity is proven, never claimed);
+- your Dwight thread and history show YOUR notes only;
+- only the entry's author validates, reworks or continues its
+  proposals (403 otherwise) - not even the manager decides on someone
+  else's note. Validation stays the only gate to the shared memory;
+  what changes is whose gesture it is: the author's.
 
 ## The surfaces
 
@@ -98,6 +108,4 @@ Dwight button simply does not render for a member session.
   migration needed.
 - **HTTPS / hosted deployment** - the cloud discussion stayed open at
   the session; the MVP is the self-hosted option 1.
-- **Member capture and member-validated segments** - V2 multi-user
-  story.
 - **Smartphone access** - "un futur plus lointain" (owner).

@@ -114,9 +114,11 @@ const SECTIONS = [
   {
     id: "member",
     title: "2. La vue équipier — sa session, ses données",
-    note: "Se connecter en ryan@dundermifflin.com / pretzelday. Le scoping n'est plus un bouton d'interface : c'est le serveur qui refuse.",
+    note: "Se connecter en ryan@dundermifflin.com / pretzelday. Le scoping n'est plus un bouton d'interface : c'est le serveur qui refuse. Et Tell Dwight est là pour tout le monde — votre correction du 19/07 : le daily report est la base.",
     flow: [
-      ["m1", "Regarder la topbar et la barre d'agents.", "Vues <strong>My board / Pretzel Day</strong> seulement ; barre du bas : <strong>? Ask Pam</strong> (et Jim V2) — <strong>pas de + Tell Dwight</strong> (la capture est le geste du manager) ; titre fenêtre : TEAM MEMBER VIEW (Ryan)"],
+      ["m1", "Regarder la topbar et la barre d'agents.", "Vues <strong>My board / Pretzel Day</strong> seulement ; barre du bas : <strong>+ Tell Dwight ET ? Ask Pam</strong> (la capture appartient à toute l'équipe) ; titre fenêtre : TEAM MEMBER VIEW (Ryan)"],
+      { copy: "Daily report : les 200 caisses Lackawanna sont parties ce matin. Le chariot de l'entrepôt fait un bruit bizarre, à faire vérifier." },
+      ["m1b", "+ Tell Dwight avec le report ci-dessus, puis <strong>valider</strong> le premier segment.", "Dwight propose des segments, <strong>Ryan valide lui-même</strong> : c'est SA note, son geste alimente la mémoire d'équipe (doctrine de l'émetteur — le manager ne valide jamais la note d'un autre) ; son fil ne montre que SES notes"],
       ["m2", "Pretzel Day : faire un check-in avec une note.", "« Recorded. Thanks for saying it. » ; l'historique perso s'allonge ; My board affiche l'humeur du jour"],
       ["m3", "Pretzel Day : renseigner « About me » et l'anniversaire, sauver.", "« Saved. Shared with your manager only. » — le profil appartient à l'équipier, c'est SA session qui l'écrit"],
       ["m4", "Dans la barre d'adresse, ouvrir directement <code>/api/v1/toby/overview</code>.", "<strong>{\"detail\":\"Manager only.\"}</strong> — la preuve que le scoping est serveur : même en connaissant l'URL, un équipier n'atteint pas la couche humaine"],

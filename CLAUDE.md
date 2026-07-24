@@ -74,13 +74,19 @@ localhost - so a hosted instance is a deployment, not a rewrite.
   2026-07-18). Every route except `/auth/status|setup|login`,
   `/config/ui` and `/health` requires a session cookie; the role
   guards live in `api/deps.py` (`require_manager`, `require_member`)
-  and the manager-only perimeter is: Dwight, Toby, Darryl, edited
-  documents, handover, Angela, ingest, summary GENERATION, the admin
-  surface. Member-self rules are forced server-side: a check-in is
-  always your own, a member's mood history is filtered to self, the
-  personal profile is writable by its owner ONLY (the
-  manager-on-behalf era ended with the POC), the roster is shaped by
-  role. The manager is a `users` row WITHOUT a roster row (identity
+  and the manager-only perimeter is: Toby, Darryl, edited documents,
+  handover, Angela, ingest, summary GENERATION, the admin surface.
+  **Tell Dwight is NOT manager-only - it is the base of the product**
+  (owner correction, 2026-07-19): every member files their daily
+  report and feeds the shared memory, under the EMITTER doctrine
+  (day-one data model): the session stamps `entries.submitted_by_id`
+  (never trusted from the payload), your Dwight thread shows YOUR
+  notes, and only the entry's author validates/reworks its proposals
+  - not even the manager decides on someone else's note. Member-self
+  rules are forced server-side: a check-in is always your own, a
+  member's mood history is filtered to self, the personal profile is
+  writable by its owner ONLY (the manager-on-behalf era ended with
+  the POC), the roster is shaped by role. The manager is a `users` row WITHOUT a roster row (identity
   apart, owner 2026-07-14) - a future co-admin is a role value, never
   a table move. Passwords are argon2id hashes, session tokens stored
   as SHA-256 only; a provisional password's ONLY exposure is the
@@ -324,11 +330,14 @@ deactivate / reactivate / reset password, one-time password display),
 the manager eligible Maire (birthday on his users row; surfaces when
 celebrations return). The POC role switch and identity picker are
 GONE - the session IS the identity. Owner arbitrations recorded in
-BACKLOG; reference `docs/identity.md`. Deferred: co-admin (a role
-value away), HTTPS/hosted deployment, member capture (V2). **NEXT:
-owner QA v7 (`frontend/qa.html`), then Oscar and exports & partage;
-celebrations overhaul stays the agréable tier (TWSS and Maire off
-until then).**
+BACKLOG; reference `docs/identity.md`. **Corrected 2026-07-19 (owner):
+Tell Dwight is for EVERYONE** - the daily report is the base of the
+product; the lot-2 manager-only guard was a misreading of a POC-era
+docstring, fixed the next day (emitter doctrine live, see the
+identity invariant). Deferred: co-admin (a role value away),
+HTTPS/hosted deployment. **NEXT: owner QA v7 (`frontend/qa.html`),
+then Oscar and exports & partage; celebrations overhaul stays the
+agréable tier (TWSS and Maire off until then).**
 
 **Succession (2026-07-12)**: the owner passed the baton from Fable to
 Opus; the former "pure Fable repo" rule is lifted - build ON this

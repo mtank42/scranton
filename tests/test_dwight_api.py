@@ -113,3 +113,80 @@ def test_recent_entries_history(app, client):
     # The 'Show more' path pages past the first screen.
     paged = client.get("/api/v1/dwight/entries/recent?limit=5&offset=1").json()
     assert [entry["id"] for entry in paged] == [first["entry_id"]]
+
+
+# --- The emitter doctrine (owner correction, 2026-07-19) ---
+# Tell Dwight is the base of the product: EVERY team member files their
+# daily report and feeds the shared memory. The session stamps the
+# author, and only the author decides on their proposals.
+
+
+def test_member_daily_report_is_stamped_and_validated_by_its_author(
+    app, client, member_login
+):
+    """A member captures, sees THEIR thread, validates THEIR segment."""
+    from backend.app.domain.models import Entry
+
+    llm, store = override_service(app, [TWO_SEGMENT_PROPOSAL])
+    member_client, member_id = member_login(name="Kelly")
+
+    captured = member_client.post(
+        "/api/v1/dwight/entries",
+        # A claimed author is ignored: identity is proven, not declared.
+        json={"raw_content": "Daily report: closed two tickets.", "submitted_by_id": 999},
+    )
+    assert captured.status_code == 201
+    body = captured.json()
+    with app.state.session_factory() as session:
+        assert session.get(Entry, body["entry_id"]).submitted_by_id == member_id
+
+    # Her history shows her note; the manager's thread stays empty.
+    assert [e["id"] for e in member_client.get("/api/v1/dwight/entries/recent").json()] == [
+        body["entry_id"]
+    ]
+    assert client.get("/api/v1/dwight/entries/recent").json() == []
+
+    # She validates her own segment: the shared memory receives it.
+    validated = member_client.post(
+        f"/api/v1/dwight/segments/{body['segments'][0]['id']}/validate",
+        json={"status": "validated"},
+    )
+    assert validated.status_code == 200
+    assert len(store.upserted) == 1
+
+
+def test_only_the_author_decides_not_even_the_manager(app, client, member_login):
+    """Cross-emitter gestures are 403 in BOTH directions."""
+    llm, store = override_service(app, [TWO_SEGMENT_PROPOSAL, TWO_SEGMENT_PROPOSAL])
+    member_client, member_id = member_login(name="Ryan")
+
+    hers = member_client.post(
+        "/api/v1/dwight/entries", json={"raw_content": "My report."}
+    ).json()
+    his = client.post(
+        "/api/v1/dwight/entries", json={"raw_content": "Manager note."}
+    ).json()
+
+    # The manager cannot decide on her proposal - the gate belongs to
+    # whoever wrote the note (emitter validation, day-one doctrine).
+    refused = client.post(
+        f"/api/v1/dwight/segments/{hers['segments'][0]['id']}/validate",
+        json={"status": "validated"},
+    )
+    assert refused.status_code == 403
+    # And she cannot decide, rework or continue his.
+    assert (
+        member_client.post(
+            f"/api/v1/dwight/segments/{his['segments'][0]['id']}/validate",
+            json={"status": "validated"},
+        ).status_code
+        == 403
+    )
+    assert (
+        member_client.post(
+            f"/api/v1/dwight/segments/{his['segments'][0]['id']}/rework",
+            json={"comment": "not mine"},
+        ).status_code
+        == 403
+    )
+    assert store.upserted == []
