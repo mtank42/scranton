@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.app.adapters.documents.base import DocumentSource, SourceDocument
 from backend.app.adapters.extraction.registry import is_catalog_only
-from backend.app.adapters.llm.base import LLMProvider
+from backend.app.adapters.llm.base import LLMProvider, ProviderError
 from backend.app.adapters.vectorstore.base import SegmentVector, VectorStore
 from backend.app.domain.models import (
     Client,
@@ -326,8 +326,8 @@ class DarrylService:
                 ),
                 DarrylRouting,
             )
-        except LLMContractError:
-            # A model hiccup must never fail a sync: the document lands
+        except (LLMContractError, ProviderError):
+            # A model hiccup (or provider outage) must never fail a sync: the document lands
             # in the bin, where the manager can file it.
             return DarrylRouting()
 

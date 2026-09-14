@@ -6,9 +6,11 @@ Interactive docs: http://127.0.0.1:8000/docs
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.app.adapters.llm.base import ProviderError
 from backend.app.adapters.llm.factory import build_llm
 from backend.app.adapters.vectorstore.chroma import ChromaStore
 from backend.app.api.v1 import (
@@ -71,6 +73,24 @@ def create_app() -> FastAPI:
         version="0.8.0",
         lifespan=lifespan,
     )
+    # The safety net for AI-provider outages (owner report 2026-09-14:
+    # a Mistral 429 surfaced as a raw 500). Routes with a tailored
+    # message translate ProviderError themselves (Dwight capture says
+    # the note is saved); everything else - validation embeds, Pam,
+    # sync - lands here as an honest 502 instead of a 500.
+    @app.exception_handler(ProviderError)
+    async def provider_error_to_502(request: Request, exc: ProviderError) -> JSONResponse:
+        """Map any unhandled provider outage to a clean 502."""
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={
+                "detail": (
+                    "The AI provider is unreachable or refusing calls right "
+                    "now. Nothing was lost; try again in a moment."
+                )
+            },
+        )
+
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")

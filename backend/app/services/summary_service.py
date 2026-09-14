@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.app.adapters.llm.base import LLMProvider
+from backend.app.adapters.llm.base import LLMProvider, ProviderError
 from backend.app.domain.models import (
     MOOD_INDEX,
     Client,
@@ -280,7 +280,7 @@ class SummaryService:
         )
         try:
             summary = complete_validated(self.llm, messages, LLMSummary)
-        except LLMContractError as exc:
+        except (LLMContractError, ProviderError) as exc:
             raise SummaryProcessingError(
                 f"The model could not fill the {template.title} template; try again."
             ) from exc

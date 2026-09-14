@@ -8,7 +8,7 @@ mistralai 2.x note: it is a namespace package, so the client import is
 
 from mistralai.client import Mistral
 
-from backend.app.adapters.llm.base import LLMProvider
+from backend.app.adapters.llm.base import LLMProvider, ProviderError
 
 
 class MistralProvider(LLMProvider):
@@ -39,17 +39,29 @@ class MistralProvider(LLMProvider):
         return self._client
 
     def complete(self, messages: list[dict], *, model: str | None = None) -> str:
-        """Return the assistant reply for a chat-style list of messages."""
-        response = self.client.chat.complete(
-            model=model or self.default_model,
-            messages=messages,
-        )
+        """Return the assistant reply for a chat-style list of messages.
+
+        Any SDK failure (quota 429, bad key, network) becomes a
+        ProviderError HERE: no vendor exception class ever crosses the
+        seam - that is what kept a Mistral 429 surfacing as a raw 500
+        until 2026-09-14.
+        """
+        try:
+            response = self.client.chat.complete(
+                model=model or self.default_model,
+                messages=messages,
+            )
+        except Exception as exc:
+            raise ProviderError(f"Mistral chat call failed: {exc}") from exc
         return response.choices[0].message.content
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Return one embedding vector per input text, in the same order."""
-        response = self.client.embeddings.create(
-            model=self.EMBED_MODEL,
-            inputs=texts,
-        )
+        try:
+            response = self.client.embeddings.create(
+                model=self.EMBED_MODEL,
+                inputs=texts,
+            )
+        except Exception as exc:
+            raise ProviderError(f"Mistral embeddings call failed: {exc}") from exc
         return [item.embedding for item in response.data]

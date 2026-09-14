@@ -19,7 +19,7 @@ Design decisions (documented in docs/tell_dwight.md):
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.app.adapters.llm.base import LLMProvider
+from backend.app.adapters.llm.base import LLMProvider, ProviderError
 from backend.app.adapters.vectorstore.base import SegmentVector, VectorStore
 from backend.app.domain.models import (
     BIRTHDAY_YEAR,
@@ -317,7 +317,7 @@ class DwightService:
         """Call the LLM through the shared JSON contract (one retry inside)."""
         try:
             return complete_validated(self.llm, messages, DwightProposal)
-        except LLMContractError as exc:
+        except (LLMContractError, ProviderError) as exc:
             raise DwightProcessingError(
                 "Dwight could not produce a valid proposal for this note. "
                 "The raw entry is saved (status pending); try again later."

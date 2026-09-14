@@ -161,6 +161,14 @@ localhost - so a hosted instance is a deployment, not a rewrite.
 - **Structured LLM calls go through `services/llm_json.complete_validated`**
   (parse tolerant of ```json fences, Pydantic validate, one retry). Used
   by Dwight and Summaries. Don't re-roll a bespoke parser.
+- **Provider outages are `ProviderError` at the adapter seam, 502 at
+  the API** (2026-09-14: a Mistral 429 surfaced as a raw 500). Every
+  LLM adapter translates its SDK/network failures into
+  `adapters/llm/base.ProviderError`; services with a tailored message
+  catch it next to `LLMContractError` (Dwight says the note is saved,
+  Darryl's routing falls back to the bin), and the app-level handler
+  in `main.py` maps the rest (validation embeds, Pam, sync) to an
+  honest 502. Never let a vendor exception class cross the seam.
 - **Smart Summary templates are DATA** (`TEMPLATES` registry in
   `summary_service.py`). Gathering is **exhaustive SQL over tags, not
   vector top-k** (a file wants everything; search would truncate). A new
@@ -233,6 +241,14 @@ I/O. The lifespan hook (`main.py`) builds shared adapters once onto
   invents birth years (guarded by year-erasure).
 - **`LLM_MODEL` in .env overrides the chat model** (e.g.
   `mistral-medium-latest`) without touching code - the A/B lever.
+- **Mistral's free tier dropped the commercial models** (hit
+  2026-09-14): medium and small answer 429 with
+  `x-ratelimit-limit-req-minute: 0` on a free workspace, while the
+  open/ministral family (and mistral-embed) stay free with generous
+  limits. The owner's .env runs `LLM_MODEL=ministral-14b-latest`
+  (owner call, 2026-09-14; JSON contract verified) - going back to
+  medium means paying. When chat 429s but embeddings work, check the
+  entitlement headers before blaming the key.
 - Dev DB may hold ad-hoc test rows (e.g. Kevin/Thomas birthdays set
   during verification). Run the seed with `--reset` for a clean demo.
 - **The app is behind a login since the identity session**: the seed

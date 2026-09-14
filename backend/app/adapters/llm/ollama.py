@@ -7,9 +7,10 @@ a network dependency.
 """
 
 import json
+import urllib.error
 import urllib.request
 
-from backend.app.adapters.llm.base import LLMProvider
+from backend.app.adapters.llm.base import LLMProvider, ProviderError
 
 # Local 7B-class inference is slow on long prompts: generous on purpose.
 TIMEOUT_SECONDS = 300
@@ -35,14 +36,22 @@ class OllamaProvider(LLMProvider):
         self.default_model = default_model
 
     def _post(self, path: str, payload: dict) -> dict:
-        """One JSON round-trip to the local server."""
+        """One JSON round-trip to the local server.
+
+        The single choke point: a server that is down, times out or
+        errors becomes a ProviderError at the seam, like every other
+        adapter.
+        """
         request = urllib.request.Request(
             f"{self.base_url}{path}",
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            return json.loads(response.read())
+        try:
+            with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+                return json.loads(response.read())
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            raise ProviderError(f"Ollama call failed: {exc}") from exc
 
     def complete(self, messages: list[dict], *, model: str | None = None) -> str:
         """Return the assistant reply for a chat-style list of messages."""

@@ -25,7 +25,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.app.adapters.llm.base import LLMProvider
+from backend.app.adapters.llm.base import LLMProvider, ProviderError
 from backend.app.domain.models import (
     EditedDocument,
     EntityType,
@@ -244,7 +244,7 @@ class EditingService:
                 build_revision_messages(before, instruction, material),
                 DwightRevision,
             )
-        except LLMContractError as exc:
+        except (LLMContractError, ProviderError) as exc:
             raise RevisionProcessingError(
                 "Dwight could not produce a usable revision; try rewording."
             ) from exc
