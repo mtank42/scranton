@@ -2,7 +2,7 @@
 
 > One smart notepad. Zero bureaucracy. 100% team.
 
-A managerial OS for proximity managers in SMEs — privacy-first, Mistral-powered, anti-surveillance.
+A managerial OS for proximity managers in SMEs: privacy-first, Mistral-powered, anti-surveillance.
 
 Inspired by the worst manager on American TV. Built for the best.
 
@@ -10,9 +10,9 @@ Inspired by the worst manager on American TV. Built for the best.
 
 ## What it does
 
-Scranton captures the human layer that falls between every other tool — informal decisions, weak signals, verbal commitments, team mood. It structures silently, surfaces what matters, and never lets the manager become a bureaucrat.
+Scranton captures the human layer that falls between every other tool: informal decisions, weak signals, verbal commitments, team mood. It structures silently, surfaces what matters, and never lets the manager become a bureaucrat.
 
-Under the hood, Scranton is a team of **specialized agents** — Dwight captures and routes, Pam remembers, Toby watches over team health, Angela exports — sharing one memory and **orchestrated by the manager**, never the other way around. Where the market sells autonomous agents that decide for you, Scranton's agents propose and the human validates. Human-orchestrated agency is the product thesis, not a limitation.
+Under the hood, Scranton is a team of **specialized agents** (Dwight captures and routes, Pam remembers, Toby watches over team health, Angela exports) sharing one memory and **orchestrated by the manager**, never the other way around. Where the market sells autonomous agents that decide for you, Scranton's agents propose and the human validates. Human-orchestrated agency is the product thesis, not a limitation.
 
 The AI is never visible as a decision-maker. The manager remains the sole source of every human decision.
 
@@ -56,13 +56,13 @@ The AI is never visible as a decision-maker. The manager remains the sole source
 Pre-alpha, moving through the rebuilt roadmap
 ([Pre-dev/product/PRODUCT_ROADMAP.md](Pre-dev/product/PRODUCT_ROADMAP.md) §4)
 with one dedicated owner session per chantier and a sliding-scope QA
-checklist between them. 170 offline tests keep it honest.
+checklist between them. 201 offline tests keep it honest.
 
 **Done.** The 2026-07-12 realignment shipped in full: one OS, two roles,
 the agents as ever-present actions
 ([Pre-dev/product/RECADRAGE_2026-07-12.md](Pre-dev/product/RECADRAGE_2026-07-12.md)).
 On top of it, the two *indispensable* chantiers: **Darryl the archivist**
-(the document corpus behind Pam — silent routing, version families,
+(the document corpus behind Pam: silent routing, version families,
 unclassified bin, in-app preview; [docs/darryl.md](docs/darryl.md)) and
 **document editing** (a surface-independent engine and a standard-model
 editor: one canvas, computed diffs, undo, Save as the only persisting
@@ -70,7 +70,7 @@ gesture; [docs/document_editing.md](docs/document_editing.md)). Four owner
 QA passes drove the polish; only the real-Drive QA section remains open.
 
 **Done too (2026-07-18).** Manager identity, admin role & team
-onboarding — the privacy-first pivot: Scranton is a client-server web
+onboarding, the privacy-first pivot: Scranton is a client-server web
 app, every person logs in from their own machine. Real accounts
 (argon2id), a styled landing, server-side scoping of every surface,
 and an Admin view where the manager creates the team (provisional
@@ -88,7 +88,7 @@ to the Dock). It starts the local server if needed, reuses it otherwise, and
 opens the app at `http://127.0.0.1:8001`. The bundle resolves paths relative
 to itself: keep it inside the repository, do not copy it to /Applications.
 
-**Owner QA**: double-click `Scranton QA.command` — it boots a throwaway
+**Owner QA**: double-click `Scranton QA.command`: it boots a throwaway
 environment under `data/qa/` (your real data is never touched), reseeds the
 demo dataset, and opens an interactive checklist at `localhost:8010/qa.html`.
 
@@ -129,12 +129,12 @@ Pre-dev/pitch/      Slides, 2-pager, storytelling, design assets
 
 ## About
 
-Built by Mathieu Tank — 25+ years in digital Product, Ops, and Editorial.
+Built by Mathieu Tank, 25+ years in digital Product, Ops, and Editorial.
 Currently at École 42, learning Python and AI from scratch.
 This project is the portfolio.
 
 > A 25-year digital manager came back from École 42 at 56,
 > learned Python and AI from scratch,
 > and built his own management OS.
-> Local-first. Mistral-powered. Anti-surveillance.
+> Privacy-first. Mistral-powered. Anti-surveillance.
 > Demo available on request.
